@@ -30,11 +30,11 @@ jobs:
           echo "API_URL=https://shollover.exaapk.com/api" >> .env
           echo "STORAGE_URL=https://shollover.exaapk.com/storage" >> .env
 
-      # 🔐 Decode release keystore ke folder android/ (biar path-nya valid)
+      # 🔐 Decode keystore ke folder android/app biar path cocok sama gradle
       - name: 🔐 Decode release keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/shollover-release.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/shollover-release.jks
 
-      # 🧾 Generate key.properties dengan path ke android/
+      # 🧾 Generate key.properties di folder android/
       - name: 🧾 Generate key.properties
         run: |
           echo "storeFile=shollover-release.jks" > android/key.properties
@@ -42,23 +42,30 @@ jobs:
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
 
-      # 🧩 Verifikasi keystore (buat ngecek di log aja)
+      # 🧩 Verify keystore (biar kita tahu CI pakai key yang bener)
       - name: 🔍 Verify keystore
         run: |
-          keytool -list -v -keystore android/shollover-release.jks -alias ${{ secrets.KEY_ALIAS }} \
-            -storepass ${{ secrets.KEYSTORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }}
+          echo "🔎 Checking keystore validity..."
+          keytool -list -v -keystore android/app/shollover-release.jks \
+            -alias ${{ secrets.KEY_ALIAS }} \
+            -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
+            -keypass ${{ secrets.KEY_PASSWORD }}
 
       # 🚀 Build release APK
       - name: 🚀 Build release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: flutter build apk --release
 
-      # 🏷️ Rename APK dengan build number
+      # 🏷️ Rename APK with build number
       - name: 🏷️ Rename APK with build number
         run: |
           mkdir -p output
           cp build/app/outputs/flutter-apk/app-release.apk output/Shollover-${{ github.run_number }}.apk
 
-      # 🧹 Delete existing release (optional)
+      # 🧹 Delete existing release if any
       - name: 🧹 Delete existing release (if any)
         uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
@@ -80,7 +87,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 📤 Upload APK ke Release
+      # 📤 Upload APK to Release
       - name: 📤 Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
@@ -90,12 +97,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🔑 Print SHA1 biar bisa dicek di Firebase
+      # 🔑 Print SHA1 ke summary dan log (buat Firebase)
       - name: 🔑 Print SHA1 fingerprint
         run: |
           echo "### 🔑 SHA1 Fingerprint" >> $GITHUB_STEP_SUMMARY
-          keytool -list -v -keystore android/shollover-release.jks -alias ${{ secrets.KEY_ALIAS }} \
-            -storepass ${{ secrets.KEYSTORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} | grep "SHA1" >> $GITHUB_STEP_SUMMARY
+          keytool -list -v -keystore android/app/shollover-release.jks \
+            -alias ${{ secrets.KEY_ALIAS }} \
+            -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
+            -keypass ${{ secrets.KEY_PASSWORD }} | grep "SHA1" | tee -a $GITHUB_STEP_SUMMARY
 
       # 💬 Build summary
       - name: 💬 Build summary

@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:test_flutter/core/constants/cache_keys.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/utils/storage_helper.dart';
+import 'package:test_flutter/data/services/cache/cache_service.dart';
 import 'package:test_flutter/data/services/google/google_auth_service.dart';
 import 'package:test_flutter/features/auth/auth_service.dart';
 
@@ -315,24 +317,43 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
 
     try {
       // Call API
-      final response = await AuthService.logout();
+      await AuthService.logout();
 
-      if (response == true) {
-        logger.fine('Logout successful on server');
+      // Clear local user data
+      await StorageHelper.clearUserData();
+      logger.fine('User data cleared from storage');
 
-        // Clear local data once
-        await StorageHelper.clearUserData();
+      // Clear only sholat-related caches from Hive
+      logger.fine('Starting to clear sholat caches...');
 
-        // Update state to unauthenticated
-        state = {
-          'status': AuthState.unauthenticated,
-          'user': null,
-          'error': null,
-        };
-      } else {
-        throw Exception('Logout failed');
+      final cacheKeys = [
+        CacheKeys.progressSholatWajibHariIni,
+        CacheKeys.progressSholatSunnahHariIni,
+        CacheKeys.progressSholatWajibRiwayat,
+        CacheKeys.progressSholatSunnahRiwayat,
+      ];
+
+      for (final key in cacheKeys) {
+        await CacheService.clearCache(key);
+        logger.fine('✓ Cleared cache: $key');
       }
+
+      logger.fine('All sholat caches cleared successfully');
+
+      // Also clear jadwal sholat cache to ensure fresh data on next login
+      await CacheService.clearCache(CacheKeys.jadwalSholat);
+      logger.fine('✓ Cleared jadwal sholat cache');
+
+      // Update state to unauthenticated
+      state = {
+        'status': AuthState.unauthenticated,
+        'user': null,
+        'error': null,
+      };
+
+      logger.info('Logout completed successfully');
     } catch (e) {
+      logger.warning('Logout error: $e');
       state = {
         'status': AuthState.error,
         'user': state['user'],

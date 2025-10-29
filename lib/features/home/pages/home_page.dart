@@ -22,11 +22,8 @@ import 'package:test_flutter/features/sholat/pages/sholat_page.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import '../../../app/theme.dart';
 
-// GlobalKey untuk akses state
-final GlobalKey<_HomePageState> homePageKey = GlobalKey<_HomePageState>();
-
 class HomePage extends StatefulWidget {
-  HomePage({Key? key}) : super(key: homePageKey);
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -171,7 +168,9 @@ class _HomeTabContentState extends ConsumerState<HomeTabContent> {
   }
 
   void _navigateToTab(int index) {
-    homePageKey.currentState?.navigateToTab(index);
+    // Find parent HomePage state
+    final homePageState = context.findAncestorStateOfType<_HomePageState>();
+    homePageState?.navigateToTab(index);
   }
 
   @override
