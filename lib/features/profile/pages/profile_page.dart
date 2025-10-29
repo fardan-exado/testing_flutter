@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
@@ -18,6 +20,7 @@ class ProfilePage extends ConsumerStatefulWidget {
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   String selectedLanguage = 'Indonesia';
+  final ImagePicker _imagePicker = ImagePicker();
 
   // --- Helpers berbasis ResponsiveHelper ---
   double _scale(BuildContext c) {
@@ -40,6 +43,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   EdgeInsets _pageHPad(BuildContext c) => EdgeInsets.symmetric(
     horizontal: ResponsiveHelper.getResponsivePadding(c).left,
   );
+
+  // Helper untuk build avatar URL
+  String _buildAvatarUrl(String? avatarPath) {
+    if (avatarPath == null || avatarPath.isEmpty) return '';
+
+    final storage = dotenv.env['STORAGE_URL'] ?? '';
+    if (storage.isEmpty) return '';
+
+    // Jika sudah URL lengkap, return as is
+    if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+      return avatarPath;
+    }
+
+    // Jika path relatif, tambahkan base URL
+    return '$storage/$avatarPath';
+  }
 
   @override
   void initState() {
@@ -85,6 +104,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           type: ToastType.error,
         );
         ref.read(profileProvider.notifier).clearMessage();
+      } else if (next.status == ProfileStatus.success && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.success,
+        );
+        ref.read(profileProvider.notifier).clearMessage();
+        ref.read(profileProvider.notifier).resetStatus();
       }
     });
 
@@ -120,7 +147,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 alignment: Alignment.centerLeft,
                                 child: IconButton(
                                   onPressed: () {
-                                    Navigator.pushReplacementNamed(context, '/home');
+                                    Navigator.pushReplacementNamed(
+                                      context,
+                                      '/home',
+                                    );
                                   },
                                   icon: const Icon(Icons.arrow_back_rounded),
                                   color: const Color(0xFF2D3748),
@@ -528,34 +558,89 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final name = user != null ? (user['name'] ?? '-') : '-';
     final email = user != null ? (user['email'] ?? '-') : '-';
     final phone = user != null ? (user['phone'] ?? '-') : '-';
+    final avatarPath = user != null ? user['avatar'] as String? : null;
+    final avatarUrl = _buildAvatarUrl(avatarPath);
     final isDataAvailable = user != null;
 
     return Column(
       children: [
-        // Avatar
-        Container(
-          width: _px(context, 88),
-          height: _px(context, 88),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: isGuest
-                  ? [Colors.grey.shade400, Colors.grey.shade500]
-                  : isDataAvailable
-                  ? [const Color(0xFF1E88E5), const Color(0xFF26A69A)]
-                  : [Colors.grey.shade400, Colors.grey.shade500],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Icon(
-            isGuest
-                ? Icons.person_off_outlined
-                : isDataAvailable
-                ? Icons.person
-                : Icons.person_off,
-            size: _px(context, 44),
-            color: Colors.white,
+        // Avatar with upload functionality
+        GestureDetector(
+          onTap: isGuest
+              ? null
+              : () {
+                  if (isDataAvailable) {
+                    _showAvatarSourceDialog(context);
+                  }
+                },
+          child: Stack(
+            children: [
+              Container(
+                width: _px(context, 88),
+                height: _px(context, 88),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: avatarUrl.isEmpty
+                      ? LinearGradient(
+                          colors: isGuest
+                              ? [Colors.grey.shade400, Colors.grey.shade500]
+                              : isDataAvailable
+                              ? [
+                                  const Color(0xFF1E88E5),
+                                  const Color(0xFF26A69A),
+                                ]
+                              : [Colors.grey.shade400, Colors.grey.shade500],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  image: avatarUrl.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(avatarUrl),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: avatarUrl.isEmpty
+                    ? Icon(
+                        isGuest
+                            ? Icons.person_off_outlined
+                            : isDataAvailable
+                            ? Icons.person
+                            : Icons.person_off,
+                        size: _px(context, 44),
+                        color: Colors.white,
+                      )
+                    : null,
+              ),
+
+              // Camera icon overlay (only for authenticated users with data)
+              if (!isGuest && isDataAvailable)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: EdgeInsets.all(_px(context, 6)),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E88E5),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.camera_alt_rounded,
+                      size: _px(context, 14),
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         SizedBox(height: _px(context, 18)),
@@ -848,5 +933,160 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ],
       ),
     );
+  }
+
+  // ================== Avatar Upload ==================
+
+  void _showAvatarSourceDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Title
+              Text(
+                'Pilih Sumber Foto',
+                style: TextStyle(
+                  fontSize: _ts(context, 18),
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF2D3748),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Camera option
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E88E5).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: Color(0xFF1E88E5),
+                  ),
+                ),
+                title: const Text('Kamera'),
+                subtitle: const Text('Ambil foto dengan kamera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndUploadAvatar(ImageSource.camera);
+                },
+              ),
+
+              // Gallery option
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF26A69A).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.photo_library_rounded,
+                    color: Color(0xFF26A69A),
+                  ),
+                ),
+                title: const Text('Galeri'),
+                subtitle: const Text('Pilih foto dari galeri'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndUploadAvatar(ImageSource.gallery);
+                },
+              ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadAvatar(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) {
+        return;
+      }
+
+      // Show loading dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Center(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: Color(0xFF1E88E5)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Mengupload avatar...',
+                    style: TextStyle(
+                      fontSize: _ts(context, 14),
+                      color: const Color(0xFF2D3748),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Upload avatar
+      await ref.read(profileProvider.notifier).updateAvatar(avatar: pickedFile);
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      // Close loading dialog if open
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      if (mounted) {
+        showMessageToast(
+          context,
+          message: 'Gagal mengupload avatar: ${e.toString()}',
+          type: ToastType.error,
+        );
+      }
+    }
   }
 }
