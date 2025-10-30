@@ -7,14 +7,10 @@ import 'package:test_flutter/features/auth/auth_provider.dart';
 import '../../../app/theme.dart';
 
 class ResetPasswordPage extends ConsumerStatefulWidget {
-  final String token;
+  final String otp;
   final String email;
 
-  const ResetPasswordPage({
-    super.key,
-    required this.token,
-    required this.email,
-  });
+  const ResetPasswordPage({super.key, required this.otp, required this.email});
 
   @override
   ConsumerState<ResetPasswordPage> createState() => _ResetPasswordPageState();
@@ -476,7 +472,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage>
                                               await ref
                                                   .read(authProvider.notifier)
                                                   .resetPassword(
-                                                    token: widget.token,
+                                                    otp: widget.otp,
                                                     email: widget.email,
                                                     password:
                                                         _passwordController.text

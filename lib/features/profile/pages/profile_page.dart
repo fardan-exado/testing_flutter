@@ -670,27 +670,27 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ),
 
         // Phone (if available and not guest)
-        if (!isGuest && phone != null && phone.isNotEmpty) ...[
-          SizedBox(height: _px(context, 4)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.phone,
-                size: _px(context, 14),
-                color: const Color(0xFF4A5568),
-              ),
-              SizedBox(width: _px(context, 4)),
-              Text(
-                phone,
-                style: TextStyle(
-                  fontSize: _ts(context, 13),
-                  color: const Color(0xFF4A5568),
-                ),
-              ),
-            ],
-          ),
-        ],
+        // if (!isGuest && phone != null && phone.isNotEmpty) ...[
+        //   SizedBox(height: _px(context, 4)),
+        //   Row(
+        //     mainAxisAlignment: MainAxisAlignment.center,
+        //     children: [
+        //       Icon(
+        //         Icons.phone,
+        //         size: _px(context, 14),
+        //         color: const Color(0xFF4A5568),
+        //       ),
+        //       SizedBox(width: _px(context, 4)),
+        //       Text(
+        //         phone,
+        //         style: TextStyle(
+        //           fontSize: _ts(context, 13),
+        //           color: const Color(0xFF4A5568),
+        //         ),
+        //       ),
+        //     ],
+        //   ),
+        // ],
 
         // Guest indicator
         if (isGuest) ...[

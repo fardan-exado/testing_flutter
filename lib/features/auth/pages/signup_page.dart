@@ -230,19 +230,25 @@ class _SignupPageState extends ConsumerState<SignupPage>
         _passwordError = null;
 
         ref.read(authProvider.notifier).clearError();
-      } else if (status == AuthState.authenticated) {
+      } else if (status == AuthState.isRegistered) {
         // Show success toast
         showMessageToast(
           context,
-          message: 'Pendaftaran berhasil! Selamat bergabung.',
+          message: 'Pendaftaran berhasil! Silakan verifikasi email Anda.',
           type: ToastType.success,
           duration: const Duration(seconds: 3),
         );
 
-        // Navigate after frame is complete to avoid navigation during build
+        // Navigate to OTP page for verification
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            Navigator.of(context).pushReplacementNamed('/home');
+            Navigator.of(context).pushReplacementNamed(
+              '/otp',
+              arguments: {
+                'email': _emailController.text.trim(),
+                'type': 'registration',
+              },
+            );
           }
         });
       }

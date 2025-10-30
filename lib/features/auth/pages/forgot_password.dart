@@ -104,16 +104,22 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
         showMessageToast(
           context,
           message:
-              message?.toString() ??
-              'Link verifikasi telah dikirim ke email Anda.',
+              message?.toString() ?? 'Kode OTP telah dikirim ke email Anda.',
           type: ToastType.success,
-          duration: const Duration(seconds: 5),
+          duration: const Duration(seconds: 3),
         );
 
-        // Navigate back to login after showing success
-        Future.delayed(const Duration(seconds: 2), () {
+        // Navigate to OTP page after showing success
+        Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
-            Navigator.of(context).pop();
+            Navigator.pushReplacementNamed(
+              context,
+              '/otp',
+              arguments: {
+                'email': _emailController.text.trim(),
+                'type': 'forgot_password',
+              },
+            );
           }
         });
       }
