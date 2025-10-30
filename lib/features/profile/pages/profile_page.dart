@@ -1057,7 +1057,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     'Mengupload avatar...',
                     style: TextStyle(
                       fontSize: _ts(context, 14),
-                      color: const Color(0xFF2D3748),
+                      color: const Color(0xFF2D3748), // abu gelap
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
