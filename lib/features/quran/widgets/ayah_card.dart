@@ -14,6 +14,7 @@ class AyahCard extends ConsumerWidget {
   final bool isTablet;
   final bool isDesktop;
   final bool isPlaying;
+  final bool isGuest;
 
   const AyahCard({
     super.key,
@@ -27,7 +28,84 @@ class AyahCard extends ConsumerWidget {
     this.isTablet = false,
     this.isDesktop = false,
     this.isPlaying = false,
+    this.isGuest = true,
   });
+
+  void _showGuestDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.login_rounded,
+                color: AppTheme.primaryBlue,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Login Required',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Silakan login terlebih dahulu untuk menggunakan fitur bookmark ayat.',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 14,
+            color: AppTheme.onSurfaceVariant,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Nanti',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text(
+              'Login',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showBookmarkModal(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
@@ -193,7 +271,7 @@ class AyahCard extends ConsumerWidget {
                               textColor: Colors.white,
                               onPressed: () {
                                 // Navigate to bookmark tab
-                                DefaultTabController.of(context)?.animateTo(2);
+                                DefaultTabController.of(context).animateTo(2);
                               },
                             ),
                           ),
@@ -349,11 +427,15 @@ class AyahCard extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: isBookmarked
                           ? AppTheme.accentGreen.withValues(alpha: 0.15)
+                          : isGuest
+                          ? Colors.grey.withValues(alpha: 0.1)
                           : AppTheme.primaryBlue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                     ),
                     child: IconButton(
-                      onPressed: () => _showBookmarkModal(context, ref),
+                      onPressed: isGuest
+                          ? () => _showGuestDialog(context)
+                          : () => _showBookmarkModal(context, ref),
                       icon: Icon(
                         isBookmarked
                             ? Icons.bookmark
@@ -362,9 +444,13 @@ class AyahCard extends ConsumerWidget {
                       iconSize: isTablet ? 22 : 20,
                       color: isBookmarked
                           ? AppTheme.accentGreen
+                          : isGuest
+                          ? Colors.grey
                           : AppTheme.primaryBlue,
                       padding: EdgeInsets.zero,
-                      tooltip: isBookmarked
+                      tooltip: isGuest
+                          ? 'Login to bookmark'
+                          : isBookmarked
                           ? 'Bookmarked'
                           : 'Bookmark this ayah',
                     ),

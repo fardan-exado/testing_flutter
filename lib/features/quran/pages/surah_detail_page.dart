@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test_flutter/app/theme.dart';
+import 'package:test_flutter/core/utils/storage_helper.dart';
 import 'package:test_flutter/data/models/quran/surah.dart';
 import 'package:test_flutter/features/quran/services/quran_audio_service.dart';
 import 'package:test_flutter/features/quran/services/quran_download_manager.dart';
@@ -33,6 +34,7 @@ class _SurahDetailPageState extends State<SurahDetailPage>
   int _currentPlayingVerse = 0;
   String? _qariName;
   int _currentSurahIndex = 0;
+  bool _isGuest = true; // Default to guest until checked
 
   late TabController _tabController;
   late PageController _pageController;
@@ -86,11 +88,23 @@ class _SurahDetailPageState extends State<SurahDetailPage>
       print('📖 Reason: allSurahs.length = ${widget.allSurahs.length}');
     }
 
+    // Check authentication status
+    _checkAuthStatus();
+
     // Load initial surah details
     _loadSurahDetails(_currentSurah.nomor);
     _loadSelectedQori();
     _checkDownloadStatus();
     _listenToCurrentVerse();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    final token = await StorageHelper.getToken();
+    if (mounted) {
+      setState(() {
+        _isGuest = token == null || token.isEmpty;
+      });
+    }
   }
 
   @override
@@ -287,6 +301,12 @@ class _SurahDetailPageState extends State<SurahDetailPage>
   }
 
   void _showDownloadDialog() {
+    // Check if user is guest
+    if (_isGuest) {
+      _showGuestDialog();
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -305,6 +325,82 @@ class _SurahDetailPageState extends State<SurahDetailPage>
     );
   }
 
+  void _showGuestDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.login_rounded,
+                color: AppTheme.primaryBlue,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Login Required',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Silakan login terlebih dahulu untuk menggunakan fitur download audio dan bookmark.',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 14,
+            color: AppTheme.onSurfaceVariant,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Nanti',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text(
+              'Login',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _seekTo(double value) async {
     final duration = QuranAudioService.duration;
     final position = Duration(
@@ -314,6 +410,12 @@ class _SurahDetailPageState extends State<SurahDetailPage>
   }
 
   Future<void> _deleteDownload() async {
+    // Check if user is guest
+    if (_isGuest) {
+      _showGuestDialog();
+      return;
+    }
+
     final success = await QuranDownloadManager.deleteSurah(
       _currentSurah.nomor,
       _selectedQoriId,
@@ -390,10 +492,16 @@ class _SurahDetailPageState extends State<SurahDetailPage>
                             currentSurah,
                             isTablet,
                             isDesktop,
+                            _isGuest,
                           );
                         },
                       )
-                    : _buildAyahsList(_currentSurah, isTablet, isDesktop),
+                    : _buildAyahsList(
+                        _currentSurah,
+                        isTablet,
+                        isDesktop,
+                        _isGuest,
+                      ),
               ),
               ModernAudioPlayer(
                 isLoading: _isLoadingAudio,
@@ -621,7 +729,12 @@ class _SurahDetailPageState extends State<SurahDetailPage>
     );
   }
 
-  Widget _buildAyahsList(Surah surah, bool isTablet, bool isDesktop) {
+  Widget _buildAyahsList(
+    Surah surah,
+    bool isTablet,
+    bool isDesktop,
+    bool isGuest,
+  ) {
     // Get cached details
     final surahDetails = _surahDetailsCache[surah.nomor];
 
@@ -696,6 +809,7 @@ class _SurahDetailPageState extends State<SurahDetailPage>
           isTablet: isTablet,
           isDesktop: isDesktop,
           isPlaying: isCurrentlyPlaying,
+          isGuest: isGuest,
         );
       },
     );
