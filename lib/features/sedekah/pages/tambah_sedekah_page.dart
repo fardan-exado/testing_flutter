@@ -69,11 +69,7 @@ class _TambahSedekahPageState extends ConsumerState<TambahSedekahPage> {
         ref.read(sedekahProvider.notifier).clearMessage();
 
         // Navigate back after a short delay
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/zakat');
-          }
-        });
+        Navigator.pushReplacementNamed(context, '/zakat');
       }
 
       // Handle error state
@@ -171,13 +167,13 @@ class _TambahSedekahPageState extends ConsumerState<TambahSedekahPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, '/zakat'),
               child: const Text('Tidak'),
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close page
+                Navigator.pushReplacementNamed(context, '/zakat');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade400,
@@ -189,7 +185,7 @@ class _TambahSedekahPageState extends ConsumerState<TambahSedekahPage> {
         ),
       );
     } else {
-      Navigator.pop(context);
+      Navigator.pushReplacementNamed(context, '/zakat');
     }
   }
 

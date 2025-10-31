@@ -41,9 +41,10 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
   );
 
   Future<void> _goToAdd() async {
-    final result = await Navigator.push(
+    final result = await Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const TambahSedekahPage()),
+      (route) => false,
     );
 
     // Refresh data after coming back from add page if success
@@ -186,18 +187,18 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
       if (!mounted) return;
 
       // Handle success state (for delete/add operations)
-      if (previous?.status == SedekahStatus.loading &&
-          next.status == SedekahStatus.success &&
-          next.message != null &&
-          next.message!.isNotEmpty) {
-        showMessageToast(
-          context,
-          message: next.message!,
-          type: ToastType.success,
-          duration: const Duration(seconds: 3),
-        );
-        ref.read(sedekahProvider.notifier).clearMessage();
-      }
+      // if (previous?.status == SedekahStatus.loading &&
+      //     next.status == SedekahStatus.success &&
+      //     next.message != null &&
+      //     next.message!.isNotEmpty) {
+      //   showMessageToast(
+      //     context,
+      //     message: next.message!,
+      //     type: ToastType.success,
+      //     duration: const Duration(seconds: 3),
+      //   );
+      //   ref.read(sedekahProvider.notifier).clearMessage();
+      // }
 
       // Handle error state
       if (previous?.status == SedekahStatus.loading &&
@@ -266,7 +267,10 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
                               alignment: Alignment.centerLeft,
                               child: IconButton(
                                 onPressed: () {
-                                  Navigator.of(context).pop();
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/home',
+                                  );
                                 },
                                 icon: const Icon(Icons.arrow_back_rounded),
                                 color: AppTheme.onSurface,
