@@ -9,6 +9,7 @@ import 'package:test_flutter/features/auth/pages/signup_page.dart';
 import 'package:test_flutter/features/auth/pages/splash_screen.dart';
 import 'package:test_flutter/features/auth/pages/welcome_page.dart';
 import 'package:test_flutter/features/compass/pages/compass_page.dart';
+import 'package:test_flutter/features/haji/pages/haji_page.dart';
 import 'package:test_flutter/features/home/pages/home_page.dart';
 import 'package:test_flutter/features/komunitas/pages/komunitas_page.dart';
 import 'package:test_flutter/features/monitoring/pages/monitoring_page.dart';
@@ -45,6 +46,7 @@ class AppRoutes {
   static const String article = '/article';
   static const String syahadat = '/syahadat';
   static const String komunitas = '/komunitas';
+  static const String haji = '/haji';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -111,6 +113,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const SyahadatPage());
       case komunitas:
         return MaterialPageRoute(builder: (_) => const KomunitasPage());
+      case haji:
+        return MaterialPageRoute(builder: (_) => const HajiPage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

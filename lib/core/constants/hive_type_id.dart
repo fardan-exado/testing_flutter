@@ -25,4 +25,6 @@ abstract class HiveTypeId {
   static const int progresPuasaSunnah = 21;
   static const int progresPuasaSunnahTahunIni = 22;
   static const int riwayatPuasaSunnah = 23;
+
+  static const int haji = 24;
 }
