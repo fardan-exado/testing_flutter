@@ -87,6 +87,28 @@ class SedekahNotifier extends StateNotifier<SedekahState> {
     }
   }
 
+  /// Menghapus data sedekah berdasarkan ID
+  Future<void> deleteSedekah(int id) async {
+    state = state.copyWith(status: SedekahStatus.loading);
+
+    try {
+      final response = await SedekahService.deleteSedekah(id);
+
+      state = state.copyWith(
+        status: SedekahStatus.success,
+        message: response['message'] as String?,
+      );
+
+      // Setelah berhasil menghapus, muat ulang data agar UI terupdate
+      await loadSedekah();
+    } catch (e) {
+      state = state.copyWith(
+        status: SedekahStatus.error,
+        message: e.toString(),
+      );
+    }
+  }
+
   /// Fungsi publik untuk melakukan refresh data (untuk pull-to-refresh).
   Future<void> refresh() async {
     state = state.copyWith(status: SedekahStatus.refreshing);
