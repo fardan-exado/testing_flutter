@@ -4,28 +4,38 @@ enum QuranStatus { initial, loading, loaded, error, success, refreshing }
 
 class QuranState {
   final QuranStatus status;
-  final ProgresBacaQuran? progresBacaQuran;
+  final List<ProgresBacaQuran> riwayatProgres;
   final String? message;
+  final bool isOffline;
 
-  const QuranState({required this.status, this.progresBacaQuran, this.message});
+  const QuranState({
+    required this.status,
+    this.riwayatProgres = const [],
+    this.message,
+    this.isOffline = false,
+  });
 
   factory QuranState.initial() {
     return const QuranState(
       status: QuranStatus.initial,
-      progresBacaQuran: null,
+      riwayatProgres: [],
       message: null,
+      isOffline: false,
     );
   }
 
   QuranState copyWith({
     QuranStatus? status,
-    ProgresBacaQuran? progresBacaQuran,
+    List<ProgresBacaQuran>? riwayatProgres,
     String? message,
+    bool? isOffline,
+    bool clearMessage = false,
   }) {
     return QuranState(
       status: status ?? this.status,
-      progresBacaQuran: progresBacaQuran ?? this.progresBacaQuran,
-      message: message ?? this.message,
+      riwayatProgres: riwayatProgres ?? this.riwayatProgres,
+      message: clearMessage ? null : (message ?? this.message),
+      isOffline: isOffline ?? this.isOffline,
     );
   }
 }

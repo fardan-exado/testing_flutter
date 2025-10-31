@@ -309,9 +309,11 @@ class AyahCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final quranState = ref.watch(quranProvider);
 
-    final isBookmarked =
-        quranState.progresBacaQuran?.suratId == surahNumber &&
-        quranState.progresBacaQuran?.ayat == verseNumber;
+    // Check if this ayah is bookmarked in riwayat list
+    final isBookmarked = quranState.riwayatProgres.any(
+      (progres) =>
+          progres.suratId == surahNumber && progres.ayat == verseNumber,
+    );
 
     return Container(
       margin: EdgeInsets.only(bottom: isTablet ? 20 : 16),

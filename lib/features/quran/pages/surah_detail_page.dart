@@ -15,11 +15,13 @@ import 'package:test_flutter/features/quran/widgets/download_audio_sheet.dart';
 class SurahDetailPage extends StatefulWidget {
   final Surah surah;
   final List<Surah> allSurahs;
+  final int? initialAyat;
 
   const SurahDetailPage({
     super.key,
     required this.surah,
     this.allSurahs = const [],
+    this.initialAyat,
   });
 
   @override
@@ -241,6 +243,10 @@ class _SurahDetailPageState extends State<SurahDetailPage>
 
   void _scrollToVerse(int verseNumber) {
     final key = _verseKeys[verseNumber];
+    print(
+      '🔍 Scrolling to verse $verseNumber, key exists: ${key != null}, context exists: ${key?.currentContext != null}',
+    );
+
     if (key != null && key.currentContext != null) {
       Scrollable.ensureVisible(
         key.currentContext!,
@@ -248,7 +254,63 @@ class _SurahDetailPageState extends State<SurahDetailPage>
         curve: Curves.easeInOut,
         alignment: 0.2,
       );
+      print('✅ Scrolled to verse $verseNumber');
+    } else {
+      print('⚠️ Context null for verse $verseNumber');
     }
+  }
+
+  void _scrollToVerseWithJump(int verseNumber) {
+    print('🎯 Jump to verse $verseNumber');
+
+    // Estimate card height (average ~350px per card including margin)
+    final estimatedCardHeight = 350.0;
+    final estimatedOffset = (verseNumber - 1) * estimatedCardHeight;
+
+    // Check if scroll controller is attached
+    if (!_scrollController.hasClients) {
+      print('❌ ScrollController not attached yet');
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) _scrollToVerseWithJump(verseNumber);
+      });
+      return;
+    }
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final targetOffset = estimatedOffset.clamp(0.0, maxScroll);
+
+    print('📍 Jumping to offset: $targetOffset (max: $maxScroll)');
+
+    // Jump instantly without animation
+    _scrollController.jumpTo(targetOffset);
+
+    // After jump, try to use precise positioning WITHOUT animation
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (!mounted) return;
+
+      final key = _verseKeys[verseNumber];
+      if (key != null && key.currentContext != null) {
+        print('✅ Fine-tuning position');
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          duration: Duration.zero, // NO animation
+          alignment: 0.1,
+        );
+      } else {
+        print('⚠️ Context null, retrying...');
+        // Quick retry
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted && key != null && key.currentContext != null) {
+            Scrollable.ensureVisible(
+              key.currentContext!,
+              duration: Duration.zero, // NO animation
+              alignment: 0.1,
+            );
+            print('✅ Scrolled to verse $verseNumber');
+          }
+        });
+      }
+    });
   }
 
   Future<void> _playPause() async {
@@ -761,14 +823,30 @@ class _SurahDetailPageState extends State<SurahDetailPage>
     final List<dynamic> ayahs = surahDetails['ayat'] ?? [];
     final totalVerses = ayahs.length;
 
-    _verseKeys.clear();
-    for (int i = 1; i <= totalVerses; i++) {
-      _verseKeys[i] = GlobalKey();
+    // Initialize verse keys if not already done for this surah
+    if (_verseKeys.isEmpty || _verseKeys.length != totalVerses) {
+      _verseKeys.clear();
+      for (int i = 1; i <= totalVerses; i++) {
+        _verseKeys[i] = GlobalKey();
+      }
     }
 
     // Check if should show Bismillah
     // Show Bismillah for all surahs except Al-Fatihah (1) and At-Taubah (9)
     final showBismillah = surah.nomor != 1 && surah.nomor != 9;
+
+    // Schedule instant jump after ListView is built
+    if (widget.initialAyat != null &&
+        widget.initialAyat! > 0 &&
+        widget.initialAyat! <= totalVerses) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Immediate jump without delay
+        if (mounted) {
+          print('🔍 Jumping to ayat ${widget.initialAyat}');
+          _scrollToVerseWithJump(widget.initialAyat!);
+        }
+      });
+    }
 
     return ListView.builder(
       key: ValueKey('surah_${surah.nomor}'),
@@ -778,6 +856,7 @@ class _SurahDetailPageState extends State<SurahDetailPage>
         vertical: isTablet ? 12 : 8,
       ),
       physics: const BouncingScrollPhysics(),
+      cacheExtent: 10000, // Force ListView to render more items offscreen
       itemCount: showBismillah ? totalVerses + 1 : totalVerses,
       itemBuilder: (context, index) {
         // Show Bismillah as first item

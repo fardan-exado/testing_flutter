@@ -39,4 +39,7 @@ class CacheKeys {
   // Haji
   static const String hajiList = 'haji_list';
   static String hajiDetail(int hajiId) => 'detail_haji_$hajiId';
+
+  // Quran
+  static const String progresQuranRiwayat = 'progres_quran_riwayat';
 }

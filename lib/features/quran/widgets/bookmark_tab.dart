@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:test_flutter/app/theme.dart';
 import 'package:test_flutter/core/utils/connection/connection_provider.dart';
+import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/features/quran/quran_provider.dart';
 import 'package:test_flutter/features/quran/quran_state.dart';
 import 'package:test_flutter/features/quran/services/quran_service.dart';
@@ -15,8 +17,6 @@ class BookmarkTab extends ConsumerStatefulWidget {
 }
 
 class _BookmarkTabState extends ConsumerState<BookmarkTab> {
-  bool _isRefreshing = false;
-
   @override
   void initState() {
     super.initState();
@@ -27,83 +27,54 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
   }
 
   Future<void> _loadProgress() async {
-    // First load from local
+    // First load from cache
     await ref.read(quranProvider.notifier).init();
 
     // Then try to sync from API (will fail silently if offline)
     final connectionState = ref.read(connectionProvider);
     if (connectionState.isOnline) {
       try {
-        await ref.read(quranProvider.notifier).fetchTerakhirBaca();
+        await ref.read(quranProvider.notifier).fetchRiwayat();
       } catch (e) {
-        print('📱 Offline mode: Using local storage');
+        print('📱 Offline mode: Using cache');
       }
     } else {
-      print('📱 No internet: Using local storage');
+      print('📱 No internet: Using cache');
     }
   }
 
   Future<void> _refreshProgress() async {
-    setState(() => _isRefreshing = true);
-
     final connectionState = ref.read(connectionProvider);
 
     if (!connectionState.isOnline) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.wifi_off, color: Colors.white),
-                const SizedBox(width: 12),
-                const Expanded(child: Text('No internet connection')),
-              ],
-            ),
-            backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-          ),
+        showMessageToast(
+          context,
+          message: 'No internet connection',
+          type: ToastType.warning,
         );
       }
-      setState(() => _isRefreshing = false);
       return;
     }
 
     try {
-      await ref.read(quranProvider.notifier).fetchTerakhirBaca();
+      await ref.read(quranProvider.notifier).fetchRiwayat();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                const Text('Progress updated'),
-              ],
-            ),
-            backgroundColor: AppTheme.accentGreen,
-            behavior: SnackBarBehavior.floating,
-          ),
+        showMessageToast(
+          context,
+          message: 'Riwayat updated',
+          type: ToastType.success,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Failed to update: ${e.toString()}')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+        showMessageToast(
+          context,
+          message: 'Failed to update: ${e.toString()}',
+          type: ToastType.error,
         );
       }
-    } finally {
-      if (mounted) setState(() => _isRefreshing = false);
     }
   }
 
@@ -114,7 +85,7 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
     final isDesktop = screenWidth > 1024;
 
     final quranState = ref.watch(quranProvider);
-    final progress = quranState.progresBacaQuran;
+    final riwayat = quranState.riwayatProgres;
 
     return RefreshIndicator(
       onRefresh: _refreshProgress,
@@ -129,13 +100,13 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
           vertical: isTablet ? 12 : 8,
         ),
         children: [
-          // Progress Content
-          if (quranState.status == QuranStatus.loading && progress == null)
+          // Riwayat Content
+          if (quranState.status == QuranStatus.loading && riwayat.isEmpty)
             _buildLoadingState(isTablet)
-          else if (progress == null || progress.suratId == 0)
+          else if (riwayat.isEmpty)
             _buildEmptyState(isTablet, isDesktop)
           else
-            _buildProgressCard(progress, isTablet, isDesktop),
+            ..._buildRiwayatList(riwayat, isTablet, isDesktop),
         ],
       ),
     );
@@ -216,69 +187,86 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
     );
   }
 
-  Widget _buildProgressCard(dynamic progress, bool isTablet, bool isDesktop) {
-    final surahId = progress.suratId as int;
-    final ayahNumber = progress.ayat as int;
-    final surah = QuranService.getSurahById(surahId);
+  List<Widget> _buildRiwayatList(
+    List<dynamic> riwayat,
+    bool isTablet,
+    bool isDesktop,
+  ) {
+    return riwayat.map((progress) {
+      final surahId = progress.suratId as int;
+      final ayahNumber = progress.ayat as int;
+      final createdAt = progress.createdAt as String?;
+      final surah = QuranService.getSurahById(surahId);
 
-    if (surah == null) return _buildEmptyState(isTablet, isDesktop);
+      if (surah == null) return const SizedBox.shrink();
 
-    final surahName = QuranService.getSurahNameLatin(surahId);
+      final surahName = QuranService.getSurahNameLatin(surahId);
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SurahDetailPage(
-              surah: surah.copyWith(namaLatin: surahName),
-              allSurahs: QuranService.getAllSurahs(),
+      // Format tanggal
+      String formattedDate = '';
+      if (createdAt != null) {
+        try {
+          final date = DateTime.parse(createdAt);
+          formattedDate = DateFormat('dd MMM yyyy, HH:mm').format(date);
+        } catch (e) {
+          formattedDate = '';
+        }
+      }
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => SurahDetailPage(
+                  surah: surah.copyWith(namaLatin: surahName),
+                  allSurahs: QuranService.getAllSurahs(),
+                  initialAyat: ayahNumber,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(isTablet ? 18 : 16),
+              border: Border.all(
+                color: AppTheme.accentGreen.withOpacity(0.2),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.accentGreen.withOpacity(0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
+                  spreadRadius: -3,
+                ),
+              ],
             ),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(isTablet ? 22 : 20),
-          border: Border.all(
-            color: AppTheme.accentGreen.withOpacity(0.2),
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.accentGreen.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-              spreadRadius: -5,
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(
-            isDesktop
-                ? 24
-                : isTablet
-                ? 22
-                : 20,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+            child: Padding(
+              padding: EdgeInsets.all(
+                isDesktop
+                    ? 20
+                    : isTablet
+                    ? 18
+                    : 16,
+              ),
+              child: Row(
                 children: [
                   // Surah Number Badge
                   Container(
                     width: isDesktop
-                        ? 56
-                        : isTablet
                         ? 52
-                        : 48,
+                        : isTablet
+                        ? 48
+                        : 44,
                     height: isDesktop
-                        ? 56
-                        : isTablet
                         ? 52
-                        : 48,
+                        : isTablet
+                        ? 48
+                        : 44,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -286,7 +274,7 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
                           AppTheme.accentGreen.withOpacity(0.8),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
+                      borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                     ),
                     child: Center(
                       child: Text(
@@ -294,17 +282,17 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: isDesktop
-                              ? 22
-                              : isTablet
                               ? 20
-                              : 18,
+                              : isTablet
+                              ? 18
+                              : 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
                     ),
                   ),
-                  SizedBox(width: isTablet ? 18 : 16),
+                  SizedBox(width: isTablet ? 16 : 14),
 
                   // Surah Info
                   Expanded(
@@ -316,11 +304,11 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: isDesktop
-                                ? 20
+                                ? 18
                                 : isTablet
-                                ? 19
-                                : 18,
-                            fontWeight: FontWeight.bold,
+                                ? 17
+                                : 16,
+                            fontWeight: FontWeight.w600,
                             color: AppTheme.onSurface,
                           ),
                         ),
@@ -330,7 +318,7 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
-                                vertical: 4,
+                                vertical: 3,
                               ),
                               decoration: BoxDecoration(
                                 color: AppTheme.accentGreen.withOpacity(0.1),
@@ -340,7 +328,7 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
                                 'Ayah $ayahNumber',
                                 style: TextStyle(
                                   fontFamily: 'Poppins',
-                                  fontSize: isTablet ? 13 : 12,
+                                  fontSize: isTablet ? 12 : 11,
                                   fontWeight: FontWeight.w600,
                                   color: AppTheme.accentGreen,
                                 ),
@@ -351,14 +339,43 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
                               '${surah.jumlahAyat} Ayat',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
-                                fontSize: isTablet ? 14 : 13,
+                                fontSize: isTablet ? 13 : 12,
                                 color: AppTheme.onSurfaceVariant,
                               ),
                             ),
                           ],
                         ),
+                        if (formattedDate.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: isTablet ? 14 : 12,
+                                color: AppTheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                formattedDate,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: isTablet ? 11 : 10,
+                                  color: AppTheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
+                  ),
+
+                  // Delete Button
+                  IconButton(
+                    onPressed: () => _showDeleteDialog(progress.id as int),
+                    icon: const Icon(Icons.delete_outline),
+                    color: Colors.red.shade400,
+                    iconSize: isTablet ? 24 : 22,
                   ),
 
                   // Arabic Name
@@ -367,58 +384,66 @@ class _BookmarkTabState extends ConsumerState<BookmarkTab> {
                     style: TextStyle(
                       fontFamily: 'AmiriQuran',
                       fontSize: isDesktop
-                          ? 28
+                          ? 24
                           : isTablet
-                          ? 26
-                          : 24,
+                          ? 22
+                          : 20,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primaryBlue,
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 20),
-
-              // Continue Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SurahDetailPage(
-                          surah: surah.copyWith(namaLatin: surahName),
-                          allSurahs: QuranService.getAllSurahs(),
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: Text(
-                    'Continue Reading',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: isTablet ? 15 : 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.accentGreen,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
+      );
+    }).toList();
+  }
+
+  Future<void> _showDeleteDialog(int progresId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Hapus Bookmark',
+          style: TextStyle(fontFamily: 'Poppins'),
+        ),
+        content: const Text(
+          'Apakah Anda yakin ingin menghapus bookmark ini?',
+          style: TextStyle(fontFamily: 'Poppins'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Batal',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus', style: TextStyle(fontFamily: 'Poppins')),
+          ),
+        ],
       ),
     );
+
+    if (confirmed == true && mounted) {
+      await ref.read(quranProvider.notifier).deleteProgresQuran(progresId);
+
+      final message = ref.read(quranProvider).message;
+      if (message != null && mounted) {
+        showMessageToast(context, message: message, type: ToastType.success);
+        ref.read(quranProvider.notifier).clearMessage();
+      }
+    }
   }
 }

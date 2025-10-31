@@ -43,4 +43,43 @@ class QuranProgresService {
       throw Exception(error);
     }
   }
+
+  // Get Progress Riwayat
+  static Future<Map<String, dynamic>> getProgresRiwayat() async {
+    try {
+      final response = await ApiClient.dio.get('/quran/progres-baca/riwayat');
+
+      final responseData = response.data as Map<String, dynamic>;
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
+        'data': responseData['data'],
+      };
+    } on DioException catch (e) {
+      final error = ApiClient.parseDioError(e);
+      throw Exception(error);
+    }
+  }
+
+  // Delete Progres Quran
+  static Future<Map<String, dynamic>> deleteProgresQuran({
+    required String progresId,
+  }) async {
+    try {
+      final response = await ApiClient.dio.delete(
+        '/quran/progres-baca/$progresId',
+      );
+
+      final responseData = response.data as Map<String, dynamic>;
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
+      };
+    } on DioException catch (e) {
+      final error = ApiClient.parseDioError(e);
+      throw Exception(error);
+    }
+  }
 }
