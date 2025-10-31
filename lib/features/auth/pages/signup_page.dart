@@ -239,7 +239,7 @@ class _SignupPageState extends ConsumerState<SignupPage>
           duration: const Duration(seconds: 3),
         );
 
-        // Navigate to OTP page for verification
+        // Navigate to OTP page for verification with user data
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             Navigator.of(context).pushReplacementNamed(
@@ -247,6 +247,9 @@ class _SignupPageState extends ConsumerState<SignupPage>
               arguments: {
                 'email': _emailController.text.trim(),
                 'type': 'registration',
+                'name': _nameController.text.trim(),
+                'password': _passwordController.text.trim(),
+                'confirmationPassword': _confirmPasswordController.text.trim(),
               },
             );
           }

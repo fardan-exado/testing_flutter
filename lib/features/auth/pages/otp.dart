@@ -16,8 +16,18 @@ enum OTPType {
 class OTPPage extends ConsumerStatefulWidget {
   final String email;
   final OTPType type;
+  final String? name;
+  final String? password;
+  final String? confirmationPassword;
 
-  const OTPPage({super.key, required this.email, required this.type});
+  const OTPPage({
+    super.key,
+    required this.email,
+    required this.type,
+    this.name,
+    this.password,
+    this.confirmationPassword,
+  });
 
   @override
   ConsumerState<OTPPage> createState() => _OTPPageState();
@@ -136,7 +146,33 @@ class _OTPPageState extends ConsumerState<OTPPage>
   void _handleResendOTP() async {
     if (!_canResend) return;
 
-    await ref.read(authProvider.notifier).resendOTP(widget.email);
+    // For registration type, we need user data to resend
+    if (widget.type == OTPType.registration) {
+      if (widget.name == null ||
+          widget.password == null ||
+          widget.confirmationPassword == null) {
+        showMessageToast(
+          context,
+          message: 'Data registrasi tidak lengkap',
+          type: ToastType.error,
+          duration: const Duration(seconds: 2),
+        );
+        return;
+      }
+
+      await ref
+          .read(authProvider.notifier)
+          .resendOTP(
+            name: widget.name!,
+            email: widget.email,
+            password: widget.password!,
+            confirmationPassword: widget.confirmationPassword!,
+          );
+    } else {
+      // For forgot password, resend forgot password request
+      await ref.read(authProvider.notifier).forgotPassword(widget.email);
+    }
+
     _startResendTimer();
   }
 
@@ -180,12 +216,12 @@ class _OTPPageState extends ConsumerState<OTPPage>
           duration: const Duration(seconds: 4),
         );
         ref.read(authProvider.notifier).clearError();
-      } else if (status == AuthState.authenticated &&
+      } else if (status == AuthState.otpVerified &&
           widget.type == OTPType.registration) {
-        // Registrasi berhasil, navigate ke home
+        // OTP berhasil diverifikasi, navigate ke login page
         showMessageToast(
           context,
-          message: message?.toString() ?? 'Registrasi berhasil!',
+          message: message?.toString() ?? 'Verifikasi berhasil! Silakan login.',
           type: ToastType.success,
           duration: const Duration(seconds: 3),
         );
@@ -194,7 +230,7 @@ class _OTPPageState extends ConsumerState<OTPPage>
           if (mounted) {
             Navigator.of(
               context,
-            ).pushNamedAndRemoveUntil('/home', (route) => false);
+            ).pushNamedAndRemoveUntil('/login', (route) => false);
           }
         });
       } else if (status == AuthState.otpSent) {

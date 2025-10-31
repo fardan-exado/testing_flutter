@@ -190,7 +190,6 @@ class AuthService {
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-        'data': responseData['data'],
       };
     } on DioException catch (e) {
       if (e.response?.data != null) {
@@ -207,32 +206,14 @@ class AuthService {
     }
   }
 
-  // Resend OTP
-  static Future<Map<String, dynamic>> resendOTP(String email) async {
-    try {
-      final response = await ApiClient.dio.post(
-        '/resend-otp',
-        data: {'email': email},
-      );
-
-      final responseData = response.data as Map<String, dynamic>;
-
-      return {
-        'status': responseData['status'],
-        'message': responseData['message'],
-      };
-    } on DioException catch (e) {
-      if (e.response?.data != null) {
-        final data = e.response!.data;
-
-        throw Exception(
-          data['errors'] ??
-              data['message'] ??
-              'Terjadi kesalahan saat mengirim ulang OTP.',
-        );
-      } else {
-        throw Exception('Terjadi kesalahan saat mengirim ulang OTP.');
-      }
-    }
+  // Resend OTP (call register endpoint again)
+  static Future<Map<String, dynamic>> resendOTP(
+    String name,
+    String email,
+    String password,
+    String confirmationPassword,
+  ) async {
+    // Just call register again
+    return register(name, email, password, confirmationPassword);
   }
 }

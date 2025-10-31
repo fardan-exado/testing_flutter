@@ -422,54 +422,14 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
     logger.fine('Verifying OTP for: $email');
 
     try {
-      final result = await AuthService.verifyRegistrationOTP(
-        email: email,
-        otp: otp,
-      );
+      await AuthService.verifyRegistrationOTP(email: email, otp: otp);
 
-      final data = result['data'];
-
-      if (data != null) {
-        // Save token
-        final tokenStr = _normalizeToken(data['token'] ?? data['access_token']);
-        if (tokenStr != null && tokenStr.isNotEmpty) {
-          await StorageHelper.saveToken(tokenStr);
-          logger.fine('Access Token saved: $tokenStr');
-        }
-
-        // Save user data
-        if (data['user'] != null) {
-          final user = data['user'];
-          await StorageHelper.saveUser({
-            "id": user['id']?.toString() ?? '',
-            "name": user['name']?.toString() ?? '',
-            "email": user['email']?.toString() ?? '',
-            "role": user['role']?.toString() ?? 'user',
-            "phone": user['phone']?.toString() ?? '',
-            "auth_method": user['auth_method']?.toString() ?? '',
-            "avatar": user['avatar']?.toString() ?? '',
-          });
-
-          logger.fine(
-            'User data saved - ID: ${user['id']}, Name: ${user['name']}, '
-            'Email: ${user['email']}, Role: ${user['role']}',
-          );
-        }
-
-        state = {
-          'status': AuthState.authenticated,
-          'user': data['user'],
-          'error': null,
-          'message': result['message'] ?? 'Verifikasi berhasil!',
-        };
-      } else {
-        state = {
-          'status': AuthState.otpVerified,
-          'user': null,
-          'error': null,
-          'message': result['message'] ?? 'OTP berhasil diverifikasi.',
-        };
-      }
+      state = {
+        'status': AuthState.otpVerified,
+        'user': null,
+        'error': null,
+        'message': 'OTP berhasil diverifikasi. Silakan login ke akun Anda.',
+      };
 
       logger.fine('OTP verified successfully');
     } catch (e) {
@@ -482,13 +442,23 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
     }
   }
 
-  // Resend OTP
-  Future<void> resendOTP(String email) async {
+  // Resend OTP (call register endpoint again with same data)
+  Future<void> resendOTP({
+    required String name,
+    required String email,
+    required String password,
+    required String confirmationPassword,
+  }) async {
     state = {...state, 'status': AuthState.loading, 'error': null};
     logger.fine('Resending OTP for: $email');
 
     try {
-      final result = await AuthService.resendOTP(email);
+      final result = await AuthService.resendOTP(
+        name,
+        email,
+        password,
+        confirmationPassword,
+      );
 
       state = {
         ...state,

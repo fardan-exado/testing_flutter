@@ -61,13 +61,18 @@ class AppRoutes {
       case forgotPassword:
         return MaterialPageRoute(builder: (_) => const ForgotPasswordPage());
       case otp:
-        final otpArgs = settings.arguments as Map<String, String>?;
+        final otpArgs = settings.arguments as Map<String, dynamic>?;
         final otpType = otpArgs?['type'] == 'registration'
             ? OTPType.registration
             : OTPType.forgotPassword;
         return MaterialPageRoute(
-          builder: (_) =>
-              OTPPage(email: otpArgs?['email'] ?? '', type: otpType),
+          builder: (_) => OTPPage(
+            email: otpArgs?['email'] ?? '',
+            type: otpType,
+            name: otpArgs?['name'],
+            password: otpArgs?['password'],
+            confirmationPassword: otpArgs?['confirmationPassword'],
+          ),
         );
       case resetPassword:
         final args = settings.arguments as Map<String, String>?;
