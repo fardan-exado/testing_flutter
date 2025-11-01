@@ -6,7 +6,7 @@ class SholatCard extends StatelessWidget {
   final String name;
   final Map<String, dynamic> jadwalData;
   final bool isCompleted;
-  final bool isOnTime;
+  final String status; // tepat_waktu, terlambat, tidak_sholat
   final bool isJamaah;
   final String lokasi;
   final String jenis;
@@ -20,7 +20,7 @@ class SholatCard extends StatelessWidget {
     required this.name,
     required this.jadwalData,
     required this.isCompleted,
-    required this.isOnTime,
+    required this.status,
     required this.isJamaah,
     required this.lokasi,
     required this.jenis,
@@ -159,17 +159,29 @@ class SholatCard extends StatelessWidget {
           Wrap(
             spacing: 4,
             children: [
-              if (isOnTime)
+              // Status Badge
+              if (status == 'tepat_waktu')
                 _buildBadge(
                   context,
                   'Tepat Waktu',
                   Icons.check_circle,
                   Colors.green,
-                ),
-              if (isJamaah)
+                )
+              else if (status == 'terlambat')
+                _buildBadge(
+                  context,
+                  'Terlambat',
+                  Icons.access_time,
+                  Colors.orange,
+                )
+              else if (status == 'tidak_sholat')
+                _buildBadge(context, 'Tidak Sholat', Icons.cancel, Colors.red),
+              // Jamaah Badge (hanya untuk wajib)
+              if (isJamaah && jenis == 'wajib')
                 _buildBadge(context, 'Jamaah', Icons.groups, Colors.blue),
-              if (lokasi.isNotEmpty)
-                _buildBadge(context, lokasi, Icons.location_on, Colors.orange),
+              // Lokasi Badge (hanya untuk wajib)
+              if (lokasi.isNotEmpty && jenis == 'wajib')
+                _buildBadge(context, lokasi, Icons.location_on, Colors.purple),
             ],
           ),
         ],

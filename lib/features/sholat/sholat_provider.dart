@@ -77,6 +77,15 @@ class SholatProvider extends StateNotifier<SholatState> {
   }
 
   /// Fetch jadwal sholat dengan strategi cache-first-then-network
+  ///
+  /// Mengambil jadwal waktu sholat dari API Kemenag melalui backend.
+  /// Menggunakan strategi cache-first untuk performa optimal:
+  /// 1. Cek cache terlebih dahulu
+  /// 2. Jika cache kosong atau force refresh, ambil dari network
+  /// 3. Gabungkan data network dengan cache untuk melengkapi data
+  ///
+  /// Waktu sholat diambil dari API resmi Kementerian Agama RI
+  /// yang telah diintegrasikan di backend untuk akurasi tinggi.
   Future<void> fetchJadwalSholat({
     double? latitude,
     double? longitude,
@@ -489,29 +498,35 @@ class SholatProvider extends StateNotifier<SholatState> {
   Future<Map<String, dynamic>?> addProgressSholat({
     required String jenis,
     required String sholat,
-    required bool isOnTime,
-    required bool isJamaah,
-    required String lokasi,
+    required String status,
+    bool? isJamaah,
+    String? lokasi,
+    String? keterangan,
   }) async {
     try {
-      logger.info('Adding progress sholat: $jenis - $sholat');
+      logger.info('Adding progress sholat: $jenis - $sholat - $status');
 
       // 1. Kirim ke network
       final response = await SholatService.addProgressSholat(
         jenis: jenis,
         sholat: sholat,
-        isOnTime: isOnTime,
+        status: status,
         isJamaah: isJamaah,
         lokasi: lokasi,
+        keterangan: keterangan,
       );
 
       // 2. Refresh progress setelah berhasil menambahkan
       if (jenis.toLowerCase() == 'wajib') {
-        await fetchProgressSholatWajibHariIni(forceRefresh: true);
-        await fetchProgressSholatWajibRiwayat(forceRefresh: true);
+        await Future.wait([
+          fetchProgressSholatWajibHariIni(forceRefresh: true),
+          fetchProgressSholatWajibRiwayat(forceRefresh: true),
+        ]);
       } else {
-        await fetchProgressSholatSunnahHariIni(forceRefresh: true);
-        await fetchProgressSholatSunnahRiwayat(forceRefresh: true);
+        await Future.wait([
+          fetchProgressSholatSunnahHariIni(forceRefresh: true),
+          fetchProgressSholatSunnahRiwayat(forceRefresh: true),
+        ]);
       }
 
       logger.info('Successfully added progress sholat');
@@ -523,16 +538,28 @@ class SholatProvider extends StateNotifier<SholatState> {
   }
 
   // Delete progress sholat
-  Future<bool> deleteProgressSholat({required int id}) async {
+  Future<bool> deleteProgressSholat({
+    required int id,
+    required String jenis,
+  }) async {
     try {
+      logger.info('Deleting progress sholat: ID=$id, jenis=$jenis');
+
       // 1. Kirim ke network
-      await SholatService.deleteProgressSholat(id: id);
+      await SholatService.deleteProgressSholat(id: id, jenis: jenis);
 
       // 2. Refresh progress setelah berhasil menghapus
-      await fetchProgressSholatWajibHariIni(forceRefresh: true);
-      await fetchProgressSholatWajibRiwayat(forceRefresh: true);
-      await fetchProgressSholatSunnahHariIni(forceRefresh: true);
-      await fetchProgressSholatSunnahRiwayat(forceRefresh: true);
+      if (jenis.toLowerCase() == 'wajib') {
+        await Future.wait([
+          fetchProgressSholatWajibHariIni(forceRefresh: true),
+          fetchProgressSholatWajibRiwayat(forceRefresh: true),
+        ]);
+      } else {
+        await Future.wait([
+          fetchProgressSholatSunnahHariIni(forceRefresh: true),
+          fetchProgressSholatSunnahRiwayat(forceRefresh: true),
+        ]);
+      }
 
       logger.info('Successfully deleted progress sholat');
       return true;
@@ -561,9 +588,7 @@ class SholatProvider extends StateNotifier<SholatState> {
       await SholatCacheService.cacheProgressSholatWajibHariIni(progressData);
 
       // 3. Update state with network data
-      state = state.copyWith(
-        progressWajibHariIni: progressData,
-      );
+      state = state.copyWith(progressWajibHariIni: progressData);
 
       logger.info('Successfully fetched progress wajib hari ini');
     } catch (e) {
@@ -600,7 +625,7 @@ class SholatProvider extends StateNotifier<SholatState> {
     try {
       // 1. Try network first
       final response = await SholatService.getProgressSholatSunnahHariIni();
-      final progressData = response['data'] as Map<String, dynamic>;
+      final progressData = response['data'];
 
       // 2. Cache the fetched data
       await SholatCacheService.cacheProgressSholatSunnahHariIni(progressData);

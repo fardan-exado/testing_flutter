@@ -1,3 +1,4 @@
+import 'package:test_flutter/data/models/progres_sholat/progress_sholat.dart';
 import 'package:test_flutter/data/models/sholat/sholat.dart';
 
 enum SholatStatus { initial, loading, loaded, error, refreshing, offline }
@@ -12,10 +13,10 @@ class SholatState {
   final String? localTime;
   final String? message;
   final bool isOffline;
-  final Map<String, dynamic> progressWajibHariIni;
-  final Map<String, dynamic> progressSunnahHariIni;
-  final Map<String, dynamic> progressWajibRiwayat;
-  final Map<String, dynamic> progressSunnahRiwayat;
+  final ProgresSholat progressWajibHariIni;
+  final ProgresSholat progressSunnahHariIni;
+  final ProgresSholat progressWajibRiwayat;
+  final ProgresSholat progressSunnahRiwayat;
 
   const SholatState({
     required this.status,

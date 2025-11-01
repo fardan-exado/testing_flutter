@@ -194,6 +194,26 @@ class SholatHeader extends ConsumerWidget {
                   ),
                 ),
               ),
+              SizedBox(height: _px(context, 4)),
+              // Info Kemenag
+              Row(
+                children: [
+                  Icon(
+                    Icons.verified_rounded,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    size: _px(context, 12),
+                  ),
+                  SizedBox(width: _px(context, 4)),
+                  Text(
+                    'Waktu dari Kemenag RI',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: _ts(context, small ? 10 : 11),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
               SizedBox(height: _px(context, 8)),
               Text(
                 _getCurrentPrayerName(),

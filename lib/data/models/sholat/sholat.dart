@@ -160,6 +160,32 @@ class SholatSunnah {
   }
 }
 
+class ProgressSholatSunnahHariIni {
+  final List<SholatSunnah> sholatSunnah;
+  final bool progress;
+
+  ProgressSholatSunnahHariIni({
+    required this.sholatSunnah,
+    required this.progress,
+  });
+
+  factory ProgressSholatSunnahHariIni.fromJson(Map<String, dynamic> json) {
+    return ProgressSholatSunnahHariIni(
+      sholatSunnah: (json['sholat_sunnah'] as List)
+          .map((item) => SholatSunnah.fromJson(item))
+          .toList(),
+      progress: json['progress'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'sholat_sunnah': sholatSunnah.map((item) => item.toJson()).toList(),
+      'progress': progress,
+    };
+  }
+}
+
 // class SholatSunnah {
 //   final String tahajud;
 //   final String witir;

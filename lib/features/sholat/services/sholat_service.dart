@@ -1,9 +1,22 @@
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import 'package:test_flutter/core/utils/api_client.dart';
 import 'package:test_flutter/data/models/sholat/sholat.dart';
 
 class SholatService {
-  // Get Jadwal Sholat
+  /// Get Jadwal Sholat from Kemenag API
+  ///
+  /// Mengambil jadwal waktu sholat dari API Kementerian Agama RI
+  /// berdasarkan koordinat lokasi (latitude & longitude).
+  ///
+  /// Backend akan mengintegrasikan dengan API resmi Kemenag untuk
+  /// mendapatkan waktu sholat yang akurat sesuai dengan lokasi pengguna.
+  ///
+  /// Parameters:
+  /// - [latitude]: Koordinat lintang lokasi
+  /// - [longitude]: Koordinat bujur lokasi
+  /// - [startDate]: Tanggal mulai (default: hari ini)
+  /// - [endDate]: Tanggal akhir (default: 3 hari ke depan)
   static Future<Map<String, dynamic>> getJadwalSholat({
     required double latitude,
     required double longitude,
@@ -15,13 +28,18 @@ class SholatService {
       startDate ??= now;
       endDate ??= now.add(const Duration(days: 3));
 
+      // Format date untuk Kemenag API (yyyy-MM-dd)
+      final formatter = DateFormat('yyyy-MM-dd');
+      final startDateStr = formatter.format(startDate);
+      final endDateStr = formatter.format(endDate);
+
       final response = await ApiClient.dio.get(
         '/sholat/jadwal',
         queryParameters: {
           'latitude': latitude,
           'longitude': longitude,
-          'start_date': startDate,
-          'end_date': endDate,
+          'start_date': startDateStr,
+          'end_date': endDateStr,
         },
       );
 
@@ -42,32 +60,41 @@ class SholatService {
     }
   }
 
-  // Add Progress Sholat
+  // Add Progress Sholat (Universal untuk Wajib dan Sunnah)
   static Future<Map<String, dynamic>> addProgressSholat({
     required String jenis,
     required String sholat,
-    required bool isOnTime,
-    required bool isJamaah,
-    required String lokasi,
+    required String status,
+    bool? isJamaah,
+    String? lokasi,
+    String? keterangan,
   }) async {
     try {
-      final response = await ApiClient.dio.post(
-        '/sholat/progres',
-        data: {
-          'jenis': jenis,
-          'sholat': sholat,
-          'is_on_time': isOnTime,
-          'is_jamaah': isJamaah,
-          'lokasi': lokasi,
-        },
-      );
+      final endpoint = jenis.toLowerCase() == 'wajib'
+          ? '/sholat/wajib/progres'
+          : '/sholat/sunnah/progres';
+
+      final data = jenis.toLowerCase() == 'wajib'
+          ? {
+              'sholat': sholat,
+              'status': status, // tepat_waktu, terlambat, tidak_sholat
+              'is_jamaah': isJamaah == true ? 1 : 0,
+              'lokasi': lokasi ?? '',
+              'keterangan': keterangan ?? '',
+            }
+          : {
+              'sholat': sholat,
+              'status': status, // tepat_waktu, terlambat, tidak_sholat
+            };
+
+      final response = await ApiClient.dio.post(endpoint, data: data);
 
       final responseData = response.data as Map<String, dynamic>;
 
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-        'data': responseData['data'] as Map<String, dynamic>? ?? {},
+        'data': responseData['data'],
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);
@@ -75,19 +102,23 @@ class SholatService {
     }
   }
 
-  // Delete Progress Sholat
+  // Delete Progress Sholat (Universal untuk Wajib dan Sunnah)
   static Future<Map<String, dynamic>> deleteProgressSholat({
     required int id,
+    String jenis = 'wajib',
   }) async {
     try {
-      final response = await ApiClient.dio.delete('/sholat/progres/$id');
+      final endpoint = jenis.toLowerCase() == 'wajib'
+          ? '/sholat/wajib/progres/$id'
+          : '/sholat/sunnah/progres/$id';
+
+      final response = await ApiClient.dio.delete(endpoint);
 
       final responseData = response.data as Map<String, dynamic>;
 
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-        'data': responseData['data'] as Map<String, dynamic>? ?? {},
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);
@@ -107,7 +138,7 @@ class SholatService {
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-        'data': responseData['data'] as Map<String, dynamic>? ?? {},
+        'data': responseData['data'],
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);
@@ -127,7 +158,7 @@ class SholatService {
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-        'data': responseData['data'] as Map<String, dynamic>? ?? {},
+        'data': responseData['data'],
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);
@@ -145,7 +176,7 @@ class SholatService {
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-        'data': responseData['data'] as Map<String, dynamic>? ?? {},
+        'data': responseData['data'],
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);
@@ -165,7 +196,7 @@ class SholatService {
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-        'data': responseData['data'] as Map<String, dynamic>? ?? {},
+        'data': responseData['data'],
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);
