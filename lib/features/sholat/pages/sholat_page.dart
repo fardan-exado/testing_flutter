@@ -34,7 +34,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
   DateTime _selectedDate = DateTime.now();
   bool _isInitialized = false;
   bool _isLoadingProgress = false; // TAMBAH INI
-  bool _isSavingProgress = false;
 
   // Services
   final AlarmService _alarmService = AlarmService();
@@ -694,71 +693,75 @@ class _SholatPageState extends ConsumerState<SholatPage>
   ) {
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        // UPDATED: gunakan StatefulBuilder
-        builder: (context, setDialogState) {
-          bool isDeleting = false;
+      barrierDismissible: false,
+      builder: (context) {
+        bool isDeleting = false;
 
-          return AlertDialog(
-            title: const Text('Hapus Progress'),
-            content: Text('Apakah Anda yakin ingin menghapus progress $name?'),
-            actions: [
-              TextButton(
-                onPressed: isDeleting ? null : () => Navigator.pop(context),
-                child: const Text('Batal'),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Hapus Progress'),
+              content: Text(
+                'Apakah Anda yakin ingin menghapus progress $name?',
               ),
-              ElevatedButton(
-                onPressed: isDeleting
-                    ? null
-                    : () async {
-                        setDialogState(() => isDeleting = true);
-
-                        try {
-                          await ref
-                              .read(sholatProvider.notifier)
-                              .deleteProgressSholat(id: progressId!);
-
-                          if (mounted) {
-                            Navigator.pop(context);
-                            showMessageToast(
-                              context,
-                              message: 'Progress berhasil dihapus',
-                              type: ToastType.success,
-                            );
-                            await _fetchProgressData();
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            setDialogState(() => isDeleting = false);
-                            showMessageToast(
-                              context,
-                              message: 'Gagal menghapus progress',
-                              type: ToastType.error,
-                            );
-                          }
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
+              actions: [
+                TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(context),
+                  child: const Text('Batal'),
                 ),
-                child: isDeleting
-                    ? SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
+                ElevatedButton(
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          setDialogState(() => isDeleting = true);
+
+                          try {
+                            await ref
+                                .read(sholatProvider.notifier)
+                                .deleteProgressSholat(id: progressId!);
+
+                            if (mounted) {
+                              Navigator.pop(context);
+                              showMessageToast(
+                                context,
+                                message: 'Progress berhasil dihapus',
+                                type: ToastType.success,
+                              );
+                              await _fetchProgressData();
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              setDialogState(() => isDeleting = false);
+                              showMessageToast(
+                                context,
+                                message: 'Gagal menghapus progress',
+                                type: ToastType.error,
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isDeleting
+                      ? SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
-                        ),
-                      )
-                    : const Text('Hapus'),
-              ),
-            ],
-          );
-        },
-      ),
+                        )
+                      : const Text('Hapus'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1367,7 +1370,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
   }
 
   Widget _buildWajibTab(dynamic jadwal, bool small) {
-    final state = ref.watch(sholatProvider);
     final authState = ref.watch(authProvider);
     final isLoggedIn = authState['status'] == AuthState.authenticated;
     final progressData = _currentProgressData;
@@ -1531,72 +1533,85 @@ class _SholatPageState extends ConsumerState<SholatPage>
   }
 
   Widget _buildSunnahTab(dynamic jadwal, bool small) {
-    final state = ref.watch(sholatProvider);
     final authState = ref.watch(authProvider);
     final isLoggedIn = authState['status'] == AuthState.authenticated;
     final progressData = _currentProgressData;
 
-    final sunnahList = {
-      'Tahajud': {
-        'dbKey': 'tahajud',
-        'time': jadwal?.sunnah.tahajud ?? 'Sepertiga malam',
-        'icon': Icons.nightlight_round,
-      },
-      'Witir': {
-        'dbKey': 'witir',
-        'time': jadwal?.sunnah.witir ?? 'Setelah Isya',
-        'icon': Icons.nights_stay,
-      },
-      'Dhuha': {
-        'dbKey': 'dhuha',
-        'time': jadwal?.sunnah.dhuha ?? 'Pagi hari',
-        'icon': Icons.wb_sunny,
-      },
-      'Qabliyah Subuh': {
-        'dbKey': 'qabliyah_subuh',
-        'time': jadwal?.sunnah.qabliyahSubuh ?? 'Sebelum Subuh',
-        'icon': Icons.wb_twilight,
-      },
-      'Qabliyah Dzuhur': {
-        'dbKey': 'qabliyah_dzuhur',
-        'time': jadwal?.sunnah.qabliyahDzuhur ?? 'Sebelum Dzuhur',
-        'icon': Icons.wb_sunny_outlined,
-      },
-      'Ba\'diyah Dzuhur': {
-        'dbKey': 'ba_diyah_dzuhur',
-        'time': jadwal?.sunnah.baDiyahDzuhur ?? 'Setelah Dzuhur',
-        'icon': Icons.wb_sunny,
-      },
-      'Qabliyah Ashar': {
-        'dbKey': 'qabliyah_ashar',
-        'time': jadwal?.sunnah.qabliyahAshar ?? 'Sebelum Ashar',
-        'icon': Icons.wb_cloudy_outlined,
-      },
-      'Ba\'diyah Maghrib': {
-        'dbKey': 'ba_diyah_maghrib',
-        'time': jadwal?.sunnah.baDiyahMaghrib ?? 'Setelah Maghrib',
-        'icon': Icons.wb_twilight,
-      },
-      'Qabliyah Isya': {
-        'dbKey': 'qabliyah_isya',
-        'time': jadwal?.sunnah.qabliyahIsya ?? 'Sebelum Isya',
-        'icon': Icons.nights_stay_outlined,
-      },
-      'Ba\'diyah Isya': {
-        'dbKey': 'ba_diyah_isya',
-        'time': jadwal?.sunnah.baDiyahIsya ?? 'Setelah Isya',
-        'icon': Icons.nights_stay,
-      },
-    };
+    // Ambil list sunnah dari jadwal (dari API)
+    final sunnahList = jadwal?.sunnah as List<dynamic>? ?? [];
+
+    // Map icon berdasarkan slug
+    IconData _getIconBySlug(String slug) {
+      switch (slug.toLowerCase()) {
+        case 'tahajud':
+          return Icons.nightlight_round;
+        case 'witir':
+          return Icons.nights_stay;
+        case 'dhuha':
+          return Icons.wb_sunny;
+        case 'qabliyah-subuh':
+          return Icons.wb_twilight;
+        case 'qabliyah-dzuhur':
+          return Icons.wb_sunny_outlined;
+        case 'badiyah-dzuhur':
+          return Icons.wb_sunny;
+        case 'qabliyah-ashar':
+          return Icons.wb_cloudy_outlined;
+        case 'badiyah-maghrib':
+          return Icons.wb_twilight;
+        case 'qabliyah-isya':
+          return Icons.nights_stay_outlined;
+        case 'badiyah-isya':
+          return Icons.nights_stay;
+        case 'tarawih':
+          return Icons.mosque_rounded;
+        case 'istikharah':
+          return Icons.self_improvement_rounded;
+        default:
+          return Icons.place;
+      }
+    }
+
+    // Jika tidak ada data sunnah
+    if (sunnahList.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.info_outline, size: 64, color: Colors.grey.shade400),
+              const SizedBox(height: 16),
+              Text(
+                'Data sholat sunnah belum tersedia',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return ListView.builder(
       padding: _hpad(context).add(EdgeInsets.only(bottom: _px(context, 16))),
       physics: const BouncingScrollPhysics(),
       itemCount: sunnahList.length,
       itemBuilder: (_, i) {
-        final name = sunnahList.keys.elementAt(i);
-        final jadwalData = sunnahList[name]!;
-        final dbKey = jadwalData['dbKey'] as String;
+        final sunnahItem = sunnahList[i];
+        final name = sunnahItem.nama as String;
+        final slug = sunnahItem.slug as String;
+        final deskripsi = sunnahItem.deskripsi as String;
+
+        // Konversi slug ke dbKey format (replace - dengan _)
+        final dbKey = slug.replaceAll('-', '_');
+
+        // Build jadwalData dengan format yang sesuai
+        final jadwalData = {
+          'time': null, // Gunakan deskripsi sebagai info waktu
+          'icon': _getIconBySlug(slug),
+          'dbKey': dbKey,
+        };
+
         final sholatProgress = progressData[dbKey] as Map<String, dynamic>?;
         final isCompleted = sholatProgress?['completed'] as bool? ?? false;
 

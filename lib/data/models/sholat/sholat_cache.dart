@@ -10,10 +10,10 @@ class SholatCache extends HiveObject {
   String tanggal;
 
   @HiveField(1)
-  SholatWajibCache wajib;
+  SholatWajib wajib;
 
   @HiveField(2)
-  SholatSunnahCache sunnah;
+  List<SholatSunnah> sunnah;
 
   @HiveField(3)
   DateTime cachedAt;
@@ -28,8 +28,10 @@ class SholatCache extends HiveObject {
   factory SholatCache.fromSholat(Sholat s) {
     return SholatCache(
       tanggal: s.tanggal,
-      wajib: SholatWajibCache.fromSholatWajib(s.wajib),
-      sunnah: SholatSunnahCache.fromSholatSunnah(s.sunnah),
+      wajib: SholatWajib.fromJson(s.wajib.toJson()),
+      sunnah: s.sunnah
+          .map((item) => SholatSunnah.fromJson(item.toJson()))
+          .toList(),
       cachedAt: DateTime.now(),
     );
   }
@@ -37,130 +39,144 @@ class SholatCache extends HiveObject {
   Sholat toSholat() {
     return Sholat(
       tanggal: tanggal,
-      wajib: wajib.toSholatWajib(),
-      sunnah: sunnah.toSholatSunnah(),
+      wajib: SholatWajib.fromJson(wajib.toJson()),
+      sunnah: sunnah
+          .map((item) => SholatSunnah.fromJson(item.toJson()))
+          .toList(),
     );
   }
 }
 
-@HiveType(typeId: HiveTypeId.sholatWajib)
-class SholatWajibCache extends HiveObject {
-  @HiveField(0)
-  String shubuh;
+// @HiveType(typeId: HiveTypeId.sholatWajib)
+// class SholatWajibCache extends HiveObject {
+//   @HiveField(0)
+//   String shubuh;
 
-  @HiveField(1)
-  String dzuhur;
+//   @HiveField(1)
+//   String dzuhur;
 
-  @HiveField(2)
-  String ashar;
+//   @HiveField(2)
+//   String ashar;
 
-  @HiveField(3)
-  String maghrib;
+//   @HiveField(3)
+//   String maghrib;
 
-  @HiveField(4)
-  String isya;
+//   @HiveField(4)
+//   String isya;
 
-  SholatWajibCache({
-    required this.shubuh,
-    required this.dzuhur,
-    required this.ashar,
-    required this.maghrib,
-    required this.isya,
-  });
+//   @HiveField(5)
+//   String imsak;
 
-  factory SholatWajibCache.fromSholatWajib(SholatWajib s) {
-    return SholatWajibCache(
-      shubuh: s.shubuh,
-      dzuhur: s.dzuhur,
-      ashar: s.ashar,
-      maghrib: s.maghrib,
-      isya: s.isya,
-    );
-  }
+//   @HiveField(6)
+//   String sunrise;
 
-  SholatWajib toSholatWajib() {
-    return SholatWajib(
-      shubuh: shubuh,
-      dzuhur: dzuhur,
-      ashar: ashar,
-      maghrib: maghrib,
-      isya: isya,
-    );
-  }
-}
+//   SholatWajibCache({
+//     required this.imsak,
+//     required this.sunrise,
+//     required this.shubuh,
+//     required this.dzuhur,
+//     required this.ashar,
+//     required this.maghrib,
+//     required this.isya,
+//   });
 
-@HiveType(typeId: HiveTypeId.sholatSunnah)
-class SholatSunnahCache extends HiveObject {
-  @HiveField(0)
-  String tahajud;
+//   factory SholatWajibCache.fromSholatWajib(SholatWajib s) {
+//     return SholatWajibCache(
+//       imsak: s.imsak,
+//       sunrise: s.sunrise,
+//       shubuh: s.shubuh,
+//       dzuhur: s.dzuhur,
+//       ashar: s.ashar,
+//       maghrib: s.maghrib,
+//       isya: s.isya,
+//     );
+//   }
 
-  @HiveField(1)
-  String witir;
+//   SholatWajib toSholatWajib() {
+//     return SholatWajib(
+//       imsak: imsak,
+//       sunrise: sunrise,
+//       shubuh: shubuh,
+//       dzuhur: dzuhur,
+//       ashar: ashar,
+//       maghrib: maghrib,
+//       isya: isya,
+//     );
+//   }
+// }
 
-  @HiveField(2)
-  String dhuha;
+// @HiveType(typeId: HiveTypeId.sholatSunnah)
+// class SholatSunnahCache extends HiveObject {
+//   @HiveField(0)
+//   String tahajud;
 
-  @HiveField(3)
-  String qabliyahSubuh;
+//   @HiveField(1)
+//   String witir;
 
-  @HiveField(4)
-  String qabliyahDzuhur;
+//   @HiveField(2)
+//   String dhuha;
 
-  @HiveField(5)
-  String baDiyahDzuhur;
+//   @HiveField(3)
+//   String qabliyahSubuh;
 
-  @HiveField(6)
-  String qabliyahAshar;
+//   @HiveField(4)
+//   String qabliyahDzuhur;
 
-  @HiveField(7)
-  String baDiyahMaghrib;
+//   @HiveField(5)
+//   String baDiyahDzuhur;
 
-  @HiveField(8)
-  String qabliyahIsya;
+//   @HiveField(6)
+//   String qabliyahAshar;
 
-  @HiveField(9)
-  String baDiyahIsya;
+//   @HiveField(7)
+//   String baDiyahMaghrib;
 
-  SholatSunnahCache({
-    required this.tahajud,
-    required this.witir,
-    required this.dhuha,
-    required this.qabliyahSubuh,
-    required this.qabliyahDzuhur,
-    required this.baDiyahDzuhur,
-    required this.qabliyahAshar,
-    required this.baDiyahMaghrib,
-    required this.qabliyahIsya,
-    required this.baDiyahIsya,
-  });
+//   @HiveField(8)
+//   String qabliyahIsya;
 
-  factory SholatSunnahCache.fromSholatSunnah(SholatSunnah s) {
-    return SholatSunnahCache(
-      tahajud: s.tahajud,
-      witir: s.witir,
-      dhuha: s.dhuha,
-      qabliyahSubuh: s.qabliyahSubuh,
-      qabliyahDzuhur: s.qabliyahDzuhur,
-      baDiyahDzuhur: s.baDiyahDzuhur,
-      qabliyahAshar: s.qabliyahAshar,
-      baDiyahMaghrib: s.baDiyahMaghrib,
-      qabliyahIsya: s.qabliyahIsya,
-      baDiyahIsya: s.baDiyahIsya,
-    );
-  }
+//   @HiveField(9)
+//   String baDiyahIsya;
 
-  SholatSunnah toSholatSunnah() {
-    return SholatSunnah(
-      tahajud: tahajud,
-      witir: witir,
-      dhuha: dhuha,
-      qabliyahSubuh: qabliyahSubuh,
-      qabliyahDzuhur: qabliyahDzuhur,
-      baDiyahDzuhur: baDiyahDzuhur,
-      qabliyahAshar: qabliyahAshar,
-      baDiyahMaghrib: baDiyahMaghrib,
-      qabliyahIsya: qabliyahIsya,
-      baDiyahIsya: baDiyahIsya,
-    );
-  }
-}
+//   SholatSunnahCache({
+//     required this.tahajud,
+//     required this.witir,
+//     required this.dhuha,
+//     required this.qabliyahSubuh,
+//     required this.qabliyahDzuhur,
+//     required this.baDiyahDzuhur,
+//     required this.qabliyahAshar,
+//     required this.baDiyahMaghrib,
+//     required this.qabliyahIsya,
+//     required this.baDiyahIsya,
+//   });
+
+//   factory SholatSunnahCache.fromSholatSunnah(SholatSunnah s) {
+//     return SholatSunnahCache(
+//       tahajud: s.tahajud,
+//       witir: s.witir,
+//       dhuha: s.dhuha,
+//       qabliyahSubuh: s.qabliyahSubuh,
+//       qabliyahDzuhur: s.qabliyahDzuhur,
+//       baDiyahDzuhur: s.baDiyahDzuhur,
+//       qabliyahAshar: s.qabliyahAshar,
+//       baDiyahMaghrib: s.baDiyahMaghrib,
+//       qabliyahIsya: s.qabliyahIsya,
+//       baDiyahIsya: s.baDiyahIsya,
+//     );
+//   }
+
+//   SholatSunnah toSholatSunnah() {
+//     return SholatSunnah(
+//       tahajud: tahajud,
+//       witir: witir,
+//       dhuha: dhuha,
+//       qabliyahSubuh: qabliyahSubuh,
+//       qabliyahDzuhur: qabliyahDzuhur,
+//       baDiyahDzuhur: baDiyahDzuhur,
+//       qabliyahAshar: qabliyahAshar,
+//       baDiyahMaghrib: baDiyahMaghrib,
+//       qabliyahIsya: qabliyahIsya,
+//       baDiyahIsya: baDiyahIsya,
+//     );
+//   }
+// }
