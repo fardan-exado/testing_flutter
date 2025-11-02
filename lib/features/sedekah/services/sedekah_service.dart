@@ -21,6 +21,7 @@ class SedekahService {
     }
   }
 
+  // Add sedekah
   static Future<Map<String, dynamic>> addSedekah({
     required String jenisSedekah,
     required String tanggal,
@@ -46,6 +47,23 @@ class SedekahService {
         'status': responseData['status'],
         'message': responseData['message'],
         'data': sedekah,
+      };
+    } on DioException catch (e) {
+      final error = ApiClient.parseDioError(e);
+      throw Exception(error);
+    }
+  }
+
+  // Delete Sedekah
+  static Future<Map<String, dynamic>> deleteSedekah(int id) async {
+    try {
+      final response = await ApiClient.dio.delete('/sedekah/progres/$id');
+
+      final responseData = response.data as Map<String, dynamic>;
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);

@@ -3,11 +3,13 @@ import 'package:test_flutter/features/artikel/pages/artikel_detail_page.dart';
 import 'package:test_flutter/features/artikel/pages/artikel_page.dart';
 import 'package:test_flutter/features/auth/pages/forgot_password.dart';
 import 'package:test_flutter/features/auth/pages/login_page.dart';
+import 'package:test_flutter/features/auth/pages/otp.dart';
 import 'package:test_flutter/features/auth/pages/reset_password.dart';
 import 'package:test_flutter/features/auth/pages/signup_page.dart';
 import 'package:test_flutter/features/auth/pages/splash_screen.dart';
 import 'package:test_flutter/features/auth/pages/welcome_page.dart';
 import 'package:test_flutter/features/compass/pages/compass_page.dart';
+import 'package:test_flutter/features/haji/pages/haji_page.dart';
 import 'package:test_flutter/features/home/pages/home_page.dart';
 import 'package:test_flutter/features/komunitas/pages/komunitas_page.dart';
 import 'package:test_flutter/features/monitoring/pages/monitoring_page.dart';
@@ -26,6 +28,7 @@ class AppRoutes {
   static const String login = '/login';
   static const String signup = '/signup';
   static const String forgotPassword = '/forgot-password';
+  static const String otp = '/otp';
   static const String resetPassword = '/reset-password';
   static const String home = '/home';
   static const String qiblaCompass = '/qibla-compass';
@@ -43,6 +46,7 @@ class AppRoutes {
   static const String article = '/article';
   static const String syahadat = '/syahadat';
   static const String komunitas = '/komunitas';
+  static const String haji = '/haji';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -56,11 +60,25 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const SignupPage());
       case forgotPassword:
         return MaterialPageRoute(builder: (_) => const ForgotPasswordPage());
+      case otp:
+        final otpArgs = settings.arguments as Map<String, dynamic>?;
+        final otpType = otpArgs?['type'] == 'registration'
+            ? OTPType.registration
+            : OTPType.forgotPassword;
+        return MaterialPageRoute(
+          builder: (_) => OTPPage(
+            email: otpArgs?['email'] ?? '',
+            type: otpType,
+            name: otpArgs?['name'],
+            password: otpArgs?['password'],
+            confirmationPassword: otpArgs?['confirmationPassword'],
+          ),
+        );
       case resetPassword:
         final args = settings.arguments as Map<String, String>?;
         return MaterialPageRoute(
           builder: (_) => ResetPasswordPage(
-            token: args?['token'] ?? '',
+            otp: args?['otp'] ?? '',
             email: args?['email'] ?? '',
           ),
         );
@@ -100,6 +118,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const SyahadatPage());
       case komunitas:
         return MaterialPageRoute(builder: (_) => const KomunitasPage());
+      case haji:
+        return MaterialPageRoute(builder: (_) => const HajiPage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

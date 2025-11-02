@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:test_flutter/app/theme.dart';
 import 'package:test_flutter/core/utils/format_helper.dart';
-import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
 
@@ -112,12 +111,14 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
     final postingan = komunitasState.postingan;
     if (postingan == null) return;
 
+    // Get current user name
+    final authState = ref.read(authProvider);
+    final currentUserName = authState['user']?['name'] as String? ?? 'User';
+
     // Unfocus keyboard
     _commentFocusNode.unfocus();
 
     try {
-      logger.fine('Adding comment to postingan ${postingan.id}');
-
       // Menggunakan provider untuk add comment
       await ref
           .read(komunitasProvider.notifier)
@@ -125,6 +126,7 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
             postinganId: postingan.id.toString(),
             komentar: _commentController.text.trim(),
             isAnonymous: _isAnonymous,
+            userName: currentUserName,
           );
 
       // Check if success
@@ -133,7 +135,7 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
         _commentController.clear();
         setState(() => _isAnonymous = false);
 
-        // Scroll to bottom after comment added
+        // Scroll to bottom after comment added (data sudah terupdate dari provider)
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
             _scrollController.animateTo(
@@ -143,18 +145,8 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
             );
           }
         });
-
-        // if (mounted) {
-        //   showMessageToast(
-        //     context,
-        //     message: 'Komentar berhasil ditambahkan!',
-        //     type: ToastType.success,
-        //   );
-        // }
       }
-    } catch (e, st) {
-      logger.warning('Error adding comment: $e', e, st);
-
+    } catch (e) {
       if (mounted) {
         showMessageToast(
           context,
@@ -171,15 +163,11 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
     if (postingan == null) return;
 
     try {
-      logger.fine('Toggling like for postingan ${postingan.id}');
-
       // Menggunakan provider untuk toggle like
       await ref
           .read(komunitasProvider.notifier)
           .toggleLike(postingan.id.toString());
-    } catch (e, st) {
-      logger.warning('Error toggling like: $e', e, st);
-
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -1,46 +1,38 @@
-import 'dart:convert';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/data/models/quran/progres_quran.dart';
 import 'package:test_flutter/features/quran/quran_state.dart';
+import 'package:test_flutter/features/quran/services/quran_cache_service.dart';
 import 'package:test_flutter/features/quran/services/quran_progres_service.dart';
 
 class QuranNotifier extends StateNotifier<QuranState> {
   QuranNotifier() : super(QuranState.initial());
 
-  // Init - Load from local storage first
+  // Init - Load from cache first
   Future<void> init() async {
     try {
       logger.fine('🔄 Initializing Quran Provider...');
 
-      final localProgress = await fetchProgresBacaTerakhirFromLocal();
+      // Load from cache first
+      final cachedRiwayat = QuranCacheService.getCachedRiwayat();
 
-      logger.fine(
-        '📖 Local progress: Surah ${localProgress.suratId}, Ayah ${localProgress.ayat}',
-      );
-
-      if (localProgress.suratId > 0) {
+      if (cachedRiwayat.isNotEmpty) {
         state = state.copyWith(
           status: QuranStatus.loaded,
-          progresBacaQuran: localProgress,
+          riwayatProgres: cachedRiwayat,
+          isOffline: false,
         );
-        logger.fine('✅ Loaded from local storage');
+        logger.fine('✅ Loaded ${cachedRiwayat.length} items from cache');
       } else {
-        state = state.copyWith(
-          status: QuranStatus.loaded,
-          progresBacaQuran: null,
-        );
-        logger.fine('ℹ️ No local progress found');
+        state = state.copyWith(status: QuranStatus.loaded, riwayatProgres: []);
+        logger.fine('ℹ️ No cached riwayat found');
       }
 
       // Try to sync with API in background
       try {
-        await fetchTerakhirBaca();
+        await fetchRiwayat();
       } catch (e) {
-        logger.fine('⚠️ API sync failed, using local data: $e');
+        logger.fine('⚠️ API sync failed, using cached data: $e');
       }
     } catch (e) {
       logger.fine('❌ Init error: $e');
@@ -48,64 +40,14 @@ class QuranNotifier extends StateNotifier<QuranState> {
     }
   }
 
-  // Save Progres Baca Terakhir to Local Storage
-  Future<void> saveProgresBacaTerakhirToLocal(ProgresBacaQuran progres) async {
+  // Fetch Riwayat Progres from API
+  Future<void> fetchRiwayat() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = jsonEncode(progres.toJson());
-      await prefs.setString('progresBacaQuran', jsonString);
-      logger.fine(
-        '💾 Saved to local: Surah ${progres.suratId}, Ayah ${progres.ayat}',
-      );
-    } catch (e) {
-      logger.fine('❌ Failed to save local: $e');
-    }
-  }
-
-  // Fetch Progres Baca Terakhir from Local Storage
-  Future<ProgresBacaQuran> fetchProgresBacaTerakhirFromLocal() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString('progresBacaQuran');
-
-      if (jsonString == null || jsonString.isEmpty) {
-        logger.fine('📭 No local progress found');
-        return ProgresBacaQuran(
-          id: 0,
-          suratId: 0,
-          ayat: 0,
-          createdAt: '',
-          userId: 0,
-        );
-      }
-
-      final decode = jsonDecode(jsonString);
-      final progres = ProgresBacaQuran.fromJson(decode);
-      logger.fine(
-        '📖 Local progress loaded: Surah ${progres.suratId}, Ayah ${progres.ayat}',
-      );
-
-      return progres;
-    } catch (e) {
-      logger.fine('❌ Error loading local progress: $e');
-      return ProgresBacaQuran(
-        id: 0,
-        suratId: 0,
-        ayat: 0,
-        createdAt: '',
-        userId: 0,
-      );
-    }
-  }
-
-  // Fetch Progres Terakhir Baca from API
-  Future<void> fetchTerakhirBaca() async {
-    try {
-      logger.fine('🌐 Fetching progress from API...');
+      logger.fine('🌐 Fetching riwayat from API...');
 
       state = state.copyWith(status: QuranStatus.loading, message: null);
 
-      final result = await QuranProgresService.getProgresBacaTerakhir();
+      final result = await QuranProgresService.getProgresRiwayat();
 
       logger.fine('📡 API Response: $result');
 
@@ -117,42 +59,35 @@ class QuranNotifier extends StateNotifier<QuranState> {
 
         logger.fine('📦 Data from API: $dataJson');
 
-        if (dataJson != null && dataJson is Map<String, dynamic>) {
-          final progres = ProgresBacaQuran.fromJson(dataJson);
+        if (dataJson != null && dataJson is List) {
+          final riwayat = dataJson
+              .map(
+                (item) =>
+                    ProgresBacaQuran.fromJson(item as Map<String, dynamic>),
+              )
+              .toList();
 
-          logger.fine(
-            '✅ Progress parsed: Surah ${progres.suratId}, Ayah ${progres.ayat}',
-          );
+          logger.fine('✅ Parsed ${riwayat.length} riwayat items');
 
-          if (progres.suratId > 0) {
-            // Save to local storage
-            await saveProgresBacaTerakhirToLocal(progres);
+          // Save to cache
+          await QuranCacheService.cacheRiwayat(riwayat);
 
-            state = state.copyWith(
-              status: QuranStatus.loaded,
-              progresBacaQuran: progres,
-              message: message,
-            );
-
-            logger.fine('✅ Progress updated successfully');
-          } else {
-            logger.fine('⚠️ Invalid progress data (suratId = 0)');
-            // Keep local data if API returns invalid data
-            final localProgress = await fetchProgresBacaTerakhirFromLocal();
-            state = state.copyWith(
-              status: QuranStatus.loaded,
-              progresBacaQuran: localProgress.suratId > 0
-                  ? localProgress
-                  : null,
-            );
-          }
-        } else {
-          logger.fine('⚠️ No data in API response, using local');
-          // No progress from API, use local
-          final localProgress = await fetchProgresBacaTerakhirFromLocal();
           state = state.copyWith(
             status: QuranStatus.loaded,
-            progresBacaQuran: localProgress.suratId > 0 ? localProgress : null,
+            riwayatProgres: riwayat,
+            message: message,
+            isOffline: false,
+          );
+
+          logger.fine('✅ Riwayat updated successfully');
+        } else {
+          logger.fine('⚠️ No data in API response, using cache');
+          // No riwayat from API, use cache
+          final cachedRiwayat = QuranCacheService.getCachedRiwayat();
+          state = state.copyWith(
+            status: QuranStatus.loaded,
+            riwayatProgres: cachedRiwayat,
+            isOffline: true,
           );
         }
       } else {
@@ -162,22 +97,21 @@ class QuranNotifier extends StateNotifier<QuranState> {
     } catch (e) {
       logger.fine('❌ API Error: $e');
 
-      // On error, load from local storage
-      final localProgress = await fetchProgresBacaTerakhirFromLocal();
+      // On error, load from cache
+      final cachedRiwayat = QuranCacheService.getCachedRiwayat();
 
-      if (localProgress.suratId > 0) {
+      if (cachedRiwayat.isNotEmpty) {
         state = state.copyWith(
           status: QuranStatus.loaded,
-          progresBacaQuran: localProgress,
-          message: 'Using cached data',
+          riwayatProgres: cachedRiwayat,
+          message: 'Menampilkan data offline',
+          isOffline: true,
         );
-        logger.fine(
-          '📱 Fallback to local: Surah ${localProgress.suratId}, Ayah ${localProgress.ayat}',
-        );
+        logger.fine('📱 Fallback to cache: ${cachedRiwayat.length} items');
       } else {
         state = state.copyWith(
           status: QuranStatus.error,
-          message: 'Failed to load progress: ${e.toString()}',
+          message: 'Gagal memuat data: ${e.toString()}',
         );
       }
     }
@@ -189,7 +123,7 @@ class QuranNotifier extends StateNotifier<QuranState> {
     required String ayat,
   }) async {
     try {
-      logger.fine('💾 Saving progress: Surah $suratId, Ayah $ayat');
+      logger.fine('💾 Adding progress: Surah $suratId, Ayah $ayat');
 
       state = state.copyWith(status: QuranStatus.loading, message: null);
 
@@ -198,7 +132,7 @@ class QuranNotifier extends StateNotifier<QuranState> {
         ayat: ayat,
       );
 
-      logger.fine('📡 Save response: $result');
+      logger.fine('📡 Add response: $result');
 
       final status = result['status'];
       final message = result['message'];
@@ -206,7 +140,7 @@ class QuranNotifier extends StateNotifier<QuranState> {
       if (status) {
         logger.fine('✅ Progress saved to API');
 
-        // Create progress object for local storage
+        // Create progress object
         final progres = ProgresBacaQuran(
           id: result['data']?['id'] ?? DateTime.now().millisecondsSinceEpoch,
           suratId: int.parse(suratId),
@@ -214,21 +148,18 @@ class QuranNotifier extends StateNotifier<QuranState> {
           createdAt:
               result['data']?['created_at'] ?? DateTime.now().toIso8601String(),
           userId: result['data']?['user_id'] ?? 0,
+          surat: result['data']?['surat'],
         );
 
-        // Save to local
-        await saveProgresBacaTerakhirToLocal(progres);
+        // Add to cache
+        await QuranCacheService.addProgresToCache(progres);
 
-        state = state.copyWith(
-          status: QuranStatus.success,
-          message: message,
-          progresBacaQuran: progres,
-        );
+        state = state.copyWith(status: QuranStatus.success, message: message);
 
-        logger.fine('✅ Progress saved locally and updated state');
+        logger.fine('✅ Progress saved and cached');
 
-        // Fetch latest from API
-        await fetchTerakhirBaca();
+        // Fetch latest riwayat from API
+        await fetchRiwayat();
       } else {
         logger.fine('❌ API save failed: $message');
         state = state.copyWith(status: QuranStatus.error, message: message);
@@ -236,8 +167,8 @@ class QuranNotifier extends StateNotifier<QuranState> {
     } catch (e) {
       logger.fine('❌ Save error: $e');
 
-      // If offline, save to local only
-      final localProgress = ProgresBacaQuran(
+      // If offline, save to cache only
+      final offlineProgress = ProgresBacaQuran(
         id: DateTime.now().millisecondsSinceEpoch,
         suratId: int.parse(suratId),
         ayat: int.parse(ayat),
@@ -245,16 +176,73 @@ class QuranNotifier extends StateNotifier<QuranState> {
         userId: 0,
       );
 
-      await saveProgresBacaTerakhirToLocal(localProgress);
+      await QuranCacheService.addProgresToCache(offlineProgress);
+
+      // Reload from cache
+      final cachedRiwayat = QuranCacheService.getCachedRiwayat();
 
       state = state.copyWith(
-        status: QuranStatus.loaded,
-        progresBacaQuran: localProgress,
-        message: 'Saved locally (offline)',
+        status: QuranStatus.success,
+        riwayatProgres: cachedRiwayat,
+        message: 'Bookmark disimpan (offline)',
+        isOffline: true,
       );
 
       logger.fine('💾 Saved offline: Surah $suratId, Ayah $ayat');
     }
+  }
+
+  // Delete Progres Quran
+  Future<void> deleteProgresQuran(int progresId) async {
+    try {
+      logger.fine('🗑️ Deleting progress: id=$progresId');
+
+      state = state.copyWith(status: QuranStatus.loading, message: null);
+
+      final result = await QuranProgresService.deleteProgresQuran(
+        progresId: progresId.toString(),
+      );
+
+      logger.fine('📡 Delete response: $result');
+
+      final status = result['status'];
+      final message = result['message'];
+
+      if (status) {
+        logger.fine('✅ Progress deleted from API');
+
+        // Delete from cache
+        await QuranCacheService.deleteProgresFromCache(progresId);
+
+        state = state.copyWith(status: QuranStatus.success, message: message);
+
+        logger.fine('✅ Progress deleted from cache');
+
+        // Fetch latest riwayat from API
+        await fetchRiwayat();
+      } else {
+        logger.fine('❌ API delete failed: $message');
+        state = state.copyWith(status: QuranStatus.error, message: message);
+      }
+    } catch (e) {
+      logger.fine('❌ Delete error: $e');
+
+      state = state.copyWith(
+        status: QuranStatus.error,
+        message: 'Gagal menghapus bookmark: ${e.toString()}',
+      );
+    }
+  }
+
+  // Clear message
+  void clearMessage() {
+    state = state.copyWith(clearMessage: true);
+  }
+
+  // Refresh data
+  Future<void> refresh() async {
+    state = state.copyWith(status: QuranStatus.refreshing);
+    await fetchRiwayat();
   }
 }
 

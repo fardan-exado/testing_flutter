@@ -18,8 +18,8 @@ class ProgresBacaQuran {
   factory ProgresBacaQuran.fromJson(Map<String, dynamic> json) {
     return ProgresBacaQuran(
       id: json['id'] ?? 0,
-      userId: json['user_id'] ?? 0, // ✅ Fixed typo: was 'user_d'
-      suratId: json['surat_id'] ?? 0, // ✅ Fixed typo: was 'surat_d'
+      userId: json['user_id'] ?? 0,
+      suratId: json['surat_id'] ?? 0,
       ayat: json['ayat'] ?? 0,
       createdAt: json['created_at'],
       surat: json['surat'] as Map<String, dynamic>?,
@@ -29,10 +29,10 @@ class ProgresBacaQuran {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'user_id': userId, // ✅ Fixed: was 'userId'
-      'surat_id': suratId, // ✅ Fixed: was 'suratId'
+      'user_id': userId,
+      'surat_id': suratId,
       'ayat': ayat,
-      'created_at': createdAt, // ✅ Fixed: was 'createdAt'
+      'created_at': createdAt,
       'surat': surat,
     };
   }

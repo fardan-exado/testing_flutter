@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:test_flutter/core/constants/cache_keys.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/utils/storage_helper.dart';
+import 'package:test_flutter/data/services/cache/cache_service.dart';
 import 'package:test_flutter/data/services/google/google_auth_service.dart';
 import 'package:test_flutter/features/auth/auth_service.dart';
 
@@ -14,6 +16,8 @@ enum AuthState {
   isRegistered,
   forgotPasswordSent,
   passwordReset,
+  otpSent,
+  otpVerified,
 }
 
 class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
@@ -153,6 +157,7 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
           "role": user['role']?.toString() ?? '',
           "phone": user['phone']?.toString() ?? '',
           "auth_method": user['auth_method']?.toString() ?? '',
+          "avatar": user['avatar']?.toString() ?? '',
         });
 
         logger.fine(
@@ -217,6 +222,7 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
           "role": user['role']?.toString() ?? '',
           "phone": user['phone']?.toString() ?? '',
           "auth_method": user['auth_method']?.toString() ?? '',
+          "avatar": user['avatar']?.toString() ?? '',
         });
 
         logger.fine(
@@ -271,38 +277,17 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
         confirmationPassword,
       );
 
-      final data = response['data'];
-
-      if (data == null) {
-        throw Exception('Invalid response from server');
-      }
-
-      final tokenStr = _normalizeToken(data['token']);
-
-      if (tokenStr == null || tokenStr.isEmpty) {
-        throw Exception('No token received from server');
-      }
-
-      await StorageHelper.saveToken(tokenStr);
-
-      // Save user data
-      if (data['user'] != null) {
-        final user = data['user'];
-        await StorageHelper.saveUser({
-          "id": user['id']?.toString() ?? '',
-          "name": user['name']?.toString() ?? '',
-          "email": user['email']?.toString() ?? '',
-          "role": user['role']?.toString() ?? 'user', //default role user
-          "phone": user['phone']?.toString() ?? '',
-          "auth_method": user['auth_method']?.toString() ?? '',
-        });
-      }
-
+      // Registration successful, OTP will be sent to email
       state = {
-        'status': AuthState.authenticated,
-        'user': data['user'],
+        'status': AuthState.isRegistered,
+        'user': null,
         'error': null,
+        'message':
+            response['message'] ??
+            'Registrasi berhasil! Silakan cek email Anda untuk kode OTP.',
       };
+
+      logger.fine('Registration successful, OTP sent to: $email');
     } catch (e) {
       logger.fine('Register error: ${e.toString()}');
       state = {'status': AuthState.error, 'user': null, 'error': e.toString()};
@@ -315,24 +300,64 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
 
     try {
       // Call API
-      final response = await AuthService.logout();
+      await AuthService.logout();
 
-      if (response == true) {
-        logger.fine('Logout successful on server');
+      // Clear local user data
+      await StorageHelper.clearUserData();
+      logger.fine('User data cleared from storage');
 
-        // Clear local data once
-        await StorageHelper.clearUserData();
+      // Clear only sholat-related caches from Hive
+      logger.info('🗑️ Starting to clear sholat caches...');
 
-        // Update state to unauthenticated
-        state = {
-          'status': AuthState.unauthenticated,
-          'user': null,
-          'error': null,
-        };
-      } else {
-        throw Exception('Logout failed');
+      final cacheKeys = [
+        CacheKeys.progressSholatWajibHariIni,
+        CacheKeys.progressSholatSunnahHariIni,
+        CacheKeys.progressSholatWajibRiwayat,
+        CacheKeys.progressSholatSunnahRiwayat,
+      ];
+
+      for (final key in cacheKeys) {
+        try {
+          // Verify before clearing
+          final beforeClear = CacheService.getCacheMetadata(key);
+          logger.info(
+            'Before clear $key: ${beforeClear != null ? "EXISTS (lastFetch: ${beforeClear.lastFetch})" : "NOT_EXISTS"}',
+          );
+
+          // Clear cache
+          await CacheService.clearCache(key);
+
+          // Verify after clearing
+          final afterClear = CacheService.getCacheMetadata(key);
+          if (afterClear != null) {
+            logger.warning('⚠️ Cache still exists after clear: $key');
+          } else {
+            logger.info('✓ Successfully cleared cache: $key');
+          }
+        } catch (e) {
+          logger.warning('Error clearing cache $key: $e');
+        }
       }
+
+      logger.info('All sholat caches cleared successfully');
+
+      // NOTE: Tidak menghapus jadwal sholat cache agar guest user masih bisa lihat jadwal
+      // await CacheService.clearCache(CacheKeys.jadwalSholat);
+      logger.info('✓ Jadwal sholat cache retained for guest access');
+
+      // Update state to unauthenticated
+      state = {
+        'status': AuthState.unauthenticated,
+        'user': null,
+        'error': null,
+      };
+
+      final allKeys = CacheService.getAllCacheKeys();
+      logger.info('⚠️ Sisa key di cache: $allKeys');
+
+      logger.info('Logout completed successfully');
     } catch (e) {
+      logger.warning('Logout error: $e');
       state = {
         'status': AuthState.error,
         'user': state['user'],
@@ -368,9 +393,9 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
     }
   }
 
-  // Reset Password
+  // Reset Password with OTP
   Future<void> resetPassword({
-    required String token,
+    required String otp,
     required String email,
     required String password,
     required String passwordConfirmation,
@@ -380,7 +405,7 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
 
     try {
       final result = await AuthService.resetPassword(
-        token: token,
+        otp: otp,
         email: email,
         password: password,
         passwordConfirmation: passwordConfirmation,
@@ -401,6 +426,71 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
       state = {
         'status': AuthState.error,
         'user': null,
+        'error': e.toString().replaceFirst('Exception: ', ''),
+      };
+    }
+  }
+
+  // Verify Registration OTP
+  Future<void> verifyRegistrationOTP({
+    required String email,
+    required String otp,
+  }) async {
+    state = {...state, 'status': AuthState.loading, 'error': null};
+    logger.fine('Verifying OTP for: $email');
+
+    try {
+      await AuthService.verifyRegistrationOTP(email: email, otp: otp);
+
+      state = {
+        'status': AuthState.otpVerified,
+        'user': null,
+        'error': null,
+        'message': 'OTP berhasil diverifikasi. Silakan login ke akun Anda.',
+      };
+
+      logger.fine('OTP verified successfully');
+    } catch (e) {
+      logger.fine('Verify OTP error: ${e.toString()}');
+      state = {
+        'status': AuthState.error,
+        'user': null,
+        'error': e.toString().replaceFirst('Exception: ', ''),
+      };
+    }
+  }
+
+  // Resend OTP (call register endpoint again with same data)
+  Future<void> resendOTP({
+    required String name,
+    required String email,
+    required String password,
+    required String confirmationPassword,
+  }) async {
+    state = {...state, 'status': AuthState.loading, 'error': null};
+    logger.fine('Resending OTP for: $email');
+
+    try {
+      final result = await AuthService.resendOTP(
+        name,
+        email,
+        password,
+        confirmationPassword,
+      );
+
+      state = {
+        ...state,
+        'status': AuthState.otpSent,
+        'error': null,
+        'message': result['message'] ?? 'Kode OTP telah dikirim ulang.',
+      };
+
+      logger.fine('OTP resent successfully');
+    } catch (e) {
+      logger.fine('Resend OTP error: ${e.toString()}');
+      state = {
+        'status': AuthState.error,
+        'user': state['user'],
         'error': e.toString().replaceFirst('Exception: ', ''),
       };
     }

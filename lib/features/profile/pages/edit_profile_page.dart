@@ -241,27 +241,27 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                   isTablet: isTablet,
                 ),
 
-                SizedBox(height: isTablet ? 20 : 16),
+                // SizedBox(height: isTablet ? 20 : 16),
 
-                _buildTextField(
-                  controller: _phoneController,
-                  label: 'Nomor Telepon (Opsional)',
-                  icon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
-                  enabled: !isLoading,
-                  validator: (value) {
-                    if (value != null && value.isNotEmpty) {
-                      if (value.length < 10) {
-                        return 'Nomor telepon minimal 10 digit';
-                      }
-                      if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                        return 'Nomor telepon hanya boleh berisi angka';
-                      }
-                    }
-                    return null;
-                  },
-                  isTablet: isTablet,
-                ),
+                // _buildTextField(
+                //   controller: _phoneController,
+                //   label: 'Nomor Telepon (Opsional)',
+                //   icon: Icons.phone_outlined,
+                //   keyboardType: TextInputType.phone,
+                //   enabled: !isLoading,
+                //   validator: (value) {
+                //     if (value != null && value.isNotEmpty) {
+                //       if (value.length < 10) {
+                //         return 'Nomor telepon minimal 10 digit';
+                //       }
+                //       if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                //         return 'Nomor telepon hanya boleh berisi angka';
+                //       }
+                //     }
+                //     return null;
+                //   },
+                //   isTablet: isTablet,
+                // ),
 
                 SizedBox(height: isTablet ? 40 : 32),
 

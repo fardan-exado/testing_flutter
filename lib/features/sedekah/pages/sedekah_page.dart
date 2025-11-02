@@ -41,9 +41,10 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
   );
 
   Future<void> _goToAdd() async {
-    final result = await Navigator.push(
+    final result = await Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const TambahSedekahPage()),
+      (route) => false,
     );
 
     // Refresh data after coming back from add page if success
@@ -164,7 +165,11 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
   @override
   void initState() {
     super.initState();
+    _init();
+    _setupStateListener();
+  }
 
+  void _init() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Check auth status first
       final authState = ref.read(authProvider);
@@ -173,6 +178,40 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
       // Only fetch data if authenticated
       if (isAuthenticated) {
         ref.read(sedekahProvider.notifier).loadSedekah();
+      }
+    });
+  }
+
+  void _setupStateListener() {
+    ref.listenManual<SedekahState>(sedekahProvider, (previous, next) {
+      if (!mounted) return;
+
+      // Handle success state (for delete/add operations)
+      // if (previous?.status == SedekahStatus.loading &&
+      //     next.status == SedekahStatus.success &&
+      //     next.message != null &&
+      //     next.message!.isNotEmpty) {
+      //   showMessageToast(
+      //     context,
+      //     message: next.message!,
+      //     type: ToastType.success,
+      //     duration: const Duration(seconds: 3),
+      //   );
+      //   ref.read(sedekahProvider.notifier).clearMessage();
+      // }
+
+      // Handle error state
+      if (previous?.status == SedekahStatus.loading &&
+          next.status == SedekahStatus.error &&
+          next.message != null &&
+          next.message!.isNotEmpty) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.error,
+          duration: const Duration(seconds: 4),
+        );
+        ref.read(sedekahProvider.notifier).clearMessage();
       }
     });
   }
@@ -192,27 +231,6 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
     final status = sedekahState.status;
     final message = sedekahState.message;
     final isOffline = sedekahState.isOffline;
-
-    // Listen to state changes for showing messages (only if authenticated)
-    if (isAuthenticated) {
-      ref.listen<SedekahState>(sedekahProvider, (previous, next) {
-        if (next.status == SedekahStatus.success && next.message != null) {
-          showMessageToast(
-            context,
-            message: next.message!,
-            type: ToastType.success,
-          );
-          ref.read(sedekahProvider.notifier).clearMessage();
-        } else if (next.status == SedekahStatus.error && next.message != null) {
-          showMessageToast(
-            context,
-            message: next.message!,
-            type: ToastType.error,
-          );
-          ref.read(sedekahProvider.notifier).clearMessage();
-        }
-      });
-    }
 
     return Scaffold(
       body: Container(
@@ -249,7 +267,10 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
                               alignment: Alignment.centerLeft,
                               child: IconButton(
                                 onPressed: () {
-                                  Navigator.of(context).pop();
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/home',
+                                  );
                                 },
                                 icon: const Icon(Icons.arrow_back_rounded),
                                 color: AppTheme.onSurface,
@@ -1038,6 +1059,162 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
     );
   }
 
+  void _showDeleteConfirmation(Sedekah sedekah) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.red,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Hapus Sedekah?',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Apakah Anda yakin ingin menghapus sedekah ini?',
+              style: TextStyle(fontSize: 14, color: AppTheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.category_rounded,
+                        size: 16,
+                        color: Colors.red.shade700,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          sedekah.jenisSedekah,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.payments_rounded,
+                        size: 16,
+                        color: Colors.red.shade700,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Rp ${NumberFormat('#,###', 'id_ID').format(sedekah.jumlah)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_rounded,
+                    size: 18,
+                    color: Colors.orange.shade700,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Data yang dihapus tidak dapat dikembalikan',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Batal',
+              style: TextStyle(
+                color: AppTheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              // Delete sedekah
+              await ref
+                  .read(sedekahProvider.notifier)
+                  .deleteSedekah(sedekah.id);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            icon: const Icon(Icons.delete_rounded, size: 18),
+            label: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _riwayatTile(BuildContext context, Sedekah sedekah) {
     final formattedDate = DateFormat(
       "d MMMM y 'pukul' HH:mm",
@@ -1134,13 +1311,36 @@ class _SedekahPageState extends ConsumerState<SedekahPage> {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              'Rp ${NumberFormat('#,###', 'id_ID').format(sedekah.jumlah)}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: _ts(context, 16),
-                color: AppTheme.accentGreen,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'Rp ${NumberFormat('#,###', 'id_ID').format(sedekah.jumlah)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: _ts(context, 16),
+                    color: AppTheme.accentGreen,
+                  ),
+                ),
+                SizedBox(height: _px(context, 4)),
+                // Delete button
+                InkWell(
+                  onTap: () => _showDeleteConfirmation(sedekah),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: EdgeInsets.all(_px(context, 6)),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      size: _px(context, 18),
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

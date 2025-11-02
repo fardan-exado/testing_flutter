@@ -275,6 +275,7 @@ class KomunitasPostinganNotifier extends StateNotifier<KomunitasState> {
     required String postinganId,
     required String komentar,
     required bool isAnonymous,
+    String? userName,
   }) async {
     // Don't set loading for the whole state
     try {
@@ -284,7 +285,19 @@ class KomunitasPostinganNotifier extends StateNotifier<KomunitasState> {
         isAnonymous: isAnonymous,
       );
 
-      final newComment = response['data'] as Komentar;
+      final commentData = response['data'] as Komentar;
+
+      // Manually create new comment with correct penulis name based on isAnonymous
+      final newComment = Komentar(
+        id: commentData.id,
+        postinganId: commentData.postinganId,
+        userId: commentData.userId,
+        komentar: commentData.komentar,
+        createdAt: commentData.createdAt,
+        updatedAt: commentData.updatedAt,
+        penulis: isAnonymous ? 'Anonymous' : (userName ?? 'User'),
+        isAnonymous: isAnonymous,
+      );
 
       // Update postingan with new comment
       if (state.postingan?.id.toString() == postinganId) {

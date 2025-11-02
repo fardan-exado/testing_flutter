@@ -210,16 +210,32 @@ class CacheService {
   ///
   /// Tugas: Menghapus cache berdasarkan key
   static Future<void> clearCache(String key) async {
-    await _cacheBox?.delete(key);
-    await _metadataBox?.delete(key);
+    try {
+      if (_cacheBox != null && _cacheBox!.isOpen) {
+        await _cacheBox!.delete(key);
+      }
+      if (_metadataBox != null && _metadataBox!.isOpen) {
+        await _metadataBox!.delete(key);
+      }
+    } catch (e) {
+      print('Error clearing cache for key $key: $e');
+    }
   }
 
   /// FUNGSI clearAllCache()
   ///
   /// Tugas: Menghapus semua cache yang ada
   static Future<void> clearAllCache() async {
-    await _cacheBox?.clear();
-    await _metadataBox?.clear();
+    try {
+      if (_cacheBox != null && _cacheBox!.isOpen) {
+        await _cacheBox!.clear();
+      }
+      if (_metadataBox != null && _metadataBox!.isOpen) {
+        await _metadataBox!.clear();
+      }
+    } catch (e) {
+      print('Error clearing all cache: $e');
+    }
   }
 
   /// FUNGSI getCacheSize()

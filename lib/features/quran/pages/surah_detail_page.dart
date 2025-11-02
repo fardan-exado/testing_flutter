@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test_flutter/app/theme.dart';
+import 'package:test_flutter/core/utils/storage_helper.dart';
 import 'package:test_flutter/data/models/quran/surah.dart';
 import 'package:test_flutter/features/quran/services/quran_audio_service.dart';
 import 'package:test_flutter/features/quran/services/quran_download_manager.dart';
@@ -14,11 +15,13 @@ import 'package:test_flutter/features/quran/widgets/download_audio_sheet.dart';
 class SurahDetailPage extends StatefulWidget {
   final Surah surah;
   final List<Surah> allSurahs;
+  final int? initialAyat;
 
   const SurahDetailPage({
     super.key,
     required this.surah,
     this.allSurahs = const [],
+    this.initialAyat,
   });
 
   @override
@@ -33,6 +36,7 @@ class _SurahDetailPageState extends State<SurahDetailPage>
   int _currentPlayingVerse = 0;
   String? _qariName;
   int _currentSurahIndex = 0;
+  bool _isGuest = true; // Default to guest until checked
 
   late TabController _tabController;
   late PageController _pageController;
@@ -86,11 +90,23 @@ class _SurahDetailPageState extends State<SurahDetailPage>
       print('📖 Reason: allSurahs.length = ${widget.allSurahs.length}');
     }
 
+    // Check authentication status
+    _checkAuthStatus();
+
     // Load initial surah details
     _loadSurahDetails(_currentSurah.nomor);
     _loadSelectedQori();
     _checkDownloadStatus();
     _listenToCurrentVerse();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    final token = await StorageHelper.getToken();
+    if (mounted) {
+      setState(() {
+        _isGuest = token == null || token.isEmpty;
+      });
+    }
   }
 
   @override
@@ -227,6 +243,10 @@ class _SurahDetailPageState extends State<SurahDetailPage>
 
   void _scrollToVerse(int verseNumber) {
     final key = _verseKeys[verseNumber];
+    print(
+      '🔍 Scrolling to verse $verseNumber, key exists: ${key != null}, context exists: ${key?.currentContext != null}',
+    );
+
     if (key != null && key.currentContext != null) {
       Scrollable.ensureVisible(
         key.currentContext!,
@@ -234,7 +254,63 @@ class _SurahDetailPageState extends State<SurahDetailPage>
         curve: Curves.easeInOut,
         alignment: 0.2,
       );
+      print('✅ Scrolled to verse $verseNumber');
+    } else {
+      print('⚠️ Context null for verse $verseNumber');
     }
+  }
+
+  void _scrollToVerseWithJump(int verseNumber) {
+    print('🎯 Jump to verse $verseNumber');
+
+    // Estimate card height (average ~350px per card including margin)
+    final estimatedCardHeight = 350.0;
+    final estimatedOffset = (verseNumber - 1) * estimatedCardHeight;
+
+    // Check if scroll controller is attached
+    if (!_scrollController.hasClients) {
+      print('❌ ScrollController not attached yet');
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) _scrollToVerseWithJump(verseNumber);
+      });
+      return;
+    }
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final targetOffset = estimatedOffset.clamp(0.0, maxScroll);
+
+    print('📍 Jumping to offset: $targetOffset (max: $maxScroll)');
+
+    // Jump instantly without animation
+    _scrollController.jumpTo(targetOffset);
+
+    // After jump, try to use precise positioning WITHOUT animation
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (!mounted) return;
+
+      final key = _verseKeys[verseNumber];
+      if (key != null && key.currentContext != null) {
+        print('✅ Fine-tuning position');
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          duration: Duration.zero, // NO animation
+          alignment: 0.1,
+        );
+      } else {
+        print('⚠️ Context null, retrying...');
+        // Quick retry
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted && key != null && key.currentContext != null) {
+            Scrollable.ensureVisible(
+              key.currentContext!,
+              duration: Duration.zero, // NO animation
+              alignment: 0.1,
+            );
+            print('✅ Scrolled to verse $verseNumber');
+          }
+        });
+      }
+    });
   }
 
   Future<void> _playPause() async {
@@ -287,6 +363,12 @@ class _SurahDetailPageState extends State<SurahDetailPage>
   }
 
   void _showDownloadDialog() {
+    // Check if user is guest
+    if (_isGuest) {
+      _showGuestDialog();
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -305,6 +387,82 @@ class _SurahDetailPageState extends State<SurahDetailPage>
     );
   }
 
+  void _showGuestDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.login_rounded,
+                color: AppTheme.primaryBlue,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Login Required',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Silakan login terlebih dahulu untuk menggunakan fitur download audio dan bookmark.',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 14,
+            color: AppTheme.onSurfaceVariant,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Nanti',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text(
+              'Login',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _seekTo(double value) async {
     final duration = QuranAudioService.duration;
     final position = Duration(
@@ -314,6 +472,12 @@ class _SurahDetailPageState extends State<SurahDetailPage>
   }
 
   Future<void> _deleteDownload() async {
+    // Check if user is guest
+    if (_isGuest) {
+      _showGuestDialog();
+      return;
+    }
+
     final success = await QuranDownloadManager.deleteSurah(
       _currentSurah.nomor,
       _selectedQoriId,
@@ -390,10 +554,16 @@ class _SurahDetailPageState extends State<SurahDetailPage>
                             currentSurah,
                             isTablet,
                             isDesktop,
+                            _isGuest,
                           );
                         },
                       )
-                    : _buildAyahsList(_currentSurah, isTablet, isDesktop),
+                    : _buildAyahsList(
+                        _currentSurah,
+                        isTablet,
+                        isDesktop,
+                        _isGuest,
+                      ),
               ),
               ModernAudioPlayer(
                 isLoading: _isLoadingAudio,
@@ -621,7 +791,12 @@ class _SurahDetailPageState extends State<SurahDetailPage>
     );
   }
 
-  Widget _buildAyahsList(Surah surah, bool isTablet, bool isDesktop) {
+  Widget _buildAyahsList(
+    Surah surah,
+    bool isTablet,
+    bool isDesktop,
+    bool isGuest,
+  ) {
     // Get cached details
     final surahDetails = _surahDetailsCache[surah.nomor];
 
@@ -648,14 +823,30 @@ class _SurahDetailPageState extends State<SurahDetailPage>
     final List<dynamic> ayahs = surahDetails['ayat'] ?? [];
     final totalVerses = ayahs.length;
 
-    _verseKeys.clear();
-    for (int i = 1; i <= totalVerses; i++) {
-      _verseKeys[i] = GlobalKey();
+    // Initialize verse keys if not already done for this surah
+    if (_verseKeys.isEmpty || _verseKeys.length != totalVerses) {
+      _verseKeys.clear();
+      for (int i = 1; i <= totalVerses; i++) {
+        _verseKeys[i] = GlobalKey();
+      }
     }
 
     // Check if should show Bismillah
     // Show Bismillah for all surahs except Al-Fatihah (1) and At-Taubah (9)
     final showBismillah = surah.nomor != 1 && surah.nomor != 9;
+
+    // Schedule instant jump after ListView is built
+    if (widget.initialAyat != null &&
+        widget.initialAyat! > 0 &&
+        widget.initialAyat! <= totalVerses) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Immediate jump without delay
+        if (mounted) {
+          print('🔍 Jumping to ayat ${widget.initialAyat}');
+          _scrollToVerseWithJump(widget.initialAyat!);
+        }
+      });
+    }
 
     return ListView.builder(
       key: ValueKey('surah_${surah.nomor}'),
@@ -665,6 +856,7 @@ class _SurahDetailPageState extends State<SurahDetailPage>
         vertical: isTablet ? 12 : 8,
       ),
       physics: const BouncingScrollPhysics(),
+      cacheExtent: 10000, // Force ListView to render more items offscreen
       itemCount: showBismillah ? totalVerses + 1 : totalVerses,
       itemBuilder: (context, index) {
         // Show Bismillah as first item
@@ -696,6 +888,7 @@ class _SurahDetailPageState extends State<SurahDetailPage>
           isTablet: isTablet,
           isDesktop: isDesktop,
           isPlaying: isCurrentlyPlaying,
+          isGuest: isGuest,
         );
       },
     );

@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:intl/intl.dart';
+import 'package:test_flutter/core/constants/cache_keys.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/data/models/sholat/sholat.dart';
+import 'package:test_flutter/data/services/cache/cache_service.dart';
 import 'package:test_flutter/data/services/location/location_service.dart';
 import 'package:test_flutter/features/sholat/services/sholat_cache_service.dart';
 import 'package:test_flutter/features/sholat/services/sholat_service.dart';
@@ -19,27 +21,24 @@ class SholatProvider extends StateNotifier<SholatState> {
   }
 
   /// Load cached data saat inisialisasi
+  /// NOTE: Only loads jadwal and location, NOT progress data
   Future<void> _loadCachedData() async {
     try {
       final cachedJadwal = SholatCacheService.getCachedJadwalSholat();
       final cachedLocation = await LocationService.getLocation();
-      final cachedProgressWajibHariIni =
-          SholatCacheService.getCachedProgressSholatWajibHariIni();
-      final cachedProgressSunnahHariIni =
-          SholatCacheService.getCachedProgressSholatSunnahHariIni();
-      final cachedProgressWajibRiwayat =
-          SholatCacheService.getCachedProgressSholatWajibRiwayat();
-      final cachedProgressSunnahRiwayat =
-          SholatCacheService.getCachedProgressSholatSunnahRiwayat();
 
       logger.info('Loading cached sholat data...');
       logger.info('Cached jadwal: ${cachedJadwal.length} items');
       logger.info('Cached location: ${cachedLocation != null}');
+      logger.info(
+        '⚠️ Progress data will be fetched from database (not cached)',
+      );
 
       if (cachedJadwal.isNotEmpty) {
         logger.info('Loaded ${cachedJadwal.length} cached jadwal sholat');
 
         // Update state dengan jadwal dan lokasi dari cache
+        // Progress data NOT loaded from cache - will be empty initially
         state = state.copyWith(
           status: SholatStatus.loaded,
           sholatList: cachedJadwal,
@@ -48,10 +47,11 @@ class SholatProvider extends StateNotifier<SholatState> {
           locationName: cachedLocation?['name'] as String?,
           localDate: cachedLocation?['date'] as String?,
           localTime: cachedLocation?['time'] as String?,
-          progressWajibHariIni: cachedProgressWajibHariIni,
-          progressSunnahHariIni: cachedProgressSunnahHariIni,
-          progressWajibRiwayat: cachedProgressWajibRiwayat,
-          progressSunnahRiwayat: cachedProgressSunnahRiwayat,
+          // Explicitly set progress to empty
+          progressWajibHariIni: {},
+          progressSunnahHariIni: [],
+          progressWajibRiwayat: {},
+          progressSunnahRiwayat: {},
           isOffline: false,
         );
       } else if (cachedLocation != null) {
@@ -62,10 +62,11 @@ class SholatProvider extends StateNotifier<SholatState> {
           locationName: cachedLocation['name'] as String?,
           localDate: cachedLocation['date'] as String?,
           localTime: cachedLocation['time'] as String?,
-          progressWajibHariIni: cachedProgressWajibHariIni,
-          progressSunnahHariIni: cachedProgressSunnahHariIni,
-          progressWajibRiwayat: cachedProgressWajibRiwayat,
-          progressSunnahRiwayat: cachedProgressSunnahRiwayat,
+          // Explicitly set progress to empty
+          progressWajibHariIni: {},
+          progressSunnahHariIni: [],
+          progressWajibRiwayat: {},
+          progressSunnahRiwayat: {},
         );
         logger.info('Loaded cached location, no jadwal available');
       } else {
@@ -77,6 +78,15 @@ class SholatProvider extends StateNotifier<SholatState> {
   }
 
   /// Fetch jadwal sholat dengan strategi cache-first-then-network
+  ///
+  /// Mengambil jadwal waktu sholat dari API Kemenag melalui backend.
+  /// Menggunakan strategi cache-first untuk performa optimal:
+  /// 1. Cek cache terlebih dahulu
+  /// 2. Jika cache kosong atau force refresh, ambil dari network
+  /// 3. Gabungkan data network dengan cache untuk melengkapi data
+  ///
+  /// Waktu sholat diambil dari API resmi Kementerian Agama RI
+  /// yang telah diintegrasikan di backend untuk akurasi tinggi.
   Future<void> fetchJadwalSholat({
     double? latitude,
     double? longitude,
@@ -429,6 +439,8 @@ class SholatProvider extends StateNotifier<SholatState> {
   }
 
   /// Get progress untuk tanggal tertentu (UPDATED)
+  /// For wajib: returns Map<String, dynamic>
+  /// For sunnah today: converts List to Map for compatibility
   Future<Map<String, dynamic>> getProgressForDate(
     DateTime date,
     String jenis,
@@ -438,25 +450,33 @@ class SholatProvider extends StateNotifier<SholatState> {
         date.year == now.year && date.month == now.month && date.day == now.day;
 
     if (isToday) {
-      // Ambil dari progress hari ini
-      final progressData = jenis == 'wajib'
-          ? state.progressWajibHariIni
-          : state.progressSunnahHariIni;
-
-      // Jika cache kosong, fetch dari network
-      if (progressData.isEmpty) {
-        if (jenis == 'wajib') {
+      if (jenis == 'wajib') {
+        // Wajib: return Map directly
+        final progressData = state.progressWajibHariIni;
+        if (progressData.isEmpty) {
           await fetchProgressSholatWajibHariIni(forceRefresh: true);
-        } else {
+          return state.progressWajibHariIni;
+        }
+        return progressData;
+      } else {
+        // Sunnah: convert List to Map for compatibility
+        final progressList = state.progressSunnahHariIni;
+        if (progressList.isEmpty) {
           await fetchProgressSholatSunnahHariIni(forceRefresh: true);
         }
-        // Return updated data
-        return jenis == 'wajib'
-            ? state.progressWajibHariIni
-            : state.progressSunnahHariIni;
+        // Convert list to map { slug: { sholat_sunnah, progres } }
+        final Map<String, dynamic> progressMap = {};
+        for (var item in state.progressSunnahHariIni) {
+          if (item is Map<String, dynamic>) {
+            final sholat = item['sholat_sunnah'] as Map<String, dynamic>?;
+            if (sholat != null) {
+              final slug = sholat['slug'] as String;
+              progressMap[slug] = item;
+            }
+          }
+        }
+        return progressMap;
       }
-
-      return progressData;
     } else {
       // Ambil dari riwayat berdasarkan tanggal
       final formatter = DateFormat('yyyy-MM-dd');
@@ -489,29 +509,35 @@ class SholatProvider extends StateNotifier<SholatState> {
   Future<Map<String, dynamic>?> addProgressSholat({
     required String jenis,
     required String sholat,
-    required bool isOnTime,
-    required bool isJamaah,
-    required String lokasi,
+    required String status,
+    bool? isJamaah,
+    String? lokasi,
+    String? keterangan,
   }) async {
     try {
-      logger.info('Adding progress sholat: $jenis - $sholat');
+      logger.info('Adding progress sholat: $jenis - $sholat - $status');
 
       // 1. Kirim ke network
       final response = await SholatService.addProgressSholat(
         jenis: jenis,
         sholat: sholat,
-        isOnTime: isOnTime,
+        status: status,
         isJamaah: isJamaah,
         lokasi: lokasi,
+        keterangan: keterangan,
       );
 
       // 2. Refresh progress setelah berhasil menambahkan
       if (jenis.toLowerCase() == 'wajib') {
-        await fetchProgressSholatWajibHariIni(forceRefresh: true);
-        await fetchProgressSholatWajibRiwayat(forceRefresh: true);
+        await Future.wait([
+          fetchProgressSholatWajibHariIni(forceRefresh: true),
+          fetchProgressSholatWajibRiwayat(forceRefresh: true),
+        ]);
       } else {
-        await fetchProgressSholatSunnahHariIni(forceRefresh: true);
-        await fetchProgressSholatSunnahRiwayat(forceRefresh: true);
+        await Future.wait([
+          fetchProgressSholatSunnahHariIni(forceRefresh: true),
+          fetchProgressSholatSunnahRiwayat(forceRefresh: true),
+        ]);
       }
 
       logger.info('Successfully added progress sholat');
@@ -523,16 +549,28 @@ class SholatProvider extends StateNotifier<SholatState> {
   }
 
   // Delete progress sholat
-  Future<bool> deleteProgressSholat({required int id}) async {
+  Future<bool> deleteProgressSholat({
+    required int id,
+    required String jenis,
+  }) async {
     try {
+      logger.info('Deleting progress sholat: ID=$id, jenis=$jenis');
+
       // 1. Kirim ke network
-      await SholatService.deleteProgressSholat(id: id);
+      await SholatService.deleteProgressSholat(id: id, jenis: jenis);
 
       // 2. Refresh progress setelah berhasil menghapus
-      await fetchProgressSholatWajibHariIni(forceRefresh: true);
-      await fetchProgressSholatWajibRiwayat(forceRefresh: true);
-      await fetchProgressSholatSunnahHariIni(forceRefresh: true);
-      await fetchProgressSholatSunnahRiwayat(forceRefresh: true);
+      if (jenis.toLowerCase() == 'wajib') {
+        await Future.wait([
+          fetchProgressSholatWajibHariIni(forceRefresh: true),
+          fetchProgressSholatWajibRiwayat(forceRefresh: true),
+        ]);
+      } else {
+        await Future.wait([
+          fetchProgressSholatSunnahHariIni(forceRefresh: true),
+          fetchProgressSholatSunnahRiwayat(forceRefresh: true),
+        ]);
+      }
 
       logger.info('Successfully deleted progress sholat');
       return true;
@@ -542,94 +580,82 @@ class SholatProvider extends StateNotifier<SholatState> {
     }
   }
 
-  /// Fetch progress sholat wajib hari ini dengan strategi network-first-then-cache
+  /// Fetch progress sholat wajib hari ini - ALWAYS from database (no cache)
   Future<void> fetchProgressSholatWajibHariIni({
     bool forceRefresh = false,
   }) async {
-    // Jika sudah ada data dan bukan force refresh, skip
-    if (!forceRefresh && state.progressWajibHariIni.isNotEmpty) {
-      logger.info('Using existing progress wajib hari ini data');
-      return;
-    }
-
     try {
-      // 1. Try network first
+      logger.info('📡 Fetching progress wajib hari ini from database...');
+
+      // Always fetch from network - no cache check, no cache fallback
       final response = await SholatService.getProgressSholatWajibHariIni();
       final progressData = response['data'] as Map<String, dynamic>;
 
-      // 2. Cache the fetched data
-      await SholatCacheService.cacheProgressSholatWajibHariIni(progressData);
-
-      // 3. Update state with network data
+      // Update state directly (no caching)
       state = state.copyWith(
         progressWajibHariIni: progressData,
+        isOffline: false,
       );
 
-      logger.info('Successfully fetched progress wajib hari ini');
+      logger.info('✓ Successfully fetched progress wajib from database');
+      logger.info('Total: ${progressData['total'] ?? 0}/5');
     } catch (e) {
-      logger.severe('Error fetching progress wajib hari ini: $e');
+      logger.severe('❌ Error fetching progress wajib: $e');
 
-      // 4. Fallback to cache if network fails
-      final cachedProgress =
-          SholatCacheService.getCachedProgressSholatWajibHariIni();
+      // Set to empty on error (no cache fallback)
+      state = state.copyWith(progressWajibHariIni: {}, isOffline: true);
 
-      if (cachedProgress.isNotEmpty) {
-        logger.info(
-          'Using cached progress wajib hari ini due to network error',
-        );
-        state = state.copyWith(
-          progressWajibHariIni: cachedProgress,
-          isOffline: true,
-        );
-      } else {
-        logger.warning('No cached progress wajib hari ini available');
-      }
+      rethrow; // Re-throw to let caller handle
     }
   }
 
-  /// Fetch progress sholat sunnah hari ini dengan strategi network-first-then-cache
+  /// Fetch progress sholat sunnah hari ini - ALWAYS from database (no cache)
   Future<void> fetchProgressSholatSunnahHariIni({
     bool forceRefresh = false,
   }) async {
-    // Jika sudah ada data dan bukan force refresh, skip
-    if (!forceRefresh && state.progressSunnahHariIni.isNotEmpty) {
-      logger.info('Using existing progress sunnah hari ini data');
-      return;
-    }
-
     try {
-      // 1. Try network first
+      logger.info('📡 Fetching progress sunnah hari ini from database...');
+
+      // Always fetch from network - no cache check, no cache fallback
       final response = await SholatService.getProgressSholatSunnahHariIni();
-      final progressData = response['data'] as Map<String, dynamic>;
+      final rawData = response['data'];
 
-      // 2. Cache the fetched data
-      await SholatCacheService.cacheProgressSholatSunnahHariIni(progressData);
+      logger.info('Raw sunnah data type: ${rawData.runtimeType}');
+      logger.info('Raw sunnah data: $rawData');
 
-      // 3. Update state with network data
+      // FIX: Handle type casting properly
+      List<dynamic> progressData;
+      if (rawData is List) {
+        // Already a list - use directly
+        progressData = rawData;
+      } else if (rawData is Map<String, dynamic>) {
+        // If Map, might be empty state or error - convert to empty list
+        logger.warning('⚠️ Expected List but got Map: $rawData');
+        progressData = [];
+      } else {
+        // Unknown type - default to empty
+        logger.warning('⚠️ Unknown data type: ${rawData.runtimeType}');
+        progressData = [];
+      }
+
+      // Update state directly (no caching)
       state = state.copyWith(
         progressSunnahHariIni: progressData,
         isOffline: false,
       );
 
-      logger.info('Successfully fetched progress sunnah hari ini');
+      final completedCount = progressData
+          .where((item) => item['progres'] == true)
+          .length;
+      logger.info('✓ Successfully fetched progress sunnah from database');
+      logger.info('Total: $completedCount/${progressData.length}');
     } catch (e) {
-      logger.severe('Error fetching progress sunnah hari ini: $e');
+      logger.severe('❌ Error fetching progress sunnah: $e');
 
-      // 4. Fallback to cache if network fails
-      final cachedProgress =
-          SholatCacheService.getCachedProgressSholatSunnahHariIni();
+      // Set to empty on error (no cache fallback)
+      state = state.copyWith(progressSunnahHariIni: [], isOffline: true);
 
-      if (cachedProgress.isNotEmpty) {
-        logger.info(
-          'Using cached progress sunnah hari ini due to network error',
-        );
-        state = state.copyWith(
-          progressSunnahHariIni: cachedProgress,
-          isOffline: true,
-        );
-      } else {
-        logger.warning('No cached progress sunnah hari ini available');
-      }
+      rethrow; // Re-throw to let caller handle
     }
   }
 
@@ -644,82 +670,56 @@ class SholatProvider extends StateNotifier<SholatState> {
     }
 
     try {
-      // 1. Try network first
+      logger.info('📡 Fetching progress wajib riwayat from database...');
+
+      // Always fetch from network - no cache
       final response = await SholatService.getProgressSholatWajibRiwayat();
       final progressData = response['data'] as Map<String, dynamic>;
 
-      // 2. Cache the fetched data
-      await SholatCacheService.cacheProgressSholatWajibRiwayat(progressData);
-
-      // 3. Update state with network data
+      // Update state directly (no caching)
       state = state.copyWith(
         progressWajibRiwayat: progressData,
         isOffline: false,
       );
 
-      logger.info('Successfully fetched progress wajib riwayat');
+      logger.info('✓ Successfully fetched progress wajib riwayat');
+      logger.info('Total dates: ${progressData.keys.length}');
     } catch (e) {
-      logger.severe('Error fetching progress wajib riwayat: $e');
+      logger.severe('❌ Error fetching progress wajib riwayat: $e');
 
-      // 4. Fallback to cache if network fails
-      final cachedProgress =
-          SholatCacheService.getCachedProgressSholatWajibRiwayat();
+      // Set to empty on error
+      state = state.copyWith(progressWajibRiwayat: {}, isOffline: true);
 
-      if (cachedProgress.isNotEmpty) {
-        logger.info('Using cached progress wajib riwayat due to network error');
-        state = state.copyWith(
-          progressWajibRiwayat: cachedProgress,
-          isOffline: true,
-        );
-      } else {
-        logger.warning('No cached progress wajib riwayat available');
-      }
+      rethrow;
     }
   }
 
-  /// Fetch progress sholat sunnah riwayat dengan strategi network-first-then-cache
+  /// Fetch progress sholat sunnah riwayat - ALWAYS from database (no cache)
   Future<void> fetchProgressSholatSunnahRiwayat({
     bool forceRefresh = false,
   }) async {
-    // Jika sudah ada data dan bukan force refresh, skip
-    if (!forceRefresh && state.progressSunnahRiwayat.isNotEmpty) {
-      logger.info('Using existing progress sunnah riwayat data');
-      return;
-    }
-
     try {
-      // 1. Try network first
+      logger.info('📡 Fetching progress sunnah riwayat from database...');
+
+      // Always fetch from network - no cache
       final response = await SholatService.getProgressSholatSunnahRiwayat();
       final progressData = response['data'] as Map<String, dynamic>;
 
-      // 2. Cache the fetched data
-      await SholatCacheService.cacheProgressSholatSunnahRiwayat(progressData);
-
-      // 3. Update state with network data
+      // Update state directly (no caching)
       state = state.copyWith(
         progressSunnahRiwayat: progressData,
         isOffline: false,
       );
 
-      logger.info('Successfully fetched progress sunnah riwayat');
+      logger.info('✓ Successfully fetched progress sunnah riwayat');
+      logger.info('Total dates: ${progressData.keys.length}');
     } catch (e) {
-      logger.severe('Error fetching progress sunnah riwayat: $e');
+      logger.severe('❌ Error fetching progress sunnah riwayat: $e');
 
-      // 4. Fallback to cache if network fails
-      final cachedProgress =
-          SholatCacheService.getCachedProgressSholatSunnahRiwayat();
+      // Set to empty on error
+      state = state.copyWith(progressSunnahRiwayat: {}, isOffline: true);
 
-      if (cachedProgress.isNotEmpty) {
-        logger.info(
-          'Using cached progress sunnah riwayat due to network error',
-        );
-        state = state.copyWith(
-          progressSunnahRiwayat: cachedProgress,
-          isOffline: true,
-        );
-      } else {
-        logger.warning('No cached progress sunnah riwayat available');
-      }
+      rethrow;
     }
   }
 
@@ -791,5 +791,30 @@ class SholatProvider extends StateNotifier<SholatState> {
     await LocationService.clear();
     state = SholatState.initial();
     logger.info('Cleared all sholat cache and location');
+  }
+
+  /// Clear progress data and cache (called on logout)
+  Future<void> clearProgressData() async {
+    logger.info('🗑️ Clearing progress data from state and cache...');
+
+    // Clear cache first using CacheService.clearCache (proper deletion)
+    try {
+      await CacheService.clearCache(CacheKeys.progressSholatWajibHariIni);
+      await CacheService.clearCache(CacheKeys.progressSholatSunnahHariIni);
+      await CacheService.clearCache(CacheKeys.progressSholatWajibRiwayat);
+      await CacheService.clearCache(CacheKeys.progressSholatSunnahRiwayat);
+      logger.info('✓ Cleared progress cache entries');
+    } catch (e) {
+      logger.warning('Error clearing progress cache: $e');
+    }
+
+    // Then clear state (set to empty explicitly)
+    state = state.copyWith(
+      progressWajibHariIni: <String, dynamic>{},
+      progressSunnahHariIni: [], // List kosong untuk sunnah
+      progressWajibRiwayat: <String, dynamic>{},
+      progressSunnahRiwayat: <String, dynamic>{},
+    );
+    logger.info('✓ Cleared progress data from state');
   }
 }

@@ -46,38 +46,46 @@ class _TambahSedekahPageState extends ConsumerState<TambahSedekahPage> {
   @override
   void initState() {
     super.initState();
+    _setupStateListener();
+  }
 
-    // Listen to provider state changes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Using ref.listen to listen for state changes
-      ref.listen<SedekahState>(sedekahProvider, (previous, next) {
-        if (next.status == SedekahStatus.success && next.message != null) {
-          // Success - navigate back with success result
-          Navigator.pop(context, {'success': true});
+  void _setupStateListener() {
+    ref.listenManual<SedekahState>(sedekahProvider, (previous, next) {
+      if (!mounted) return;
 
-          // Show success toast
-          showMessageToast(
-            context,
-            message: next.message ?? 'Sedekah berhasil ditambahkan',
-            type: ToastType.success,
-            duration: const Duration(seconds: 3),
-          );
+      // Handle success state
+      if (next.status == SedekahStatus.success &&
+          next.message != null &&
+          next.message!.isNotEmpty) {
+        // Show success toast first
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.success,
+          duration: const Duration(seconds: 3),
+        );
 
-          // Clear message after showing
-          ref.read(sedekahProvider.notifier).clearMessage();
-        } else if (next.status == SedekahStatus.error && next.message != null) {
-          // Error - show error toast
-          showMessageToast(
-            context,
-            message: next.message ?? 'Gagal menambahkan sedekah',
-            type: ToastType.error,
-            duration: const Duration(seconds: 4),
-          );
+        // Clear message
+        ref.read(sedekahProvider.notifier).clearMessage();
 
-          // Clear message after showing
-          ref.read(sedekahProvider.notifier).clearMessage();
-        }
-      });
+        // Navigate back after a short delay
+        Navigator.pushReplacementNamed(context, '/zakat');
+      }
+
+      // Handle error state
+      if (next.status == SedekahStatus.error &&
+          next.message != null &&
+          next.message!.isNotEmpty) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.error,
+          duration: const Duration(seconds: 4),
+        );
+
+        // Clear message after showing
+        ref.read(sedekahProvider.notifier).clearMessage();
+      }
     });
   }
 
@@ -159,13 +167,13 @@ class _TambahSedekahPageState extends ConsumerState<TambahSedekahPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, '/zakat'),
               child: const Text('Tidak'),
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close page
+                Navigator.pushReplacementNamed(context, '/zakat');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade400,
@@ -177,7 +185,7 @@ class _TambahSedekahPageState extends ConsumerState<TambahSedekahPage> {
         ),
       );
     } else {
-      Navigator.pop(context);
+      Navigator.pushReplacementNamed(context, '/zakat');
     }
   }
 

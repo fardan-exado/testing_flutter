@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/features/sholat/sholat_state.dart';
 
-class SholatHeader extends ConsumerWidget {
+class SholatHeader extends ConsumerStatefulWidget {
   final SholatState sholatState;
   final DateTime selectedDate;
   final String formattedDate;
@@ -37,6 +38,41 @@ class SholatHeader extends ConsumerWidget {
     required this.onLocationUpdate,
   });
 
+  @override
+  ConsumerState<SholatHeader> createState() => _SholatHeaderState();
+}
+
+class _SholatHeaderState extends ConsumerState<SholatHeader> {
+  Timer? _countdownTimer;
+  String _timeUntilNext = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdownTimer();
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startCountdownTimer() {
+    _updateTimeUntilNext();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        _updateTimeUntilNext();
+      }
+    });
+  }
+
+  void _updateTimeUntilNext() {
+    setState(() {
+      _timeUntilNext = _getTimeUntilNextPrayer();
+    });
+  }
+
   double _px(BuildContext c, double base) {
     if (ResponsiveHelper.isSmallScreen(c)) return base;
     if (ResponsiveHelper.isMediumScreen(c)) return base * 1.1;
@@ -52,7 +88,7 @@ class SholatHeader extends ConsumerWidget {
   );
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final small = ResponsiveHelper.isSmallScreen(context);
 
     return Container(
@@ -64,12 +100,15 @@ class SholatHeader extends ConsumerWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [progressColor, progressColor.withValues(alpha: 0.85)],
+          colors: [
+            widget.progressColor,
+            widget.progressColor.withValues(alpha: 0.85),
+          ],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: progressColor.withValues(alpha: 0.3),
+            color: widget.progressColor.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -91,16 +130,16 @@ class SholatHeader extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildNavigationButton(
-          context,
-          icon: Icons.chevron_left_rounded,
-          onTap: onPreviousDay,
-        ),
+        // _buildNavigationButton(
+        //   context,
+        //   icon: Icons.chevron_left_rounded,
+        //   onTap: widget.onPreviousDay,
+        // ),
         Expanded(
           child: Column(
             children: [
               Text(
-                isToday ? 'Hari ini' : dayName,
+                widget.isToday ? 'Hari ini' : widget.dayName,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: _ts(context, small ? 14 : 16),
@@ -109,14 +148,14 @@ class SholatHeader extends ConsumerWidget {
               ),
               SizedBox(height: _px(context, 2)),
               Text(
-                formattedDate,
+                widget.formattedDate,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.85),
                   fontSize: _ts(context, small ? 12 : 13),
                 ),
               ),
               Text(
-                hijriDate,
+                widget.hijriDate,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.7),
                   fontSize: _ts(context, small ? 11 : 12),
@@ -125,31 +164,12 @@ class SholatHeader extends ConsumerWidget {
             ],
           ),
         ),
-        _buildNavigationButton(
-          context,
-          icon: Icons.chevron_right_rounded,
-          onTap: onNextDay,
-        ),
+        // _buildNavigationButton(
+        //   context,
+        //   icon: Icons.chevron_right_rounded,
+        //   onTap: widget.onNextDay,
+        // ),
       ],
-    );
-  }
-
-  Widget _buildNavigationButton(
-    BuildContext context, {
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: EdgeInsets.all(_px(context, 8)),
-          child: Icon(icon, color: Colors.white, size: _px(context, 20)),
-        ),
-      ),
     );
   }
 
@@ -162,7 +182,7 @@ class SholatHeader extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               InkWell(
-                onTap: onLocationUpdate,
+                onTap: widget.onLocationUpdate,
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: _px(context, 4)),
@@ -176,7 +196,7 @@ class SholatHeader extends ConsumerWidget {
                       SizedBox(width: _px(context, 4)),
                       Flexible(
                         child: Text(
-                          sholatState.locationName ?? 'Memuat lokasi...',
+                          widget.sholatState.locationName ?? 'Memuat lokasi...',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.85),
                             fontSize: _ts(context, small ? 11 : 12),
@@ -193,6 +213,26 @@ class SholatHeader extends ConsumerWidget {
                     ],
                   ),
                 ),
+              ),
+              SizedBox(height: _px(context, 4)),
+              // Info Kemenag
+              Row(
+                children: [
+                  Icon(
+                    Icons.verified_rounded,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    size: _px(context, 12),
+                  ),
+                  SizedBox(width: _px(context, 4)),
+                  Text(
+                    'Waktu dari Kemenag RI',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: _ts(context, small ? 10 : 11),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: _px(context, 8)),
               Text(
@@ -214,8 +254,8 @@ class SholatHeader extends ConsumerWidget {
               ),
               SizedBox(height: _px(context, 4)),
               Text(
-                jadwal != null
-                    ? '${_getNextPrayerName()} ${_getTimeUntilNextPrayer()}'
+                widget.jadwal != null
+                    ? '${_getNextPrayerName()} $_timeUntilNext'
                     : 'Memuat...',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.75),
@@ -248,7 +288,7 @@ class SholatHeader extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '$completedCount',
+              '${widget.completedCount}',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: _ts(context, small ? 32 : 36),
@@ -258,7 +298,7 @@ class SholatHeader extends ConsumerWidget {
             ),
             SizedBox(height: _px(context, 2)),
             Text(
-              '/ $totalCount',
+              '/ ${widget.totalCount}',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.7),
                 fontSize: _ts(context, small ? 14 : 16),
@@ -267,7 +307,7 @@ class SholatHeader extends ConsumerWidget {
             ),
             SizedBox(height: _px(context, 4)),
             Text(
-              isWajibTab ? 'Wajib' : 'Sunnah',
+              widget.isWajibTab ? 'Wajib' : 'Sunnah',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.8),
                 fontSize: _ts(context, small ? 10 : 11),
@@ -280,16 +320,18 @@ class SholatHeader extends ConsumerWidget {
     );
   }
 
+  // Widget untuk menampilkan Imsak & Sunrise
+
   String _getCurrentPrayerName() {
-    if (jadwal == null) return 'Memuat...';
+    if (widget.jadwal == null) return 'Memuat...';
 
     final now = TimeOfDay.now();
     final prayers = {
-      'Subuh': jadwal.wajib.shubuh,
-      'Dzuhur': jadwal.wajib.dzuhur,
-      'Ashar': jadwal.wajib.ashar,
-      'Maghrib': jadwal.wajib.maghrib,
-      'Isya': jadwal.wajib.isya,
+      'Subuh': widget.jadwal.wajib.shubuh,
+      'Dzuhur': widget.jadwal.wajib.dzuhur,
+      'Ashar': widget.jadwal.wajib.ashar,
+      'Maghrib': widget.jadwal.wajib.maghrib,
+      'Isya': widget.jadwal.wajib.isya,
     };
 
     String currentPrayer = 'Subuh';
@@ -305,35 +347,35 @@ class SholatHeader extends ConsumerWidget {
   }
 
   String _getCurrentPrayerTime() {
-    if (jadwal == null) return '--:--';
+    if (widget.jadwal == null) return '--:--';
 
     final currentName = _getCurrentPrayerName();
     switch (currentName) {
       case 'Subuh':
-        return jadwal.wajib.shubuh ?? '--:--';
+        return widget.jadwal.wajib.shubuh ?? '--:--';
       case 'Dzuhur':
-        return jadwal.wajib.dzuhur ?? '--:--';
+        return widget.jadwal.wajib.dzuhur ?? '--:--';
       case 'Ashar':
-        return jadwal.wajib.ashar ?? '--:--';
+        return widget.jadwal.wajib.ashar ?? '--:--';
       case 'Maghrib':
-        return jadwal.wajib.maghrib ?? '--:--';
+        return widget.jadwal.wajib.maghrib ?? '--:--';
       case 'Isya':
-        return jadwal.wajib.isya ?? '--:--';
+        return widget.jadwal.wajib.isya ?? '--:--';
       default:
         return '--:--';
     }
   }
 
   String _getNextPrayerName() {
-    if (jadwal == null) return 'Memuat...';
+    if (widget.jadwal == null) return 'Memuat...';
 
     final now = TimeOfDay.now();
     final prayers = {
-      'Subuh': jadwal.wajib.shubuh,
-      'Dzuhur': jadwal.wajib.dzuhur,
-      'Ashar': jadwal.wajib.ashar,
-      'Maghrib': jadwal.wajib.maghrib,
-      'Isya': jadwal.wajib.isya,
+      'Subuh': widget.jadwal.wajib.shubuh,
+      'Dzuhur': widget.jadwal.wajib.dzuhur,
+      'Ashar': widget.jadwal.wajib.ashar,
+      'Maghrib': widget.jadwal.wajib.maghrib,
+      'Isya': widget.jadwal.wajib.isya,
     };
 
     for (var entry in prayers.entries) {
@@ -347,7 +389,7 @@ class SholatHeader extends ConsumerWidget {
   }
 
   String _getTimeUntilNextPrayer() {
-    if (jadwal == null) return '';
+    if (widget.jadwal == null) return '';
 
     final now = TimeOfDay.now();
     final nextPrayerName = _getNextPrayerName();
@@ -355,19 +397,19 @@ class SholatHeader extends ConsumerWidget {
     String? nextTimeStr;
     switch (nextPrayerName.replaceAll(' (Besok)', '')) {
       case 'Subuh':
-        nextTimeStr = jadwal.wajib.shubuh;
+        nextTimeStr = widget.jadwal.wajib.shubuh;
         break;
       case 'Dzuhur':
-        nextTimeStr = jadwal.wajib.dzuhur;
+        nextTimeStr = widget.jadwal.wajib.dzuhur;
         break;
       case 'Ashar':
-        nextTimeStr = jadwal.wajib.ashar;
+        nextTimeStr = widget.jadwal.wajib.ashar;
         break;
       case 'Maghrib':
-        nextTimeStr = jadwal.wajib.maghrib;
+        nextTimeStr = widget.jadwal.wajib.maghrib;
         break;
       case 'Isya':
-        nextTimeStr = jadwal.wajib.isya;
+        nextTimeStr = widget.jadwal.wajib.isya;
         break;
     }
 

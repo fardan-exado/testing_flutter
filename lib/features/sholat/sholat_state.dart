@@ -12,8 +12,11 @@ class SholatState {
   final String? localTime;
   final String? message;
   final bool isOffline;
+  // Progress Wajib Hari Ini: { total, statistik, detail }
   final Map<String, dynamic> progressWajibHariIni;
-  final Map<String, dynamic> progressSunnahHariIni;
+  // Progress Sunnah Hari Ini: List<{ sholat_sunnah, progres }>
+  final List<dynamic> progressSunnahHariIni;
+  // Riwayat: { 'yyyy-MM-dd': [...] }
   final Map<String, dynamic> progressWajibRiwayat;
   final Map<String, dynamic> progressSunnahRiwayat;
 
@@ -39,7 +42,7 @@ class SholatState {
       sholatList: [],
       isOffline: false,
       progressWajibHariIni: {},
-      progressSunnahHariIni: {},
+      progressSunnahHariIni: [],
       progressWajibRiwayat: {},
       progressSunnahRiwayat: {},
     );
@@ -56,7 +59,7 @@ class SholatState {
     String? message,
     bool? isOffline,
     Map<String, dynamic>? progressWajibHariIni,
-    Map<String, dynamic>? progressSunnahHariIni,
+    List<dynamic>? progressSunnahHariIni,
     Map<String, dynamic>? progressWajibRiwayat,
     Map<String, dynamic>? progressSunnahRiwayat,
   }) {

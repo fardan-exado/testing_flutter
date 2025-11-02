@@ -34,9 +34,14 @@ class StorageHelper {
   }
 
   // Clear user data (logout)
+  // Note: Tidak menghapus alarm storage agar pengaturan alarm tetap tersimpan
   static Future<void> clearUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    await _storage.deleteAll();
+
+    // Hanya hapus data user, bukan semua data
+    await prefs.remove('user');
+
+    // Hapus token dari secure storage
+    await _storage.delete(key: 'auth_token');
   }
 }

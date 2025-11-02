@@ -48,19 +48,10 @@ class AuthService {
       );
 
       final responseData = response.data as Map<String, dynamic>;
-      final authResponse = responseData['data'] as Map<String, dynamic>;
 
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-        'data': {
-          'token': authResponse['token'] ?? '',
-          'user': {
-            'id': authResponse['user']['id'],
-            'name': authResponse['user']['name'],
-            'email': authResponse['user']['email'],
-          },
-        },
       };
     } on DioException catch (e) {
       if (e.response?.data != null) {
@@ -101,6 +92,7 @@ class AuthService {
     }
   }
 
+  // Logout
   static Future<bool> logout() async {
     try {
       final response = await ApiClient.dio.post('/logout');
@@ -143,9 +135,9 @@ class AuthService {
     }
   }
 
-  // Reset Password
+  // Reset Password with OTP
   static Future<Map<String, dynamic>> resetPassword({
-    required String token,
+    required String otp,
     required String email,
     required String password,
     required String passwordConfirmation,
@@ -154,7 +146,7 @@ class AuthService {
       final response = await ApiClient.dio.post(
         '/reset-password',
         data: {
-          'token': token,
+          'token': otp,
           'email': email,
           'password': password,
           'password_confirmation': passwordConfirmation,
@@ -180,5 +172,48 @@ class AuthService {
         throw Exception('Terjadi kesalahan saat mereset password.');
       }
     }
+  }
+
+  // Verify OTP for Registration
+  static Future<Map<String, dynamic>> verifyRegistrationOTP({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final response = await ApiClient.dio.post(
+        '/verify-otp',
+        data: {'email': email, 'otp': otp},
+      );
+
+      final responseData = response.data as Map<String, dynamic>;
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
+      };
+    } on DioException catch (e) {
+      if (e.response?.data != null) {
+        final data = e.response!.data;
+
+        throw Exception(
+          data['errors'] ??
+              data['message'] ??
+              'Terjadi kesalahan saat verifikasi OTP.',
+        );
+      } else {
+        throw Exception('Terjadi kesalahan saat verifikasi OTP.');
+      }
+    }
+  }
+
+  // Resend OTP (call register endpoint again)
+  static Future<Map<String, dynamic>> resendOTP(
+    String name,
+    String email,
+    String password,
+    String confirmationPassword,
+  ) async {
+    // Just call register again
+    return register(name, email, password, confirmationPassword);
   }
 }

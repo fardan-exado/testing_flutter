@@ -56,7 +56,7 @@ class SholatCacheService {
 
   // CACHE PROGRESS HARI INI
   static Future<void> cacheProgressSholatSunnahHariIni(
-    Map<String, dynamic> progress,
+    List<dynamic> progress,
   ) async {
     await CacheService.cacheData(
       key: CacheKeys.progressSholatSunnahHariIni,
@@ -97,17 +97,17 @@ class SholatCacheService {
   }
 
   // GET PROGRESS SHOLAT SUNNAH HARI INI DARI CACHE
-  static Map<String, dynamic> getCachedProgressSholatSunnahHariIni() {
-    return CacheService.getCachedData<Map<String, dynamic>>(
+  static List<dynamic> getCachedProgressSholatSunnahHariIni() {
+    return CacheService.getCachedData<List<dynamic>>(
           key: CacheKeys.progressSholatSunnahHariIni,
           fromJson: (jsonData) {
-            if (jsonData is Map<String, dynamic>) {
+            if (jsonData is List) {
               return jsonData;
             }
-            return {};
+            return [];
           },
         ) ??
-        {};
+        [];
   }
 
   // GET PROGRESS SHOLAT WAJIB RIWAYAT DARI CACHE
