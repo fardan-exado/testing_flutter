@@ -1221,8 +1221,17 @@ class _SholatPageState extends ConsumerState<SholatPage>
     ref.listen<Map<String, dynamic>>(authProvider, (previous, next) {
       if (previous?['status'] == AuthState.authenticated &&
           next['status'] != AuthState.authenticated) {
-        logger.info('User logged out, clearing progress data...');
-        ref.read(sholatProvider.notifier).clearProgressData();
+        logger.info('🔄 User logged out, clearing progress data...');
+        // Call async method without await (fire and forget)
+        ref
+            .read(sholatProvider.notifier)
+            .clearProgressData()
+            .then((_) {
+              logger.info('✓ Progress data cleared successfully');
+            })
+            .catchError((e) {
+              logger.warning('Error clearing progress data: $e');
+            });
       }
     });
 

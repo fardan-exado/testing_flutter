@@ -307,7 +307,7 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
       logger.fine('User data cleared from storage');
 
       // Clear only sholat-related caches from Hive
-      logger.fine('Starting to clear sholat caches...');
+      logger.info('🗑️ Starting to clear sholat caches...');
 
       final cacheKeys = [
         CacheKeys.progressSholatWajibHariIni,
@@ -317,15 +317,33 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
       ];
 
       for (final key in cacheKeys) {
-        await CacheService.clearCache(key);
-        logger.fine('✓ Cleared cache: $key');
+        try {
+          // Verify before clearing
+          final beforeClear = CacheService.getCacheMetadata(key);
+          logger.info(
+            'Before clear $key: ${beforeClear != null ? "EXISTS (lastFetch: ${beforeClear.lastFetch})" : "NOT_EXISTS"}',
+          );
+
+          // Clear cache
+          await CacheService.clearCache(key);
+
+          // Verify after clearing
+          final afterClear = CacheService.getCacheMetadata(key);
+          if (afterClear != null) {
+            logger.warning('⚠️ Cache still exists after clear: $key');
+          } else {
+            logger.info('✓ Successfully cleared cache: $key');
+          }
+        } catch (e) {
+          logger.warning('Error clearing cache $key: $e');
+        }
       }
 
-      logger.fine('All sholat caches cleared successfully');
+      logger.info('All sholat caches cleared successfully');
 
-      // Also clear jadwal sholat cache to ensure fresh data on next login
-      await CacheService.clearCache(CacheKeys.jadwalSholat);
-      logger.fine('✓ Cleared jadwal sholat cache');
+      // NOTE: Tidak menghapus jadwal sholat cache agar guest user masih bisa lihat jadwal
+      // await CacheService.clearCache(CacheKeys.jadwalSholat);
+      logger.info('✓ Jadwal sholat cache retained for guest access');
 
       // Update state to unauthenticated
       state = {
