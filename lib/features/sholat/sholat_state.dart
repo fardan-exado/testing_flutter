@@ -1,4 +1,3 @@
-import 'package:test_flutter/data/models/progres_sholat/progress_sholat.dart';
 import 'package:test_flutter/data/models/sholat/sholat.dart';
 
 enum SholatStatus { initial, loading, loaded, error, refreshing, offline }
@@ -13,10 +12,13 @@ class SholatState {
   final String? localTime;
   final String? message;
   final bool isOffline;
-  final ProgresSholat progressWajibHariIni;
-  final ProgresSholat progressSunnahHariIni;
-  final ProgresSholat progressWajibRiwayat;
-  final ProgresSholat progressSunnahRiwayat;
+  // Progress Wajib Hari Ini: { total, statistik, detail }
+  final Map<String, dynamic> progressWajibHariIni;
+  // Progress Sunnah Hari Ini: List<{ sholat_sunnah, progres }>
+  final List<dynamic> progressSunnahHariIni;
+  // Riwayat: { 'yyyy-MM-dd': [...] }
+  final Map<String, dynamic> progressWajibRiwayat;
+  final Map<String, dynamic> progressSunnahRiwayat;
 
   const SholatState({
     required this.status,
@@ -40,7 +42,7 @@ class SholatState {
       sholatList: [],
       isOffline: false,
       progressWajibHariIni: {},
-      progressSunnahHariIni: {},
+      progressSunnahHariIni: [],
       progressWajibRiwayat: {},
       progressSunnahRiwayat: {},
     );
@@ -57,7 +59,7 @@ class SholatState {
     String? message,
     bool? isOffline,
     Map<String, dynamic>? progressWajibHariIni,
-    Map<String, dynamic>? progressSunnahHariIni,
+    List<dynamic>? progressSunnahHariIni,
     Map<String, dynamic>? progressWajibRiwayat,
     Map<String, dynamic>? progressSunnahRiwayat,
   }) {

@@ -28,7 +28,6 @@ class SholatService {
       startDate ??= now;
       endDate ??= now.add(const Duration(days: 3));
 
-      // Format date untuk Kemenag API (yyyy-MM-dd)
       final formatter = DateFormat('yyyy-MM-dd');
       final startDateStr = formatter.format(startDate);
       final endDateStr = formatter.format(endDate);
@@ -130,7 +129,7 @@ class SholatService {
   static Future<Map<String, dynamic>> getProgressSholatWajibHariIni() async {
     try {
       final response = await ApiClient.dio.get(
-        '/sholat/progres/wajib/hari-ini',
+        '/sholat/wajib/hari-ini',
       );
 
       final responseData = response.data as Map<String, dynamic>;
@@ -150,7 +149,7 @@ class SholatService {
   static Future<Map<String, dynamic>> getProgressSholatSunnahHariIni() async {
     try {
       final response = await ApiClient.dio.get(
-        '/sholat/progres/sunnah/hari-ini',
+        '/sholat/sunnah/hari-ini',
       );
 
       final responseData = response.data as Map<String, dynamic>;
@@ -169,7 +168,7 @@ class SholatService {
   // Get Progress Wajib Riwayat
   static Future<Map<String, dynamic>> getProgressSholatWajibRiwayat() async {
     try {
-      final response = await ApiClient.dio.get('/sholat/progres/wajib/riwayat');
+      final response = await ApiClient.dio.get('/sholat/wajib/riwayat');
 
       final responseData = response.data as Map<String, dynamic>;
 
@@ -188,7 +187,7 @@ class SholatService {
   static Future<Map<String, dynamic>> getProgressSholatSunnahRiwayat() async {
     try {
       final response = await ApiClient.dio.get(
-        '/sholat/progres/sunnah/riwayat',
+        '/sholat/sunnah/riwayat',
       );
 
       final responseData = response.data as Map<String, dynamic>;

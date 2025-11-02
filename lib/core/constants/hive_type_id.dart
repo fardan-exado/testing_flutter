@@ -13,10 +13,10 @@ abstract class HiveTypeId {
   static const int statistikSedekah = 11;
   static const int progresSholat = 12;
 
-  static const int progresSholatWajib = 13;
-  static const int progresSholatSunnah = 14;
-  static const int statistikSholatWajib = 15;
-  static const int statistikSholatSunnah = 16;
+  static const int progresWajibHariIni = 13;
+  static const int progresSunnahHariIni = 14;
+  static const int riwayatProgresWajib = 15;
+  static const int riwayatProgresSunnah = 16;
   static const int riwayatProgres = 17;
 
   static const int progresPuasaWajib = 18;

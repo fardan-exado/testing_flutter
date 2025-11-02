@@ -438,6 +438,8 @@ class SholatProvider extends StateNotifier<SholatState> {
   }
 
   /// Get progress untuk tanggal tertentu (UPDATED)
+  /// For wajib: returns Map<String, dynamic>
+  /// For sunnah today: converts List to Map for compatibility
   Future<Map<String, dynamic>> getProgressForDate(
     DateTime date,
     String jenis,
@@ -447,25 +449,33 @@ class SholatProvider extends StateNotifier<SholatState> {
         date.year == now.year && date.month == now.month && date.day == now.day;
 
     if (isToday) {
-      // Ambil dari progress hari ini
-      final progressData = jenis == 'wajib'
-          ? state.progressWajibHariIni
-          : state.progressSunnahHariIni;
-
-      // Jika cache kosong, fetch dari network
-      if (progressData.isEmpty) {
-        if (jenis == 'wajib') {
+      if (jenis == 'wajib') {
+        // Wajib: return Map directly
+        final progressData = state.progressWajibHariIni;
+        if (progressData.isEmpty) {
           await fetchProgressSholatWajibHariIni(forceRefresh: true);
-        } else {
+          return state.progressWajibHariIni;
+        }
+        return progressData;
+      } else {
+        // Sunnah: convert List to Map for compatibility
+        final progressList = state.progressSunnahHariIni;
+        if (progressList.isEmpty) {
           await fetchProgressSholatSunnahHariIni(forceRefresh: true);
         }
-        // Return updated data
-        return jenis == 'wajib'
-            ? state.progressWajibHariIni
-            : state.progressSunnahHariIni;
+        // Convert list to map { slug: { sholat_sunnah, progres } }
+        final Map<String, dynamic> progressMap = {};
+        for (var item in state.progressSunnahHariIni) {
+          if (item is Map<String, dynamic>) {
+            final sholat = item['sholat_sunnah'] as Map<String, dynamic>?;
+            if (sholat != null) {
+              final slug = sholat['slug'] as String;
+              progressMap[slug] = item;
+            }
+          }
+        }
+        return progressMap;
       }
-
-      return progressData;
     } else {
       // Ambil dari riwayat berdasarkan tanggal
       final formatter = DateFormat('yyyy-MM-dd');
@@ -816,5 +826,16 @@ class SholatProvider extends StateNotifier<SholatState> {
     await LocationService.clear();
     state = SholatState.initial();
     logger.info('Cleared all sholat cache and location');
+  }
+
+  /// Clear progress data only (called on logout)
+  void clearProgressData() {
+    state = state.copyWith(
+      progressWajibHariIni: <String, dynamic>{},
+      progressSunnahHariIni: [], // List kosong untuk sunnah
+      progressWajibRiwayat: <String, dynamic>{},
+      progressSunnahRiwayat: <String, dynamic>{},
+    );
+    logger.info('Cleared all progress data from state');
   }
 }

@@ -15,6 +15,8 @@ import 'package:test_flutter/features/sholat/sholat_provider.dart';
 import 'package:test_flutter/features/sholat/sholat_state.dart';
 import 'package:test_flutter/features/sholat/widgets/sholat_card.dart';
 import 'package:test_flutter/features/sholat/widgets/sholat_header.dart';
+import 'package:test_flutter/features/sholat/widgets/sholat_calendar_modal.dart';
+import 'package:test_flutter/features/sholat/widgets/sholat_info_card.dart';
 
 class SholatPage extends ConsumerStatefulWidget {
   const SholatPage({super.key});
@@ -237,6 +239,29 @@ class _SholatPageState extends ConsumerState<SholatPage>
       context,
       message: 'Anda harus login untuk menggunakan fitur ini',
       type: ToastType.warning,
+    );
+  }
+
+  void _showCalendar() async {
+    final authState = ref.read(authProvider);
+    if (authState['status'] != AuthState.authenticated) {
+      _showLoginRequired();
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => SholatCalendarModal(
+        initialDate: _selectedDate,
+        onDateSelected: (date) async {
+          setState(() {
+            _selectedDate = date;
+          });
+          await _fetchProgressData();
+        },
+      ),
     );
   }
 
@@ -967,6 +992,11 @@ class _SholatPageState extends ConsumerState<SholatPage>
             state.progressSunnahHariIni as List<dynamic>? ?? [];
         final Map<String, dynamic> formattedProgress = {};
 
+        logger.info('=== PARSING PROGRESS SUNNAH ===');
+        logger.info('Progress data type: ${progressToday.runtimeType}');
+        logger.info('Progress count: ${progressToday.length}');
+
+        // Loop array untuk build progress data
         for (var item in progressToday) {
           final sholatSunnah = item['sholat_sunnah'] as Map<String, dynamic>?;
           final progres = item['progres'] as bool? ?? false;
@@ -976,12 +1006,15 @@ class _SholatPageState extends ConsumerState<SholatPage>
             final dbKey = slug.replaceAll('-', '_');
 
             formattedProgress[dbKey] = {
+              'id': item['id'],
               'completed': progres,
               'status': progres ? 'tepat_waktu' : '',
             };
+            logger.info('$dbKey: progres=$progres');
           }
         }
 
+        logger.info('=== FORMATTED SUNNAH PROGRESS: $formattedProgress ===');
         return formattedProgress;
       }
     } else {
@@ -1041,6 +1074,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
         final total = progressToday['total'] as int? ?? 0;
         return total;
       } else {
+        // Untuk sunnah, hitung dari array yang progres = true
         final progressToday =
             state.progressSunnahHariIni as List<dynamic>? ?? [];
         return progressToday.where((item) => item['progres'] == true).length;
@@ -1057,14 +1091,12 @@ class _SholatPageState extends ConsumerState<SholatPage>
     if (_isWajibTab) {
       return 5;
     } else {
-      // Untuk sunnah, ambil dari state
-      final state = ref.watch(sholatProvider);
-      if (_isToday) {
-        final progressToday =
-            state.progressSunnahHariIni as List<dynamic>? ?? [];
-        return progressToday.length;
-      }
-      return 10; // default
+      // Untuk sunnah, hitung dari jadwal sunnah yang tersedia
+      final jadwal = ref
+          .read(sholatProvider.notifier)
+          .getJadwalByDate(_selectedDate);
+      final sunnahList = jadwal?.sunnah ?? [];
+      return sunnahList.length;
     }
   }
 
@@ -1101,6 +1133,62 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
   String get _hijriDate => FormatHelper.getHijriDate(_selectedDate);
 
+  // Helper methods for prayer time validation
+  bool _isPrayerTimeArrived(String prayerName, dynamic jadwal) {
+    if (jadwal == null) return false;
+    if (!_isToday) return true; // Untuk tanggal lain, selalu enable
+
+    final now = TimeOfDay.now();
+    String? prayerTimeStr;
+
+    switch (prayerName) {
+      case 'Shubuh':
+        prayerTimeStr = jadwal.wajib.shubuh;
+        break;
+      case 'Dzuhur':
+        prayerTimeStr = jadwal.wajib.dzuhur;
+        break;
+      case 'Ashar':
+        prayerTimeStr = jadwal.wajib.ashar;
+        break;
+      case 'Maghrib':
+        prayerTimeStr = jadwal.wajib.maghrib;
+        break;
+      case 'Isya':
+        prayerTimeStr = jadwal.wajib.isya;
+        break;
+    }
+
+    if (prayerTimeStr == null || prayerTimeStr == '--:--') return false;
+
+    final prayerTime = _parseTime(prayerTimeStr);
+    return !_isTimeBefore(now, prayerTime);
+  }
+
+  TimeOfDay _parseTime(String timeStr) {
+    try {
+      final parts = timeStr.split(':');
+      if (parts.length == 2) {
+        return TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      }
+    } catch (e) {
+      logger.warning('Error parsing time: $timeStr - $e');
+    }
+    return const TimeOfDay(hour: 0, minute: 0);
+  }
+
+  bool _isTimeBefore(TimeOfDay current, TimeOfDay target) {
+    if (current.hour < target.hour) {
+      return true;
+    } else if (current.hour == target.hour) {
+      return current.minute < target.minute;
+    }
+    return false;
+  }
+
   // Responsive helpers
   double _px(BuildContext c, double base) {
     if (ResponsiveHelper.isSmallScreen(c)) return base;
@@ -1128,6 +1216,15 @@ class _SholatPageState extends ConsumerState<SholatPage>
     final jadwal = ref
         .read(sholatProvider.notifier)
         .getJadwalByDate(_selectedDate);
+
+    // Clear progress data when user logs out
+    ref.listen<Map<String, dynamic>>(authProvider, (previous, next) {
+      if (previous?['status'] == AuthState.authenticated &&
+          next['status'] != AuthState.authenticated) {
+        logger.info('User logged out, clearing progress data...');
+        ref.read(sholatProvider.notifier).clearProgressData();
+      }
+    });
 
     if (jadwal != null) {
       _updateAlarmTimes(jadwal);
@@ -1268,37 +1365,75 @@ class _SholatPageState extends ConsumerState<SholatPage>
   }
 
   Widget _buildTabs(bool small) {
-    return Container(
-      margin: _hpad(context).add(EdgeInsets.only(top: _px(context, 12))),
-      padding: EdgeInsets.all(_px(context, 4)),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        indicator: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Padding(
+      padding: _hpad(context).add(EdgeInsets.only(top: _px(context, 12))),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.all(_px(context, 4)),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: AppTheme.primaryBlue,
+                unselectedLabelColor: AppTheme.onSurfaceVariant,
+                labelStyle: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: _ts(context, small ? 13 : 14),
+                ),
+                dividerColor: Colors.transparent,
+                tabs: const [
+                  Tab(text: 'Wajib'),
+                  Tab(text: 'Sunnah'),
+                ],
+              ),
             ),
-          ],
-        ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        labelColor: AppTheme.primaryBlue,
-        unselectedLabelColor: AppTheme.onSurfaceVariant,
-        labelStyle: TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: _ts(context, small ? 13 : 14),
-        ),
-        dividerColor: Colors.transparent,
-        tabs: const [
-          Tab(text: 'Wajib'),
-          Tab(text: 'Sunnah'),
+          ),
+          const SizedBox(width: 12),
+          // Calendar button
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.primaryBlue,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _showCalendar,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: EdgeInsets.all(_px(context, 12)),
+                  child: Icon(
+                    Icons.calendar_month,
+                    color: Colors.white,
+                    size: _px(context, 24),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1519,6 +1654,18 @@ class _SholatPageState extends ConsumerState<SholatPage>
     final isLoggedIn = authState['status'] == AuthState.authenticated;
     final progressData = _currentProgressData;
 
+    // Info-only items (Imsak & Sunrise)
+    final infoList = {
+      'Imsak': {
+        'time': jadwal?.wajib.imsak ?? '--:--',
+        'icon': Icons.dark_mode_rounded,
+      },
+      'Sunrise': {
+        'time': jadwal?.wajib.sunrise ?? '--:--',
+        'icon': Icons.wb_sunny_rounded,
+      },
+    };
+
     final wajibList = {
       'Shubuh': {
         'time': jadwal?.wajib.shubuh ?? '--:--',
@@ -1547,20 +1694,40 @@ class _SholatPageState extends ConsumerState<SholatPage>
       },
     };
 
+    // Total items = info cards (2) + wajib cards (5) + test card (1 in debug)
+    final totalInfoItems = infoList.length;
+    final totalWajibItems = wajibList.length;
+    final hasTestCard = kDebugMode;
+    final totalItems = totalInfoItems + totalWajibItems + (hasTestCard ? 1 : 0);
+
     return ListView.builder(
       padding: _hpad(context).add(EdgeInsets.only(bottom: _px(context, 16))),
       physics: const BouncingScrollPhysics(),
-      // UPDATED: Tambah 1 untuk test card di debug mode
-      itemCount: kDebugMode ? wajibList.length + 1 : wajibList.length,
+      itemCount: totalItems,
       itemBuilder: (_, i) {
-        // UPDATED: Test card di posisi pertama (debug mode only)
+        // Test card di posisi pertama (debug mode only)
         if (kDebugMode && i == 0) {
           return _buildTestAlarmCard();
         }
 
-        // UPDATED: Adjust index jika ada test card
-        final actualIndex = kDebugMode ? i - 1 : i;
-        final name = wajibList.keys.elementAt(actualIndex);
+        // Adjust index jika ada test card
+        final adjustedIndex = kDebugMode ? i - 1 : i;
+
+        // Info cards (Imsak & Sunrise)
+        if (adjustedIndex < totalInfoItems) {
+          final name = infoList.keys.elementAt(adjustedIndex);
+          final infoData = infoList[name]!;
+          return SholatInfoCard(
+            name: name,
+            time: infoData['time'] as String,
+            icon: infoData['icon'] as IconData,
+            jenis: 'wajib',
+          );
+        }
+
+        // Wajib cards (Shubuh, Dzuhur, Ashar, Maghrib, Isya)
+        final wajibIndex = adjustedIndex - totalInfoItems;
+        final name = wajibList.keys.elementAt(wajibIndex);
         final jadwalData = wajibList[name]!;
         final dbKey = jadwalData['dbKey'] as String;
         final time = jadwalData['time'] as String;
@@ -1571,6 +1738,9 @@ class _SholatPageState extends ConsumerState<SholatPage>
           'Sholat: $name, dbKey: $dbKey, isCompleted: $isCompleted, progress: $sholatProgress',
         );
 
+        // Check if prayer time has arrived
+        final bool timeArrived = _isPrayerTimeArrived(name, jadwal);
+
         return SholatCard(
           name: name,
           jadwalData: jadwalData,
@@ -1579,11 +1749,24 @@ class _SholatPageState extends ConsumerState<SholatPage>
           isJamaah: sholatProgress?['is_jamaah'] as bool? ?? false,
           lokasi: sholatProgress?['lokasi'] as String? ?? '',
           jenis: 'wajib',
-          canTap: jadwal != null && time != '--:--',
+          canTap:
+              jadwal != null &&
+              time != '--:--' &&
+              (timeArrived || isCompleted || !_isToday),
           isAlarmActive: _wajibAlarms[name] ?? false,
           onTap: () async {
             if (!isLoggedIn) {
               _showLoginRequired();
+              return;
+            }
+
+            // Jika waktu belum tiba untuk hari ini
+            if (_isToday && !timeArrived && !isCompleted) {
+              showMessageToast(
+                context,
+                message: 'Waktu sholat $name belum tiba',
+                type: ToastType.warning,
+              );
               return;
             }
 
@@ -1683,7 +1866,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
     final progressData = _currentProgressData;
 
     // Ambil list sunnah dari jadwal (dari API)
-    final sunnahList = jadwal?.sunnah as List<dynamic>? ?? [];
+    final sunnahList = jadwal?.sunnah ?? [];
 
     // Map icon berdasarkan slug
     IconData _getIconBySlug(String slug) {
@@ -2059,5 +2242,3 @@ class _SholatPageState extends ConsumerState<SholatPage>
     );
   }
 }
-
-// ...existing code...

@@ -1,92 +1,42 @@
-class ProgresSholat {
-  final int id;
-  final int userId;
-  final String jenis; // wajib/sunnah
-  final String sholat;
-  final bool isOnTime; // "1" -> true, "0" -> false
-  final bool isJamaah; // "1" -> true, "0" -> false
-  final String lokasi;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+import 'package:test_flutter/data/models/sholat/sholat.dart';
 
-  ProgresSholat({
-    required this.id,
-    required this.userId,
-    required this.jenis,
-    required this.sholat,
-    required this.isOnTime,
-    required this.isJamaah,
-    required this.lokasi,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  static bool _parseBool(dynamic value) {
-    if (value is String) return value == '1';
-    if (value is int) return value == 1;
-    return value ?? false;
+bool _parseBool(dynamic value) {
+  if (value is bool) return value;
+  if (value is int) return value == 1;
+  if (value is String) {
+    final v = value.toLowerCase();
+    return v == '1' || v == 'true';
   }
-
-  factory ProgresSholat.fromJson(Map<String, dynamic> json) {
-    return ProgresSholat(
-      id: json['id'] as int? ?? 0,
-      userId: json['user_id'] as int? ?? 0,
-      jenis: json['jenis'] as String? ?? '',
-      sholat: json['sholat'] as String? ?? '',
-      isOnTime: _parseBool(json['is_on_time']),
-      isJamaah: _parseBool(json['is_jamaah']),
-      lokasi: json['lokasi'] as String? ?? '',
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'user_id': userId,
-      'jenis': jenis,
-      'sholat': sholat,
-      'is_on_time': isOnTime ? '1' : '0',
-      'is_jamaah': isJamaah ? '1' : '0',
-      'lokasi': lokasi,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-    };
-  }
+  return false;
 }
 
-class ProgresSholatWajib {
+// =====================================================
+// PROGRES SHOLAT WAJIB HARI INI
+// =====================================================
+class ProgresWajibHariIni {
   final int total;
   final StatistikSholatWajib statistik;
-  final List<ProgresSholat> detail;
+  final List<ProgresWajibDetail> detail;
 
-  ProgresSholatWajib({
+  ProgresWajibHariIni({
     required this.total,
     required this.statistik,
     required this.detail,
   });
 
-  factory ProgresSholatWajib.empty() {
-    return ProgresSholatWajib(
-      total: 0,
-      statistik: StatistikSholatWajib.empty(),
-      detail: [],
-    );
-  }
-
-  factory ProgresSholatWajib.fromJson(Map<String, dynamic> json) {
-    var detailList = json['detail'] as List? ?? [];
-    List<ProgresSholat> progresDetails = detailList
-        .map((i) => ProgresSholat.fromJson(i))
+  factory ProgresWajibHariIni.fromJson(Map<String, dynamic> json) {
+    final detailList = (json['detail'] as List? ?? [])
+        .map((e) => ProgresWajibDetail.fromJson(e))
         .toList();
 
-    return ProgresSholatWajib(
-      total: json['total'] as int? ?? 0,
-      statistik: json['statistik'] != null
-          ? StatistikSholatWajib.fromJson(json['statistik'])
-          : StatistikSholatWajib.empty(),
-      detail: progresDetails,
+    return ProgresWajibHariIni(
+      total: json['total'] is int
+          ? json['total']
+          : int.tryParse(json['total']?.toString() ?? '') ?? 0,
+      statistik: StatistikSholatWajib.fromJson(
+        json['statistik'] as Map<String, dynamic>? ?? {},
+      ),
+      detail: detailList,
     );
   }
 
@@ -94,202 +44,243 @@ class ProgresSholatWajib {
     return {
       'total': total,
       'statistik': statistik.toJson(),
-      'detail': detail.map((p) => p.toJson()).toList(),
+      'detail': detail.map((e) => e.toJson()).toList(),
     };
   }
 }
 
 class StatistikSholatWajib {
-  final bool subuh;
+  final bool shubuh;
   final bool dzuhur;
   final bool ashar;
   final bool maghrib;
   final bool isya;
 
   StatistikSholatWajib({
-    required this.subuh,
+    required this.shubuh,
     required this.dzuhur,
     required this.ashar,
     required this.maghrib,
     required this.isya,
   });
 
-  // Factory constructor untuk membuat instance kosong
-  factory StatistikSholatWajib.empty() {
-    return StatistikSholatWajib(
-      subuh: false,
-      dzuhur: false,
-      ashar: false,
-      maghrib: false,
-      isya: false,
-    );
-  }
-
   factory StatistikSholatWajib.fromJson(Map<String, dynamic> json) {
     return StatistikSholatWajib(
-      subuh: json['subuh'] as bool? ?? false,
-      dzuhur: json['dzuhur'] as bool? ?? false,
-      ashar: json['ashar'] as bool? ?? false,
-      maghrib: json['maghrib'] as bool? ?? false,
-      isya: json['isya'] as bool? ?? false,
+      shubuh: _parseBool(json['shubuh'] ?? json['subuh'] ?? false),
+      dzuhur: _parseBool(json['dzuhur']),
+      ashar: _parseBool(json['ashar']),
+      maghrib: _parseBool(json['maghrib']),
+      isya: _parseBool(json['isya']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'subuh': subuh,
-      'dzuhur': dzuhur,
-      'ashar': ashar,
-      'maghrib': maghrib,
-      'isya': isya,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'shubuh': shubuh,
+    'dzuhur': dzuhur,
+    'ashar': ashar,
+    'maghrib': maghrib,
+    'isya': isya,
+  };
 }
 
-class ProgresSholatSunnah {
-  final int total;
-  final StatistikSholatSunnah statistik;
-  final List<ProgresSholat> detail;
+class ProgresWajibDetail {
+  final int id;
+  final int userId;
+  final int sholatWajibId;
+  final String status;
+  final bool isJamaah;
+  final String lokasi;
+  final String tanggal;
+  final String? keterangan;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  ProgresSholatSunnah({
-    required this.total,
-    required this.statistik,
-    required this.detail,
+  ProgresWajibDetail({
+    required this.id,
+    required this.userId,
+    required this.sholatWajibId,
+    required this.status,
+    required this.isJamaah,
+    required this.lokasi,
+    required this.tanggal,
+    this.keterangan,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  factory ProgresSholatSunnah.empty() {
-    return ProgresSholatSunnah(
-      total: 0,
-      statistik: StatistikSholatSunnah.empty(),
-      detail: [],
+  factory ProgresWajibDetail.fromJson(Map<String, dynamic> json) {
+    return ProgresWajibDetail(
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      userId: int.tryParse(json['user_id'].toString()) ?? 0,
+      sholatWajibId: int.tryParse(json['sholat_wajib_id'].toString()) ?? 0,
+      status: json['status']?.toString() ?? '',
+      isJamaah: _parseBool(json['is_jamaah']),
+      lokasi: json['lokasi']?.toString() ?? '',
+      tanggal: json['tanggal']?.toString() ?? '',
+      keterangan: json['keterangan']?.toString(),
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 
-  factory ProgresSholatSunnah.fromJson(Map<String, dynamic> json) {
-    var detailList = json['detail'] as List? ?? [];
-    List<ProgresSholat> progresDetails = detailList
-        .map((i) => ProgresSholat.fromJson(i))
-        .toList();
-
-    return ProgresSholatSunnah(
-      total: json['total'] as int? ?? 0,
-      statistik: json['statistik'] != null
-          ? StatistikSholatSunnah.fromJson(json['statistik'])
-          : StatistikSholatSunnah.empty(),
-      detail: progresDetails,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'total': total,
-      'statistik': statistik.toJson(),
-      'detail': detail.map((p) => p.toJson()).toList(),
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'user_id': userId,
+    'sholat_wajib_id': sholatWajibId,
+    'status': status,
+    'is_jamaah': isJamaah ? 1 : 0,
+    'lokasi': lokasi,
+    'tanggal': tanggal,
+    'keterangan': keterangan,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+  };
 }
 
-/// Model untuk objek "statistik" pada respons Sholat Sunnah
-class StatistikSholatSunnah {
-  final bool tahajud;
-  final bool witir;
-  final bool dhuha;
-  final bool qabliyahSubuh;
-  final bool qabliyahDzuhur;
-  final bool baDiyahDzuhur;
-  final bool qabliyahAshar;
-  final bool baDiyahMaghrib;
-  final bool qabliyahIsya;
-  final bool baDiyahIsya;
+// =====================================================
+// RIWAYAT PROGRES WAJIB
+// =====================================================
+class RiwayatProgresWajib {
+  final Map<String, List<ProgresWajibDetail>> data;
 
-  StatistikSholatSunnah({
-    required this.tahajud,
-    required this.witir,
-    required this.dhuha,
-    required this.qabliyahSubuh,
-    required this.qabliyahDzuhur,
-    required this.baDiyahDzuhur,
-    required this.qabliyahAshar,
-    required this.baDiyahMaghrib,
-    required this.qabliyahIsya,
-    required this.baDiyahIsya,
+  RiwayatProgresWajib({required this.data});
+
+  factory RiwayatProgresWajib.fromJson(Map<String, dynamic> json) {
+    final Map<String, List<ProgresWajibDetail>> riwayat = {};
+    json.forEach((tanggal, list) {
+      if (list is List) {
+        riwayat[tanggal] = list
+            .map((item) => ProgresWajibDetail.fromJson(item))
+            .toList();
+      }
+    });
+    return RiwayatProgresWajib(data: riwayat);
+  }
+
+  Map<String, dynamic> toJson() => data.map(
+    (tgl, list) => MapEntry(tgl, list.map((e) => e.toJson()).toList()),
+  );
+}
+
+// =====================================================
+// PROGRES SHOLAT SUNNAH HARI INI
+// =====================================================
+class ProgresSunnahHariIni {
+  final List<ProgresSunnahItem> data;
+
+  ProgresSunnahHariIni({required this.data});
+
+  factory ProgresSunnahHariIni.fromJson(List<dynamic> json) {
+    return ProgresSunnahHariIni(
+      data: json.map((e) => ProgresSunnahItem.fromJson(e)).toList(),
+    );
+  }
+
+  List<Map<String, dynamic>> toJson() => data.map((e) => e.toJson()).toList();
+}
+
+class ProgresSunnahItem {
+  final SholatSunnah sholatSunnah;
+  final bool progres;
+
+  ProgresSunnahItem({required this.sholatSunnah, required this.progres});
+
+  factory ProgresSunnahItem.fromJson(Map<String, dynamic> json) {
+    return ProgresSunnahItem(
+      sholatSunnah: SholatSunnah.fromJson(json['sholat_sunnah']),
+      progres: _parseBool(json['progres']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'sholat_sunnah': sholatSunnah.toJson(),
+    'progres': progres,
+  };
+}
+
+class ProgresSunnahDetail {
+  final int id;
+  final int userId;
+  final int sholatSunnahId;
+  final String status;
+  final bool isJamaah;
+  final String lokasi;
+  final String tanggal;
+  final String? keterangan;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  ProgresSunnahDetail({
+    required this.id,
+    required this.userId,
+    required this.sholatSunnahId,
+    required this.status,
+    required this.isJamaah,
+    required this.lokasi,
+    required this.tanggal,
+    this.keterangan,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  factory StatistikSholatSunnah.empty() {
-    return StatistikSholatSunnah(
-      tahajud: false,
-      witir: false,
-      dhuha: false,
-      qabliyahSubuh: false,
-      qabliyahDzuhur: false,
-      baDiyahDzuhur: false,
-      qabliyahAshar: false,
-      baDiyahMaghrib: false,
-      qabliyahIsya: false,
-      baDiyahIsya: false,
+  factory ProgresSunnahDetail.fromJson(Map<String, dynamic> json) {
+    return ProgresSunnahDetail(
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      userId: int.tryParse(json['user_id'].toString()) ?? 0,
+      sholatSunnahId: int.tryParse(json['sholat_sunnah_id'].toString()) ?? 0,
+      status: json['status']?.toString() ?? '',
+      isJamaah: _parseBool(json['is_jamaah']),
+      lokasi: json['lokasi']?.toString() ?? '',
+      tanggal: json['tanggal']?.toString() ?? '',
+      keterangan: json['keterangan']?.toString(),
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 
-  factory StatistikSholatSunnah.fromJson(Map<String, dynamic> json) {
-    return StatistikSholatSunnah(
-      tahajud: json['tahajud'] as bool? ?? false,
-      witir: json['witir'] as bool? ?? false,
-      dhuha: json['dhuha'] as bool? ?? false,
-      qabliyahSubuh: json['qabliyah_subuh'] as bool? ?? false,
-      qabliyahDzuhur: json['qabliyah_dzuhur'] as bool? ?? false,
-      baDiyahDzuhur: json['ba_diyah_dzuhur'] as bool? ?? false,
-      qabliyahAshar: json['qabliyah_ashar'] as bool? ?? false,
-      baDiyahMaghrib: json['ba_diyah_maghrib'] as bool? ?? false,
-      qabliyahIsya: json['qabliyah_isya'] as bool? ?? false,
-      baDiyahIsya: json['ba_diyah_isya'] as bool? ?? false,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'tahajud': tahajud,
-      'witir': witir,
-      'dhuha': dhuha,
-      'qabliyah_subuh': qabliyahSubuh,
-      'qabliyah_dzuhur': qabliyahDzuhur,
-      'ba_diyah_dzuhur': baDiyahDzuhur,
-      'qabliyah_ashar': qabliyahAshar,
-      'ba_diyah_maghrib': baDiyahMaghrib,
-      'qabliyah_isya': qabliyahIsya,
-      'ba_diyah_isya': baDiyahIsya,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'user_id': userId,
+    'sholat_sunnah_id': sholatSunnahId,
+    'status': status,
+    'is_jamaah': isJamaah ? 1 : 0,
+    'lokasi': lokasi,
+    'tanggal': tanggal,
+    'keterangan': keterangan,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+  };
 }
 
-class RiwayatProgres {
-  final Map<String, List<ProgresSholat>> data;
+// =====================================================
+// RIWAYAT PROGRES SUNNAH
+// =====================================================
+class RiwayatProgresSunnah {
+  final Map<String, List<ProgresSunnahDetail>> data;
 
-  RiwayatProgres({required this.data});
+  RiwayatProgresSunnah({required this.data});
 
-  factory RiwayatProgres.fromJson(Map<String, dynamic> json) {
-    final Map<String, List<ProgresSholat>> riwayatData = json.map((
-      tanggal,
-      listData,
-    ) {
-      final listProgres = listData is List
-          ? listData
-                .map(
-                  (item) =>
-                      ProgresSholat.fromJson(item as Map<String, dynamic>),
-                )
-                .toList()
-          : <ProgresSholat>[]; // Jika bukan list, kembalikan list kosong
-
-      return MapEntry(tanggal, listProgres);
+  factory RiwayatProgresSunnah.fromJson(Map<String, dynamic> json) {
+    final Map<String, List<ProgresSunnahDetail>> riwayat = {};
+    json.forEach((tanggal, list) {
+      if (list is List) {
+        riwayat[tanggal] = list
+            .map((item) => ProgresSunnahDetail.fromJson(item))
+            .toList();
+      }
     });
-
-    return RiwayatProgres(data: riwayatData);
+    return RiwayatProgresSunnah(data: riwayat);
   }
 
-  Map<String, dynamic> toJson() {
-    return data.map((tanggal, listProgres) {
-      final listJson = listProgres.map((item) => item.toJson()).toList();
-      return MapEntry(tanggal, listJson);
-    });
-  }
+  Map<String, dynamic> toJson() => data.map(
+    (tgl, list) => MapEntry(tgl, list.map((e) => e.toJson()).toList()),
+  );
 }
