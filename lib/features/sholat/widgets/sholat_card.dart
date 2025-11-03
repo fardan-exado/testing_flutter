@@ -196,17 +196,13 @@ class SholatCard extends StatelessWidget {
           : Colors.grey.shade100,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        onTap: canTap ? onAlarmTap : null,
+        onTap: onAlarmTap, // Alarm button selalu aktif, tidak tergantung canTap
         borderRadius: BorderRadius.circular(10),
         child: Padding(
           padding: EdgeInsets.all(_px(context, 8)),
           child: Icon(
-            isAlarmActive && canTap
-                ? Icons.alarm_on_rounded
-                : Icons.alarm_rounded,
-            color: isAlarmActive && canTap
-                ? AppTheme.primaryBlue
-                : Colors.grey.shade400,
+            isAlarmActive ? Icons.alarm_on_rounded : Icons.alarm_rounded,
+            color: isAlarmActive ? AppTheme.primaryBlue : Colors.grey.shade400,
             size: _px(context, 18),
           ),
         ),

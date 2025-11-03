@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
@@ -5,8 +6,32 @@ import 'package:test_flutter/data/models/sholat/sholat.dart';
 import 'package:test_flutter/features/home/home_provider.dart';
 import 'package:test_flutter/features/home/home_state.dart';
 
-class PrayerTimeDisplay extends ConsumerWidget {
+class PrayerTimeDisplay extends ConsumerStatefulWidget {
   const PrayerTimeDisplay({super.key});
+
+  @override
+  ConsumerState<PrayerTimeDisplay> createState() => _PrayerTimeDisplayState();
+}
+
+class _PrayerTimeDisplayState extends ConsumerState<PrayerTimeDisplay> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timer untuk update countdown setiap detik
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   double _t(BuildContext context, double base) =>
       ResponsiveHelper.adaptiveTextSize(context, base);
@@ -25,7 +50,7 @@ class PrayerTimeDisplay extends ConsumerWidget {
   double _icon(BuildContext context, double base) => _px(context, base);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final homeState = ref.watch(homeProvider);
     final status = homeState.status;
     final sholat = homeState.jadwalSholat;
@@ -45,26 +70,6 @@ class PrayerTimeDisplay extends ConsumerWidget {
     return const SizedBox.shrink();
   }
 
-  Widget _buildLoadingState(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(
-          width: 40,
-          height: 40,
-          child: CircularProgressIndicator(
-            strokeWidth: 3,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        ),
-        SizedBox(height: _px(context, 12)),
-        Text(
-          'Loading prayer schedule...',
-          style: TextStyle(color: Colors.white70, fontSize: _t(context, 14)),
-        ),
-      ],
-    );
-  }
-
   Widget _buildErrorState(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
@@ -79,7 +84,7 @@ class PrayerTimeDisplay extends ConsumerWidget {
             horizontal: ResponsiveHelper.getScreenWidth(context) * 0.04,
           ),
           child: Text(
-            'Failed to load prayer schedule',
+            'Gagal memuat jadwal sholat',
             style: TextStyle(color: Colors.white70, fontSize: _t(context, 14)),
             textAlign: TextAlign.center,
           ),
@@ -95,7 +100,7 @@ class PrayerTimeDisplay extends ConsumerWidget {
                 );
           },
           child: Text(
-            'Retry',
+            'Coba Lagi',
             style: TextStyle(
               color: Colors.white,
               fontSize: _t(context, 14),
@@ -138,7 +143,7 @@ class PrayerTimeDisplay extends ConsumerWidget {
         ),
         SizedBox(height: _px(context, 4)),
         Text(
-          '$currentPrayerName at $nextPrayerTime',
+          '$currentPrayerName pukul $nextPrayerTime',
           style: TextStyle(
             color: Colors.white,
             fontSize: _t(context, 16),
@@ -172,7 +177,7 @@ class PrayerTimeDisplay extends ConsumerWidget {
         ),
         SizedBox(height: _px(context, 8)),
         Text(
-          'Prayer times unavailable',
+          'Jadwal sholat tidak tersedia',
           style: TextStyle(color: Colors.white70, fontSize: _t(context, 14)),
         ),
         SizedBox(height: _px(context, 8)),
@@ -186,7 +191,7 @@ class PrayerTimeDisplay extends ConsumerWidget {
                 );
           },
           child: Text(
-            'Refresh',
+            'Muat Ulang',
             style: TextStyle(color: Colors.white, fontSize: _t(context, 12)),
           ),
         ),

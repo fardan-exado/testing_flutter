@@ -38,7 +38,7 @@ class PrayerTimesRow extends ConsumerWidget {
         height: _px(context, 100),
         child: Center(
           child: Text(
-            'Loading prayer times...',
+            'Memuat jadwal sholat...',
             style: TextStyle(color: Colors.white70, fontSize: _t(context, 14)),
           ),
         ),
@@ -47,6 +47,9 @@ class PrayerTimesRow extends ConsumerWidget {
 
     final notifier = ref.read(homeProvider.notifier);
     final activePrayerName = notifier.getActivePrayerName();
+
+    // Cek apakah sudah lewat semua waktu sholat (setelah Isya, hari yang sama)
+    final showAllActive = notifier.isAfterAllPrayers();
 
     final screenHeight = MediaQuery.of(context).size.height;
     final isCompact = screenHeight < 700;
@@ -59,26 +62,26 @@ class PrayerTimesRow extends ConsumerWidget {
         children: [
           _buildPrayerTimeWidget(
             context,
-            'Fajr',
+            'Shubuh',
             sholat.wajib.shubuh,
             Icons.nightlight_round,
-            activePrayerName == 'Fajr',
+            showAllActive || activePrayerName == 'Shubuh',
             isCompact: isCompact,
           ),
           _buildPrayerTimeWidget(
             context,
-            'Dzuhr',
+            'Dzuhur',
             sholat.wajib.dzuhur,
             Icons.wb_sunny_rounded,
-            activePrayerName == 'Dzuhr',
+            showAllActive || activePrayerName == 'Dzuhur',
             isCompact: isCompact,
           ),
           _buildPrayerTimeWidget(
             context,
-            'Asr',
+            'Ashar',
             sholat.wajib.ashar,
             Icons.wb_twilight_rounded,
-            activePrayerName == 'Asr',
+            showAllActive || activePrayerName == 'Ashar',
             isCompact: isCompact,
           ),
           _buildPrayerTimeWidget(
@@ -86,15 +89,15 @@ class PrayerTimesRow extends ConsumerWidget {
             'Maghrib',
             sholat.wajib.maghrib,
             Icons.wb_sunny_outlined,
-            activePrayerName == 'Maghrib',
+            showAllActive || activePrayerName == 'Maghrib',
             isCompact: isCompact,
           ),
           _buildPrayerTimeWidget(
             context,
-            'Isha',
+            'Isya',
             sholat.wajib.isya,
             Icons.dark_mode_rounded,
-            activePrayerName == 'Isha',
+            showAllActive || activePrayerName == 'Isya',
             isCompact: isCompact,
           ),
         ],
