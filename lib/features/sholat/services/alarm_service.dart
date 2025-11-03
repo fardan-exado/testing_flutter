@@ -86,10 +86,12 @@ class AlarmService {
       }
       logger.info('Alarm stopped by user');
     } else if (response.payload != null) {
-      // FIX: Ketika notification muncul (baik tap maupun scheduled), play adzan
-      logger.info('Playing adzan for ${response.payload}');
+      // Ketika user tap notification (bukan stop button), play adzan jika belum play
+      logger.info('User tapped notification for ${response.payload}');
       if (!_isAdzanPlaying) {
+        logger.info('Playing adzan for ${response.payload}');
         await _playAdzan();
+        await _showImmediateNotification(response.payload!);
       }
     }
   }
@@ -269,34 +271,32 @@ class AlarmService {
         showsUserInterface: true,
       );
 
-      // FIX: Aktifkan sound di notification untuk trigger saat app ditutup
-      final AndroidNotificationDetails
-      androidDetails = AndroidNotificationDetails(
-        'prayer_alarm_channel',
-        'Alarm Sholat',
-        channelDescription: 'Notifikasi pengingat waktu sholat',
-        importance: Importance.max,
-        priority: Priority.high,
-        showWhen: true,
-        enableVibration: true,
-        vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
-        playSound:
-            true, // FIX: Set true untuk trigger notification saat app closed
-        sound: const RawResourceAndroidNotificationSound(
-          'adzan',
-        ), // Use custom sound
-        fullScreenIntent: true,
-        category: AndroidNotificationCategory.alarm,
-        ongoing: true, // FIX: Prevent swipe dismiss
-        autoCancel: false,
-        actions: const <AndroidNotificationAction>[stopAction],
-      );
+      // Notification details untuk scheduled alarm
+      // NOTE: Sound dinonaktifkan karena audio dimainkan via AudioPlayer
+      final AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+            'prayer_alarm_channel',
+            'Alarm Sholat',
+            channelDescription: 'Notifikasi pengingat waktu sholat',
+            importance: Importance.max,
+            priority: Priority.high,
+            showWhen: true,
+            enableVibration: true,
+            vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
+            playSound:
+                false, // Disabled - audio akan dimainkan manual via AudioPlayer
+            fullScreenIntent: true,
+            category: AndroidNotificationCategory.alarm,
+            ongoing: true,
+            autoCancel: false,
+            actions: const <AndroidNotificationAction>[stopAction],
+          );
 
       const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-        sound: 'adzan.mp3', // FIX: Set custom sound for iOS
+        sound: null, // Disabled - audio akan dimainkan manual via AudioPlayer
         presentAlert: true,
         presentBadge: true,
-        presentSound: true, // FIX: Set true
+        presentSound: false,
         interruptionLevel: InterruptionLevel.critical,
       );
 
