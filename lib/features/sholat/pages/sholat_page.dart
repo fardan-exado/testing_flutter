@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_islamic_icons/flutter_islamic_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:test_flutter/app/theme.dart';
@@ -288,7 +289,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
     Map<String, dynamic> jadwalData,
     String jenis,
   ) async {
-    String status = 'tepat_waktu'; // tepat_waktu, terlambat, tidak_sholat
+    String? status;
     bool berjamaah = false;
     String tempat = '';
     String keterangan = '';
@@ -387,6 +388,17 @@ class _SholatPageState extends ConsumerState<SholatPage>
                           color: AppTheme.onSurface,
                         ),
                       ),
+                      if (status == null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '* Pilih salah satu status',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.red.shade600,
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 12),
                       Column(
                         children: [
@@ -575,7 +587,9 @@ class _SholatPageState extends ConsumerState<SholatPage>
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed:
-                              (jenis == 'wajib' && tempat.isEmpty) || isLoading
+                              status == null ||
+                                  (jenis == 'wajib' && tempat.isEmpty) ||
+                                  isLoading
                               ? null
                               : () async {
                                   setModalState(
@@ -589,7 +603,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
                                         .addProgressSholat(
                                           jenis: jenis,
                                           sholat: jadwalData['dbKey'] as String,
-                                          status: status,
+                                          status: status!,
                                           isJamaah: jenis == 'wajib'
                                               ? berjamaah
                                               : null,
@@ -607,10 +621,16 @@ class _SholatPageState extends ConsumerState<SholatPage>
                                     if (response != null && mounted) {
                                       // Tutup modal
                                       Navigator.pop(context, true);
-                                      _showCompletionFeedback(sholatName);
 
-                                      // Refresh data progress
+                                      // Refresh data progress dan tunggu selesai
                                       await _fetchProgressData();
+
+                                      // Force rebuild state untuk memastikan UI terupdate
+                                      if (mounted) {
+                                        setState(() {});
+                                      }
+
+                                      _showCompletionFeedback(sholatName);
                                     }
                                   } catch (e) {
                                     logger.severe('Error saving progress: $e');
@@ -826,14 +846,23 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
                             if (mounted) {
                               Navigator.pop(context);
+
+                              // Refresh data dan tunggu selesai
+                              await _fetchProgressData();
+
+                              // Force rebuild state untuk memastikan UI terupdate
+                              if (mounted) {
+                                setState(() {});
+                              }
+
                               showMessageToast(
                                 context,
                                 message: 'Progress berhasil dihapus',
                                 type: ToastType.success,
                               );
-                              await _fetchProgressData();
                             }
                           } catch (e) {
+                            logger.severe('Error deleting progress: $e');
                             if (mounted) {
                               setDialogState(() => isDeleting = false);
                               showMessageToast(
@@ -1023,22 +1052,43 @@ class _SholatPageState extends ConsumerState<SholatPage>
         logger.info('=== PARSING PROGRESS SUNNAH ===');
         logger.info('Progress data type: ${progressToday.runtimeType}');
         logger.info('Progress count: ${progressToday.length}');
+        logger.info('Full progress data: $progressToday');
 
         // Loop array untuk build progress data
         for (var item in progressToday) {
           final sholatSunnah = item['sholat_sunnah'] as Map<String, dynamic>?;
           final progres = item['progres'] as bool? ?? false;
 
+          // DEBUGGING: Log all fields in the item
+          logger.info('=== Processing item ===');
+          logger.info('Item keys: ${item.keys.toList()}');
+          logger.info('Item full data: $item');
+
           if (sholatSunnah != null) {
             final slug = sholatSunnah['slug'] as String;
-            final dbKey = slug.replaceAll('-', '_');
+            final dbKey = slug.replaceAll(
+              '-',
+              '-',
+            ); // FIX: Replace dash with underscore
+
+            // FIX: Get progress record ID from item['id'], NOT sholatSunnah['id']
+            // sholatSunnah['id'] is the sunnah TYPE ID (e.g., 1 for Tahajud)
+            // item['id'] is the progress RECORD ID (e.g., 123 for the actual progress entry)
+            final progressId = item['id'] as int?;
+
+            // Get status from item, not sholatSunnah (sholat_sunnah doesn't have status field)
+            final progressStatus = item['status'] as String? ?? '';
 
             formattedProgress[dbKey] = {
-              'id': item['id'],
+              'id': progressId,
               'completed': progres,
-              'status': progres ? 'tepat_waktu' : '',
+              'status': progressStatus.isNotEmpty
+                  ? progressStatus
+                  : (progres ? 'tepat_waktu' : ''),
             };
-            logger.info('$dbKey: progres=$progres');
+            logger.info(
+              '$dbKey: progres=$progres, id=$progressId, status=$progressStatus',
+            );
           }
         }
 
@@ -1208,59 +1258,35 @@ class _SholatPageState extends ConsumerState<SholatPage>
           logger.info('Progress count: ${riwayatData.length}');
 
           // Loop array untuk build progress data
+          // Format riwayat: langsung array tanpa nested sholat_sunnah
           for (var item in riwayatData) {
-            // Ambil sholat_sunnah dari item atau langsung dari root
-            final sholatSunnah = item['sholat_sunnah'] as Map<String, dynamic>?;
+            final sholatSunnahId = item['sholat_sunnah_id'] as int?;
 
-            if (sholatSunnah != null) {
-              // Format dengan nested sholat_sunnah
-              final sholatSunnahId = sholatSunnah['id'] as int?;
-              final slug = sholatSunnah['slug'] as String?;
-              final progres = item['progres'] as bool? ?? false;
+            if (sholatSunnahId != null) {
+              // Cari sholat sunnah dari jadwal berdasarkan ID
+              final jadwal = ref
+                  .read(sholatProvider.notifier)
+                  .getJadwalByDate(_selectedDate);
+              final sunnahList = jadwal?.sunnah ?? [];
 
-              if (slug != null && sholatSunnahId != null) {
-                final dbKey = slug.replaceAll('-', '_');
+              final sunnahItem = sunnahList.firstWhere(
+                (s) => s.id == sholatSunnahId,
+                orElse: () =>
+                    SholatSunnah(id: 0, nama: '', slug: '', deskripsi: ''),
+              );
+
+              if (sunnahItem.id != 0) {
+                final dbKey = sunnahItem.slug.replaceAll('-', '-');
 
                 formattedProgress[dbKey] = {
                   'id': item['id'],
                   'sholat_sunnah_id': sholatSunnahId,
-                  'completed': progres,
-                  'status': progres ? 'tepat_waktu' : '',
+                  'completed': true, // Ada di list = sudah ada progress
+                  'status': item['status'] as String? ?? 'tepat_waktu',
                 };
                 logger.info(
-                  '$dbKey: progres=$progres, sholat_sunnah_id=$sholatSunnahId',
+                  '$dbKey: completed=true, id=${item['id']}, sholat_sunnah_id=$sholatSunnahId, status=${item['status']}',
                 );
-              }
-            } else {
-              // Format langsung (tanpa nested)
-              final sholatSunnahId = item['sholat_sunnah_id'] as int?;
-
-              if (sholatSunnahId != null) {
-                // Cari sholat sunnah dari jadwal berdasarkan ID
-                final jadwal = ref
-                    .read(sholatProvider.notifier)
-                    .getJadwalByDate(_selectedDate);
-                final sunnahList = jadwal?.sunnah ?? [];
-
-                final sunnahItem = sunnahList.firstWhere(
-                  (s) => s.id == sholatSunnahId,
-                  orElse: () =>
-                      SholatSunnah(id: 0, nama: '', slug: '', deskripsi: ''),
-                );
-
-                if (sunnahItem.id != 0) {
-                  final dbKey = sunnahItem.slug.replaceAll('-', '_');
-
-                  formattedProgress[dbKey] = {
-                    'id': item['id'],
-                    'sholat_sunnah_id': sholatSunnahId,
-                    'completed': true, // Ada di list = sudah ada progress
-                    'status': item['status'] as String? ?? 'tepat_waktu',
-                  };
-                  logger.info(
-                    '$dbKey: completed=true, sholat_sunnah_id=$sholatSunnahId',
-                  );
-                }
               }
             }
           }
@@ -2147,34 +2173,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
     // Map icon berdasarkan slug
     IconData _getIconBySlug(String slug) {
-      switch (slug.toLowerCase()) {
-        case 'tahajud':
-          return Icons.nightlight_round;
-        case 'witir':
-          return Icons.nights_stay;
-        case 'dhuha':
-          return Icons.wb_sunny;
-        case 'qabliyah-subuh':
-          return Icons.wb_twilight;
-        case 'qabliyah-dzuhur':
-          return Icons.wb_sunny_outlined;
-        case 'badiyah-dzuhur':
-          return Icons.wb_sunny;
-        case 'qabliyah-ashar':
-          return Icons.wb_cloudy_outlined;
-        case 'badiyah-maghrib':
-          return Icons.wb_twilight;
-        case 'qabliyah-isya':
-          return Icons.nights_stay_outlined;
-        case 'badiyah-isya':
-          return Icons.nights_stay;
-        case 'tarawih':
-          return Icons.mosque_rounded;
-        case 'istikharah':
-          return Icons.self_improvement_rounded;
-        default:
-          return Icons.place;
-      }
+      return FlutterIslamicIcons.prayingPerson;
     }
 
     // Jika tidak ada data sunnah
@@ -2209,7 +2208,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
         final sunnahId = sunnahItem.id; // Ambil ID sholat sunnah
 
         // Konversi slug ke dbKey format (replace - dengan _)
-        final dbKey = slug.replaceAll('-', '_');
+        final dbKey = slug.replaceAll('-', '-');
 
         // Build jadwalData dengan format yang sesuai
         final jadwalData = {
