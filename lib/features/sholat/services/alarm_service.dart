@@ -71,15 +71,23 @@ class AlarmService {
 
   // Handle notification response (termasuk action buttons)
   Future<void> _onNotificationResponse(NotificationResponse response) async {
-    logger.info('Notification response: ${response.actionId}');
+    logger.info(
+      'Notification response: actionId=${response.actionId}, payload=${response.payload}',
+    );
 
     if (response.actionId == stopAlarmActionId) {
       // Stop adzan ketika user tap "Stop Alarm"
       await stopAdzan();
-      await _dismissNotification(0); // ID 0 untuk immediate notification
+      // Cancel all immediate notifications (ID 0 dan scheduled notification)
+      await flutterLocalNotificationsPlugin.cancel(0);
+      if (response.payload != null) {
+        final id = _getNotificationId(response.payload!);
+        await flutterLocalNotificationsPlugin.cancel(id);
+      }
       logger.info('Alarm stopped by user');
     } else if (response.payload != null) {
-      // Ketika tap notification body, play adzan
+      // FIX: Ketika notification muncul (baik tap maupun scheduled), play adzan
+      logger.info('Playing adzan for ${response.payload}');
       if (!_isAdzanPlaying) {
         await _playAdzan();
       }
@@ -261,28 +269,34 @@ class AlarmService {
         showsUserInterface: true,
       );
 
-      // UPDATED: Nonaktifkan sound di scheduled notification
-      final AndroidNotificationDetails androidDetails =
-          AndroidNotificationDetails(
-            'prayer_alarm_channel',
-            'Alarm Sholat',
-            channelDescription: 'Notifikasi pengingat waktu sholat',
-            importance: Importance.max,
-            priority: Priority.high,
-            showWhen: true,
-            enableVibration: true,
-            playSound:
-                false, // UPDATED: Set false, biarkan timer checker yang play
-            fullScreenIntent: true,
-            category: AndroidNotificationCategory.alarm,
-            actions: const <AndroidNotificationAction>[stopAction],
-          );
+      // FIX: Aktifkan sound di notification untuk trigger saat app ditutup
+      final AndroidNotificationDetails
+      androidDetails = AndroidNotificationDetails(
+        'prayer_alarm_channel',
+        'Alarm Sholat',
+        channelDescription: 'Notifikasi pengingat waktu sholat',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+        enableVibration: true,
+        vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
+        playSound:
+            true, // FIX: Set true untuk trigger notification saat app closed
+        sound: const RawResourceAndroidNotificationSound(
+          'adzan',
+        ), // Use custom sound
+        fullScreenIntent: true,
+        category: AndroidNotificationCategory.alarm,
+        ongoing: true, // FIX: Prevent swipe dismiss
+        autoCancel: false,
+        actions: const <AndroidNotificationAction>[stopAction],
+      );
 
       const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-        sound: null, // UPDATED: Set null untuk iOS juga
+        sound: 'adzan.mp3', // FIX: Set custom sound for iOS
         presentAlert: true,
         presentBadge: true,
-        presentSound: false, // UPDATED: Set false
+        presentSound: true, // FIX: Set true
         interruptionLevel: InterruptionLevel.critical,
       );
 
@@ -300,7 +314,7 @@ class AlarmService {
       await flutterLocalNotificationsPlugin.zonedSchedule(
         id,
         '🕌 Waktu Sholat $prayerName',
-        'Saatnya melaksanakan sholat $prayerName. Allahu Akbar!',
+        'Saatnya melaksanakan sholat $prayerName. Allahu Akbar! 🤲',
         tzScheduledTime,
         platformDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
