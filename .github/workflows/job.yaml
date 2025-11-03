@@ -27,8 +27,8 @@ jobs:
 
       - name: 🌍 Create .env file
         run: |
-          echo "API_URL=https://shollover.exaapk.com/api" >> .env
-          echo "STORAGE_URL=https://shollover.exaapk.com/storage" >> .env
+          echo "API_URL=${{ secrets.API_URL }}" >> .env
+          echo "STORAGE_URL=${{ secrets.STORAGE_URL }}" >> .env
 
       # 🔐 Decode keystore ke folder android/app biar path cocok sama gradle
       - name: 🔐 Decode release keystore

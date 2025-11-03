@@ -526,22 +526,23 @@ class HomeProvider extends StateNotifier<HomeState> {
 
     // Tentukan sholat berikutnya
     if (_isBefore(currentTime, fajr)) {
-      return 'Fajr';
+      return 'Shubuh';
     } else if (_isBefore(currentTime, dzuhr)) {
-      return 'Dzuhr';
+      return 'Dzuhur';
     } else if (_isBefore(currentTime, asr)) {
-      return 'Asr';
+      return 'Ashar';
     } else if (_isBefore(currentTime, maghrib)) {
       return 'Maghrib';
     } else if (_isBefore(currentTime, isha)) {
-      return 'Isha';
+      return 'Isya';
     } else {
       // Setelah Isya, sholat berikutnya adalah Subuh besok
-      return 'Fajr (Tomorrow)';
+      return 'Shubuh (Besok)';
     }
   }
 
   /// Dapatkan nama sholat yang sedang aktif sekarang
+  /// Mengembalikan nama sholat yang waktunya sudah lewat (sedang berjalan)
   String? getActivePrayerName() {
     final sholat = state.jadwalSholat;
     if (sholat == null || sholat == Sholat.empty()) return null;
@@ -565,20 +566,65 @@ class HomeProvider extends StateNotifier<HomeState> {
       return null;
     }
 
-    // Tentukan sholat yang sedang aktif
-    if (_isBefore(currentTime, fajr)) {
-      return null; // Belum ada sholat
-    } else if (_isBefore(currentTime, dzuhr)) {
-      return 'Fajr';
-    } else if (_isBefore(currentTime, asr)) {
-      return 'Dzuhr';
-    } else if (_isBefore(currentTime, maghrib)) {
-      return 'Asr';
-    } else if (_isBefore(currentTime, isha)) {
-      return 'Maghrib';
-    } else {
-      return 'Isha';
+    // Logika: Sholat aktif adalah sholat yang waktunya sudah lewat
+    // Cek dari belakang (Isya ke Shubuh)
+
+    // Cek apakah sudah lewat waktu Isya
+    if (!_isBefore(currentTime, isha)) {
+      // Sudah lewat Isya
+      return 'Isya';
     }
+
+    // Cek apakah sudah lewat waktu Maghrib
+    if (!_isBefore(currentTime, maghrib)) {
+      // Sudah lewat Maghrib tapi belum Isya
+      return 'Maghrib';
+    }
+
+    // Cek apakah sudah lewat waktu Ashar
+    if (!_isBefore(currentTime, asr)) {
+      // Sudah lewat Ashar tapi belum Maghrib
+      return 'Ashar';
+    }
+
+    // Cek apakah sudah lewat waktu Dzuhur
+    if (!_isBefore(currentTime, dzuhr)) {
+      // Sudah lewat Dzuhur tapi belum Ashar
+      return 'Dzuhur';
+    }
+
+    // Cek apakah sudah lewat waktu Shubuh
+    if (!_isBefore(currentTime, fajr)) {
+      // Sudah lewat Shubuh tapi belum Dzuhur
+      return 'Shubuh';
+    }
+
+    // Belum ada waktu sholat yang lewat
+    // Cek apakah ini dini hari (00:00 - sebelum Shubuh)
+    if (currentTime.hour >= 0 && currentTime.hour < 4) {
+      // Dini hari, anggap Shubuh sebagai sholat berikutnya
+      return 'Shubuh';
+    }
+
+    return null;
+  }
+
+  /// Cek apakah sudah lewat semua waktu sholat hari ini (setelah Isya)
+  bool isAfterAllPrayers() {
+    final sholat = state.jadwalSholat;
+    if (sholat == null || sholat == Sholat.empty()) return false;
+
+    final now = DateTime.now();
+    final currentTime = TimeOfDay(hour: now.hour, minute: now.minute);
+
+    final isha = _tryParse(sholat.wajib.isya);
+    if (isha == null) return false;
+
+    // Cek apakah sudah lewat Isya DAN masih di hari yang sama (belum lewat tengah malam)
+    final isAfterIsha = !_isBefore(currentTime, isha);
+    final isBeforeMidnight = currentTime.hour >= 18 || currentTime.hour < 4;
+
+    return isAfterIsha && isBeforeMidnight;
   }
 
   /// Dapatkan sisa waktu hingga sholat berikutnya
@@ -630,14 +676,14 @@ class HomeProvider extends StateNotifier<HomeState> {
       final hours = difference.inHours;
       final minutes = difference.inMinutes % 60;
       final seconds = difference.inSeconds % 60;
-      return 'in ${hours}h ${minutes}m ${seconds}s';
+      return '${hours} jam ${minutes} menit ${seconds} detik lagi';
     } else if (difference.inMinutes > 0) {
       final minutes = difference.inMinutes;
       final seconds = difference.inSeconds % 60;
-      return 'in ${minutes}m ${seconds}s';
+      return '${minutes} menit ${seconds} detik lagi';
     } else {
       final seconds = difference.inSeconds;
-      return 'in ${seconds}s';
+      return '${seconds} detik lagi';
     }
   }
   // ...existing code...

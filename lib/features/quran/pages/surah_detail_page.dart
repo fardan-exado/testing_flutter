@@ -2,17 +2,19 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test_flutter/app/theme.dart';
-import 'package:test_flutter/core/utils/storage_helper.dart';
 import 'package:test_flutter/data/models/quran/surah.dart';
+import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/quran/services/quran_audio_service.dart';
 import 'package:test_flutter/features/quran/services/quran_download_manager.dart';
 import 'package:test_flutter/features/quran/widgets/ayah_card.dart';
 import 'package:test_flutter/features/quran/widgets/modern_audio_player.dart';
 import 'package:test_flutter/features/quran/widgets/download_audio_sheet.dart';
 
-class SurahDetailPage extends StatefulWidget {
+class SurahDetailPage extends ConsumerStatefulWidget {
   final Surah surah;
   final List<Surah> allSurahs;
   final int? initialAyat;
@@ -25,10 +27,10 @@ class SurahDetailPage extends StatefulWidget {
   });
 
   @override
-  State<SurahDetailPage> createState() => _SurahDetailPageState();
+  ConsumerState<SurahDetailPage> createState() => _SurahDetailPageState();
 }
 
-class _SurahDetailPageState extends State<SurahDetailPage>
+class _SurahDetailPageState extends ConsumerState<SurahDetailPage>
     with SingleTickerProviderStateMixin {
   bool _isLoadingAudio = false;
   bool _isDownloaded = false;
@@ -36,12 +38,15 @@ class _SurahDetailPageState extends State<SurahDetailPage>
   int _currentPlayingVerse = 0;
   String? _qariName;
   int _currentSurahIndex = 0;
-  bool _isGuest = true; // Default to guest until checked
 
   late TabController _tabController;
   late PageController _pageController;
-  final ScrollController _scrollController = ScrollController();
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
   final Map<int, GlobalKey> _verseKeys = {};
+  bool _showScrollIndex = false;
+  int _currentScrollIndex = 1;
 
   // Cache untuk detail surah yang sudah dimuat
   final Map<int, Map<String, dynamic>> _surahDetailsCache = {};
@@ -90,23 +95,34 @@ class _SurahDetailPageState extends State<SurahDetailPage>
       print('📖 Reason: allSurahs.length = ${widget.allSurahs.length}');
     }
 
-    // Check authentication status
-    _checkAuthStatus();
-
     // Load initial surah details
     _loadSurahDetails(_currentSurah.nomor);
     _loadSelectedQori();
     _checkDownloadStatus();
     _listenToCurrentVerse();
+    _listenToScrollPosition();
   }
 
-  Future<void> _checkAuthStatus() async {
-    final token = await StorageHelper.getToken();
-    if (mounted) {
-      setState(() {
-        _isGuest = token == null || token.isEmpty;
-      });
-    }
+  void _listenToScrollPosition() {
+    _itemPositionsListener.itemPositions.addListener(() {
+      final positions = _itemPositionsListener.itemPositions.value;
+      if (positions.isNotEmpty) {
+        // Get the first visible item
+        final firstVisible = positions
+            .where((pos) => pos.itemLeadingEdge >= 0)
+            .toList();
+        if (firstVisible.isNotEmpty) {
+          firstVisible.sort(
+            (a, b) => a.itemLeadingEdge.compareTo(b.itemLeadingEdge),
+          );
+          if (mounted) {
+            setState(() {
+              _currentScrollIndex = firstVisible.first.index + 1;
+            });
+          }
+        }
+      }
+    });
   }
 
   @override
@@ -116,7 +132,6 @@ class _SurahDetailPageState extends State<SurahDetailPage>
       _tabController.dispose();
       _pageController.dispose();
     }
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -242,75 +257,36 @@ class _SurahDetailPageState extends State<SurahDetailPage>
   }
 
   void _scrollToVerse(int verseNumber) {
-    final key = _verseKeys[verseNumber];
-    print(
-      '🔍 Scrolling to verse $verseNumber, key exists: ${key != null}, context exists: ${key?.currentContext != null}',
-    );
+    print('🔍 Scrolling to verse $verseNumber');
 
-    if (key != null && key.currentContext != null) {
-      Scrollable.ensureVisible(
-        key.currentContext!,
+    if (_itemScrollController.isAttached) {
+      _itemScrollController.scrollTo(
+        index: verseNumber - 1, // Adjust for 0-based index
         duration: const Duration(milliseconds: 500),
         curve: Curves.easeInOut,
-        alignment: 0.2,
+        alignment: 0.1,
       );
       print('✅ Scrolled to verse $verseNumber');
     } else {
-      print('⚠️ Context null for verse $verseNumber');
+      print('⚠️ ScrollController not attached');
     }
   }
 
   void _scrollToVerseWithJump(int verseNumber) {
     print('🎯 Jump to verse $verseNumber');
 
-    // Estimate card height (average ~350px per card including margin)
-    final estimatedCardHeight = 350.0;
-    final estimatedOffset = (verseNumber - 1) * estimatedCardHeight;
-
-    // Check if scroll controller is attached
-    if (!_scrollController.hasClients) {
+    if (_itemScrollController.isAttached) {
+      _itemScrollController.jumpTo(
+        index: verseNumber - 1, // Adjust for 0-based index
+        alignment: 0.1,
+      );
+      print('✅ Jumped to verse $verseNumber');
+    } else {
       print('❌ ScrollController not attached yet');
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) _scrollToVerseWithJump(verseNumber);
       });
-      return;
     }
-
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final targetOffset = estimatedOffset.clamp(0.0, maxScroll);
-
-    print('📍 Jumping to offset: $targetOffset (max: $maxScroll)');
-
-    // Jump instantly without animation
-    _scrollController.jumpTo(targetOffset);
-
-    // After jump, try to use precise positioning WITHOUT animation
-    Future.delayed(const Duration(milliseconds: 50), () {
-      if (!mounted) return;
-
-      final key = _verseKeys[verseNumber];
-      if (key != null && key.currentContext != null) {
-        print('✅ Fine-tuning position');
-        Scrollable.ensureVisible(
-          key.currentContext!,
-          duration: Duration.zero, // NO animation
-          alignment: 0.1,
-        );
-      } else {
-        print('⚠️ Context null, retrying...');
-        // Quick retry
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted && key != null && key.currentContext != null) {
-            Scrollable.ensureVisible(
-              key.currentContext!,
-              duration: Duration.zero, // NO animation
-              alignment: 0.1,
-            );
-            print('✅ Scrolled to verse $verseNumber');
-          }
-        });
-      }
-    });
   }
 
   Future<void> _playPause() async {
@@ -364,7 +340,10 @@ class _SurahDetailPageState extends State<SurahDetailPage>
 
   void _showDownloadDialog() {
     // Check if user is guest
-    if (_isGuest) {
+    final authState = ref.read(authProvider);
+    final isGuest = authState['status'] != AuthState.authenticated;
+
+    if (isGuest) {
       _showGuestDialog();
       return;
     }
@@ -473,7 +452,10 @@ class _SurahDetailPageState extends State<SurahDetailPage>
 
   Future<void> _deleteDownload() async {
     // Check if user is guest
-    if (_isGuest) {
+    final authState = ref.read(authProvider);
+    final isGuest = authState['status'] != AuthState.authenticated;
+
+    if (isGuest) {
       _showGuestDialog();
       return;
     }
@@ -524,6 +506,10 @@ class _SurahDetailPageState extends State<SurahDetailPage>
     final isTablet = screenWidth > 600;
     final isDesktop = screenWidth > 1024;
 
+    // Check auth status
+    final authState = ref.watch(authProvider);
+    final isGuest = authState['status'] != AuthState.authenticated;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -554,7 +540,7 @@ class _SurahDetailPageState extends State<SurahDetailPage>
                             currentSurah,
                             isTablet,
                             isDesktop,
-                            _isGuest,
+                            isGuest,
                           );
                         },
                       )
@@ -562,7 +548,7 @@ class _SurahDetailPageState extends State<SurahDetailPage>
                         _currentSurah,
                         isTablet,
                         isDesktop,
-                        _isGuest,
+                        isGuest,
                       ),
               ),
               ModernAudioPlayer(
@@ -848,49 +834,56 @@ class _SurahDetailPageState extends State<SurahDetailPage>
       });
     }
 
-    return ListView.builder(
-      key: ValueKey('surah_${surah.nomor}'),
-      controller: _scrollController,
-      padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 24 : 20,
-        vertical: isTablet ? 12 : 8,
-      ),
-      physics: const BouncingScrollPhysics(),
-      cacheExtent: 10000, // Force ListView to render more items offscreen
-      itemCount: showBismillah ? totalVerses + 1 : totalVerses,
-      itemBuilder: (context, index) {
-        // Show Bismillah as first item
-        if (showBismillah && index == 0) {
-          return _buildBismillahCard(isTablet, isDesktop);
-        }
+    return Stack(
+      children: [
+        ScrollablePositionedList.builder(
+          key: ValueKey('surah_${surah.nomor}'),
+          itemScrollController: _itemScrollController,
+          itemPositionsListener: _itemPositionsListener,
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 24 : 20,
+            vertical: isTablet ? 12 : 8,
+          ),
+          physics: const BouncingScrollPhysics(),
+          itemCount: showBismillah ? totalVerses + 1 : totalVerses,
+          itemBuilder: (context, index) {
+            // Show Bismillah as first item
+            if (showBismillah && index == 0) {
+              return _buildBismillahCard(isTablet, isDesktop);
+            }
 
-        // Adjust index if Bismillah is shown
-        final ayahIndex = showBismillah ? index - 1 : index;
-        final ayah = ayahs[ayahIndex];
-        final verseNumber = ayah['nomorAyat'] as int;
-        final arabicText = ayah['teksArab'] as String;
-        final translation = ayah['teksIndonesia'] as String;
-        final transliteration = ayah['teksLatin'] as String? ?? '';
+            // Adjust index if Bismillah is shown
+            final ayahIndex = showBismillah ? index - 1 : index;
+            final ayah = ayahs[ayahIndex];
+            final verseNumber = ayah['nomorAyat'] as int;
+            final arabicText = ayah['teksArab'] as String;
+            final translation = ayah['teksIndonesia'] as String;
+            final transliteration = ayah['teksLatin'] as String? ?? '';
 
-        // Generate verse end symbol
-        final verseEndSymbol = _toArabicNumber(verseNumber);
-        final isCurrentlyPlaying = _currentPlayingVerse == verseNumber;
+            // Generate verse end symbol
+            final verseEndSymbol = _toArabicNumber(verseNumber);
+            final isCurrentlyPlaying = _currentPlayingVerse == verseNumber;
 
-        return AyahCard(
-          surahNumber: surah.nomor,
-          key: _verseKeys[verseNumber],
-          verseNumber: verseNumber,
-          arabicText: arabicText,
-          translation: translation,
-          transliteration: transliteration,
-          verseEndSymbol: verseEndSymbol,
-          onPlayVerse: () {},
-          isTablet: isTablet,
-          isDesktop: isDesktop,
-          isPlaying: isCurrentlyPlaying,
-          isGuest: isGuest,
-        );
-      },
+            return AyahCard(
+              surahNumber: surah.nomor,
+              key: _verseKeys[verseNumber],
+              verseNumber: verseNumber,
+              arabicText: arabicText,
+              translation: translation,
+              transliteration: transliteration,
+              verseEndSymbol: verseEndSymbol,
+              onPlayVerse: () {},
+              isTablet: isTablet,
+              isDesktop: isDesktop,
+              isPlaying: isCurrentlyPlaying,
+              isGuest: isGuest,
+            );
+          },
+        ),
+
+        // Fast scroll indicator
+        _buildFastScrollIndicator(totalVerses, isTablet),
+      ],
     );
   }
 
@@ -960,6 +953,210 @@ class _SurahDetailPageState extends State<SurahDetailPage>
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  // Fast scroll indicator widget
+  Widget _buildFastScrollIndicator(int totalVerses, bool isTablet) {
+    // Check if Bismillah is shown
+    final showBismillah = _currentSurah.nomor != 1 && _currentSurah.nomor != 9;
+
+    return Positioned(
+      right: 0,
+      top: 0,
+      bottom: 100, // Space for audio player
+      child: GestureDetector(
+        onVerticalDragStart: (_) {
+          setState(() => _showScrollIndex = true);
+        },
+        onVerticalDragUpdate: (details) {
+          final RenderBox box = context.findRenderObject() as RenderBox;
+          final localPosition = details.localPosition.dy;
+          final percentage = (localPosition / box.size.height).clamp(0.0, 1.0);
+          final targetVerse = (percentage * totalVerses).round().clamp(
+            1,
+            totalVerses,
+          );
+
+          // Calculate actual index in list (accounting for Bismillah)
+          final targetIndex = showBismillah ? targetVerse : targetVerse - 1;
+
+          if (_itemScrollController.isAttached) {
+            _itemScrollController.jumpTo(index: targetIndex, alignment: 0.1);
+
+            // Update current scroll index to show verse number
+            if (mounted) {
+              setState(() => _currentScrollIndex = targetVerse);
+            }
+          }
+        },
+        onVerticalDragEnd: (_) {
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted) {
+              setState(() => _showScrollIndex = false);
+            }
+          });
+        },
+        child: Container(
+          width: 60,
+          margin: const EdgeInsets.only(right: 4, top: 50, bottom: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Colors.transparent,
+                AppTheme.primaryBlue.withOpacity(0.08),
+              ],
+            ),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(30),
+              bottomLeft: Radius.circular(30),
+            ),
+          ),
+          child: Stack(
+            children: [
+              // Scroll indicator popup
+              if (_showScrollIndex)
+                Positioned(
+                  right: 65,
+                  top: MediaQuery.of(context).size.height * 0.35,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryBlue.withOpacity(0.5),
+                          blurRadius: 24,
+                          offset: const Offset(-4, 4),
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.bookmark_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Ayat',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                        Text(
+                          '$_currentScrollIndex',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            height: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Visible scroll track
+              Positioned(
+                right: 12,
+                top: 20,
+                bottom: 20,
+                child: Container(
+                  width: 6,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.primaryBlue.withOpacity(0.2),
+                        AppTheme.accentGreen.withOpacity(0.2),
+                        AppTheme.primaryBlue.withOpacity(0.2),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+
+              // Drag handle (thumb)
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.primaryBlue.withOpacity(0.8),
+                        AppTheme.accentGreen.withOpacity(0.8),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryBlue.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 20,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 20,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 20,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

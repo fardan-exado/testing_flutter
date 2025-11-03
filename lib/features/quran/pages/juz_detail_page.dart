@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:test_flutter/app/theme.dart';
 import 'package:test_flutter/data/models/quran/juz.dart';
+import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/quran/widgets/ayah_card.dart';
 
 class JuzDetailPage extends ConsumerStatefulWidget {
@@ -22,8 +24,12 @@ class _JuzDetailPageState extends ConsumerState<JuzDetailPage>
 
   late TabController _tabController;
   late PageController _pageController;
-  final ScrollController _scrollController = ScrollController();
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
   final Map<String, GlobalKey> _verseKeys = {};
+  bool _showScrollIndex = false;
+  int _currentScrollIndex = 1;
 
   // Cache untuk detail juz yang sudah dimuat
   final Map<int, List<JuzSurahData>> _juzDetailsCache = {};
@@ -68,6 +74,29 @@ class _JuzDetailPageState extends ConsumerState<JuzDetailPage>
 
     // Load initial juz details
     _loadJuzDetails(_currentJuz);
+    _listenToScrollPosition();
+  }
+
+  void _listenToScrollPosition() {
+    _itemPositionsListener.itemPositions.addListener(() {
+      final positions = _itemPositionsListener.itemPositions.value;
+      if (positions.isNotEmpty) {
+        // Get the first visible item
+        final firstVisible = positions
+            .where((pos) => pos.itemLeadingEdge >= 0)
+            .toList();
+        if (firstVisible.isNotEmpty) {
+          firstVisible.sort(
+            (a, b) => a.itemLeadingEdge.compareTo(b.itemLeadingEdge),
+          );
+          if (mounted) {
+            setState(() {
+              _currentScrollIndex = firstVisible.first.index + 1;
+            });
+          }
+        }
+      }
+    });
   }
 
   @override
@@ -76,7 +105,6 @@ class _JuzDetailPageState extends ConsumerState<JuzDetailPage>
       _tabController.dispose();
       _pageController.dispose();
     }
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -422,6 +450,10 @@ class _JuzDetailPageState extends ConsumerState<JuzDetailPage>
   Widget _buildAyahsList(Juz juz, bool isTablet, bool isDesktop) {
     _verseKeys.clear();
 
+    // Check auth status
+    final authState = ref.watch(authProvider);
+    final isGuest = authState['status'] != AuthState.authenticated;
+
     // Get cached juz data
     final juzData = _juzDetailsCache[juz.number];
 
@@ -445,121 +477,368 @@ class _JuzDetailPageState extends ConsumerState<JuzDetailPage>
       );
     }
 
-    return ListView.builder(
-      key: ValueKey('juz_${juz.number}'),
-      controller: _scrollController,
-      padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 24 : 20,
-        vertical: isTablet ? 12 : 8,
-      ),
-      physics: const BouncingScrollPhysics(),
-      itemCount: juzData.length,
-      itemBuilder: (context, surahIndex) {
-        final surahData = juzData[surahIndex];
+    // Flatten structure: create list items (header + ayahs)
+    final List<Widget> allItems = [];
+    int totalAyahs = 0;
 
-        return Column(
-          children: [
-            // Surah Header
-            Container(
-              margin: const EdgeInsets.only(bottom: 16, top: 8),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.primaryBlue.withOpacity(0.1),
-                    AppTheme.accentGreen.withOpacity(0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
+    for (final surahData in juzData) {
+      // Add surah header
+      allItems.add(_buildSurahHeader(surahData, isTablet, isDesktop));
+
+      // Add ayahs
+      for (final ayah in surahData.ayahs) {
+        totalAyahs++;
+        final verseNumber = ayah['nomorAyat'] as int;
+        final verseKey = '${surahData.surahNumber}_$verseNumber';
+        _verseKeys[verseKey] = GlobalKey();
+
+        final arabicText = ayah['teksArab'] as String;
+        final translation = ayah['teksIndonesia'] as String;
+        final transliteration = ayah['teksLatin'] as String? ?? '';
+        final verseEndSymbol = _toArabicNumber(verseNumber);
+
+        allItems.add(
+          AyahCard(
+            surahNumber: surahData.surahNumber,
+            key: _verseKeys[verseKey],
+            verseNumber: verseNumber,
+            arabicText: arabicText,
+            translation: translation,
+            transliteration: transliteration,
+            verseEndSymbol: verseEndSymbol,
+            onPlayVerse: () {
+              print(
+                '🎵 Play Surah ${surahData.surahNumber}, Ayah $verseNumber',
+              );
+            },
+            isTablet: isTablet,
+            isDesktop: isDesktop,
+            isPlaying: false,
+            isGuest: isGuest,
+          ),
+        );
+      }
+    }
+
+    return Stack(
+      children: [
+        ScrollablePositionedList.builder(
+          key: ValueKey('juz_${juz.number}'),
+          itemScrollController: _itemScrollController,
+          itemPositionsListener: _itemPositionsListener,
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 24 : 20,
+            vertical: isTablet ? 12 : 8,
+          ),
+          physics: const BouncingScrollPhysics(),
+          itemCount: allItems.length,
+          itemBuilder: (context, index) => allItems[index],
+        ),
+
+        // Fast scroll indicator
+        _buildFastScrollIndicator(totalAyahs, isTablet),
+      ],
+    );
+  }
+
+  Widget _buildSurahHeader(
+    JuzSurahData surahData,
+    bool isTablet,
+    bool isDesktop,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16, top: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primaryBlue.withOpacity(0.1),
+            AppTheme.accentGreen.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${surahData.surahNumber}',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryBlue,
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${surahData.surahNumber}',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryBlue,
-                      ),
-                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  surahData.surahName,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.onSurface,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          surahData.surahName,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.onSurface,
-                          ),
+                ),
+                Text(
+                  '${surahData.ayahs.length} Ayat • Ayat ${surahData.startVerse} - ${surahData.endVerse}',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            surahData.surahNameArabic,
+            style: TextStyle(
+              fontFamily: 'AmiriQuran',
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primaryBlue,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Fast scroll indicator widget
+  Widget _buildFastScrollIndicator(int totalVerses, bool isTablet) {
+    return Positioned(
+      right: 0,
+      top: 0,
+      bottom: 20,
+      child: GestureDetector(
+        onVerticalDragStart: (_) {
+          setState(() => _showScrollIndex = true);
+        },
+        onVerticalDragUpdate: (details) {
+          final RenderBox box = context.findRenderObject() as RenderBox;
+          final localPosition = details.localPosition.dy;
+          final percentage = (localPosition / box.size.height).clamp(0.0, 1.0);
+
+          // For juz, we need to find the corresponding ayah based on totalVerses
+          final targetAyahNumber = (percentage * totalVerses).round().clamp(
+            1,
+            totalVerses,
+          );
+
+          if (_itemScrollController.isAttached) {
+            // Calculate the item index accounting for surah headers
+            // Each surah has 1 header + N ayahs
+            final juzData = _juzDetailsCache[_currentJuz.number];
+            if (juzData != null) {
+              int currentAyahCount = 0;
+              int targetIndex = 0;
+
+              for (int i = 0; i < juzData.length; i++) {
+                final surah = juzData[i];
+                final surahAyahCount = surah.ayahs.length;
+
+                // Add 1 for surah header
+                targetIndex++;
+
+                if (currentAyahCount + surahAyahCount >= targetAyahNumber) {
+                  // Target is in this surah
+                  final ayahIndexInSurah =
+                      targetAyahNumber - currentAyahCount - 1;
+                  targetIndex += ayahIndexInSurah;
+                  break;
+                }
+
+                currentAyahCount += surahAyahCount;
+                targetIndex += surahAyahCount;
+              }
+
+              _itemScrollController.jumpTo(index: targetIndex, alignment: 0.1);
+
+              // Update current scroll index to show ayah number
+              if (mounted) {
+                setState(() => _currentScrollIndex = targetAyahNumber);
+              }
+            }
+          }
+        },
+        onVerticalDragEnd: (_) {
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted) {
+              setState(() => _showScrollIndex = false);
+            }
+          });
+        },
+        child: Container(
+          width: 60,
+          margin: const EdgeInsets.only(right: 4, top: 50, bottom: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Colors.transparent,
+                AppTheme.primaryBlue.withOpacity(0.08),
+              ],
+            ),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(30),
+              bottomLeft: Radius.circular(30),
+            ),
+          ),
+          child: Stack(
+            children: [
+              // Scroll indicator popup
+              if (_showScrollIndex)
+                Positioned(
+                  right: 65,
+                  top: MediaQuery.of(context).size.height * 0.35,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryBlue.withOpacity(0.5),
+                          blurRadius: 24,
+                          offset: const Offset(-4, 4),
+                          spreadRadius: 2,
                         ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.bookmark_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        const SizedBox(height: 4),
                         Text(
-                          '${surahData.ayahs.length} Ayat • Ayat ${surahData.startVerse} - ${surahData.endVerse}',
+                          'Ayat',
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 12,
-                            color: AppTheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                        Text(
+                          '$_currentScrollIndex',
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            height: 1,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Text(
-                    surahData.surahNameArabic,
-                    style: TextStyle(
-                      fontFamily: 'AmiriQuran',
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryBlue,
+                ),
+
+              // Visible scroll track
+              Positioned(
+                right: 12,
+                top: 20,
+                bottom: 20,
+                child: Container(
+                  width: 6,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.primaryBlue.withOpacity(0.2),
+                        AppTheme.accentGreen.withOpacity(0.2),
+                        AppTheme.primaryBlue.withOpacity(0.2),
+                      ],
                     ),
+                    borderRadius: BorderRadius.circular(3),
                   ),
-                ],
+                ),
               ),
-            ),
 
-            // Ayahs
-            ...surahData.ayahs.map((ayah) {
-              final verseNumber = ayah['nomorAyat'] as int;
-              final verseKey = '${surahData.surahNumber}_$verseNumber';
-              _verseKeys[verseKey] = GlobalKey();
-
-              final arabicText = ayah['teksArab'] as String;
-              final translation = ayah['teksIndonesia'] as String;
-              final transliteration = ayah['teksLatin'] as String? ?? '';
-              final verseEndSymbol = _toArabicNumber(verseNumber);
-
-              return AyahCard(
-                surahNumber: surahData.surahNumber,
-                key: _verseKeys[verseKey],
-                verseNumber: verseNumber,
-                arabicText: arabicText,
-                translation: translation,
-                transliteration: transliteration,
-                verseEndSymbol: verseEndSymbol,
-                onPlayVerse: () {
-                  print(
-                    '🎵 Play Surah ${surahData.surahNumber}, Ayah $verseNumber',
-                  );
-                },
-                isTablet: isTablet,
-                isDesktop: isDesktop,
-                isPlaying: false,
-              );
-            }),
-          ],
-        );
-      },
+              // Drag handle (thumb)
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.primaryBlue.withOpacity(0.8),
+                        AppTheme.accentGreen.withOpacity(0.8),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryBlue.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 20,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 20,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 20,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
