@@ -225,7 +225,7 @@ class _SholatHeaderState extends ConsumerState<SholatHeader> {
                   ),
                   SizedBox(width: _px(context, 4)),
                   Text(
-                    'Waktu berdasarkan koordinat diambil dari api.aladhan.com',
+                    'Waktu berdasarkan koordinat\ndiambil dari api.aladhan.com',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.7),
                       fontSize: _ts(context, small ? 10 : 11),
