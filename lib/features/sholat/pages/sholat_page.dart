@@ -60,6 +60,21 @@ class _SholatPageState extends ConsumerState<SholatPage>
       if (!_isInitialized) {
         _isInitialized = true;
         _initializeData();
+        _listenToAuthChanges();
+      }
+    });
+  }
+
+  void _listenToAuthChanges() {
+    // Listen to auth state changes to clear progress on logout
+    ref.listen(authProvider, (previous, next) {
+      final wasAuthenticated = previous?['status'] == AuthState.authenticated;
+      final isNowAuthenticated = next['status'] == AuthState.authenticated;
+
+      // If user logged out (was authenticated, now not)
+      if (wasAuthenticated && !isNowAuthenticated) {
+        logger.info('🔓 User logged out, clearing progress data from state');
+        ref.read(sholatProvider.notifier).clearProgressData();
       }
     });
   }
@@ -923,6 +938,15 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
   // UPDATED: Get progress data based on selected date
   Map<String, dynamic> get _currentProgressData {
+    // Cek status login - jika guest, return empty data
+    final authState = ref.watch(authProvider);
+    final isLoggedIn = authState['status'] == AuthState.authenticated;
+
+    if (!isLoggedIn) {
+      // User adalah guest, tidak ada progress data
+      return {};
+    }
+
     final state = ref.watch(sholatProvider);
     final jenis = _isWajibTab ? 'wajib' : 'sunnah';
 
@@ -1253,6 +1277,15 @@ class _SholatPageState extends ConsumerState<SholatPage>
   }
 
   int get _completedCount {
+    // Cek status login - jika guest, return 0
+    final authState = ref.watch(authProvider);
+    final isLoggedIn = authState['status'] == AuthState.authenticated;
+
+    if (!isLoggedIn) {
+      // User adalah guest, tidak ada progress
+      return 0;
+    }
+
     // UPDATED: Gunakan _currentProgressData agar sesuai dengan tanggal yang dipilih
     final state = ref.watch(sholatProvider);
     final jenis = _isWajibTab ? 'wajib' : 'sunnah';
