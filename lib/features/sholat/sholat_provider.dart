@@ -513,9 +513,12 @@ class SholatProvider extends StateNotifier<SholatState> {
     bool? isJamaah,
     String? lokasi,
     String? keterangan,
+    int? sunnahId,
   }) async {
     try {
-      logger.info('Adding progress sholat: $jenis - $sholat - $status');
+      logger.info(
+        'Adding progress sholat: $jenis - $sholat - $status${sunnahId != null ? " (sunnahId: $sunnahId)" : ""}',
+      );
 
       // 1. Kirim ke network
       final response = await SholatService.addProgressSholat(
@@ -525,6 +528,7 @@ class SholatProvider extends StateNotifier<SholatState> {
         isJamaah: isJamaah,
         lokasi: lokasi,
         keterangan: keterangan,
+        sunnahId: sunnahId,
       );
 
       // 2. Refresh progress setelah berhasil menambahkan

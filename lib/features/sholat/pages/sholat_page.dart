@@ -9,6 +9,7 @@ import 'package:test_flutter/core/utils/format_helper.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
+import 'package:test_flutter/data/models/sholat/sholat.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/sholat/services/alarm_service.dart';
 import 'package:test_flutter/features/sholat/sholat_provider.dart';
@@ -583,6 +584,9 @@ class _SholatPageState extends ConsumerState<SholatPage>
                                           keterangan: jenis == 'wajib'
                                               ? keterangan
                                               : null,
+                                          sunnahId: jenis == 'sunnah'
+                                              ? jadwalData['sunnahId'] as int?
+                                              : null,
                                         );
 
                                     if (response != null && mounted) {
@@ -1020,46 +1024,231 @@ class _SholatPageState extends ConsumerState<SholatPage>
     } else {
       final formatter = DateFormat('yyyy-MM-dd');
       final dateKey = formatter.format(_selectedDate);
-      final riwayat = jenis == 'wajib'
-          ? state.progressWajibRiwayat
-          : state.progressSunnahRiwayat;
 
-      // Untuk riwayat, struktur mungkin berbeda
-      final riwayatData = (riwayat[dateKey] as Map<String, dynamic>?) ?? {};
+      logger.info('=== GETTING RIWAYAT DATA ===');
+      logger.info('Date: $dateKey, Jenis: $jenis');
 
-      // Jika riwayat juga punya struktur sama dengan hari ini
-      if (riwayatData.containsKey('statistik')) {
+      if (jenis == 'wajib') {
+        // WAJIB RIWAYAT: struktur bisa List atau Map
+        final riwayat = state.progressWajibRiwayat;
+        final riwayatData = riwayat[dateKey]; // Jangan langsung cast
+
+        logger.info('Wajib riwayat data type: ${riwayatData.runtimeType}');
+        logger.info('Wajib riwayat data: $riwayatData');
+
         final Map<String, dynamic> formattedProgress = {};
-        final statistik =
-            riwayatData['statistik'] as Map<String, dynamic>? ?? {};
-        final detail = riwayatData['detail'] as List<dynamic>? ?? [];
 
-        for (var item in detail) {
-          final sholatKey = item['sholat'] as String;
-          formattedProgress[sholatKey] = {
-            'id': item['id'],
-            'completed': statistik[sholatKey] == true,
-            'is_on_time': item['is_on_time'] == 1,
-            'is_jamaah': item['is_jamaah'] == 1,
-            'lokasi': item['lokasi'] as String? ?? '',
-          };
+        // Map sholat_wajib_id ke key
+        final Map<int, String> wajibIdToKey = {
+          1: 'shubuh',
+          2: 'dzuhur',
+          3: 'ashar',
+          4: 'maghrib',
+          5: 'isya',
+        };
+
+        // Cek apakah riwayatData adalah List (format baru dari API)
+        if (riwayatData is List) {
+          logger.info('=== PARSING WAJIB RIWAYAT (LIST) ===');
+          logger.info('Progress count: ${riwayatData.length}');
+
+          // Loop array untuk build progress data
+          for (var item in riwayatData) {
+            final sholatWajibId = item['sholat_wajib_id'] as int?;
+            final sholatKey = sholatWajibId != null
+                ? wajibIdToKey[sholatWajibId]
+                : null;
+
+            if (sholatKey != null) {
+              formattedProgress[sholatKey] = {
+                'id': item['id'],
+                'completed': true, // Ada di list = sudah ada progress
+                'status': item['status'] as String? ?? 'tepat_waktu',
+                'is_jamaah': item['is_jamaah'] == 1,
+                'lokasi': item['lokasi'] as String? ?? '',
+                'keterangan': item['keterangan'] as String? ?? '',
+              };
+              logger.info('$sholatKey: ${formattedProgress[sholatKey]}');
+            }
+          }
+
+          // Tambahkan sholat yang belum ada progress (5 sholat wajib)
+          wajibIdToKey.forEach((id, key) {
+            if (!formattedProgress.containsKey(key)) {
+              formattedProgress[key] = {
+                'completed': false,
+                'status': 'tepat_waktu',
+                'is_jamaah': false,
+                'lokasi': '',
+                'keterangan': '',
+              };
+              logger.info('$key: no progress');
+            }
+          });
+
+          logger.info('=== FORMATTED WAJIB RIWAYAT: $formattedProgress ===');
+          return formattedProgress;
+        }
+        // Cek apakah riwayatData adalah Map (format kompleks atau lama)
+        else if (riwayatData is Map<String, dynamic>) {
+          logger.info('=== PARSING WAJIB RIWAYAT (MAP) ===');
+
+          // Jika riwayat punya struktur kompleks (ada statistik & detail)
+          if (riwayatData.containsKey('statistik')) {
+            final statistik =
+                riwayatData['statistik'] as Map<String, dynamic>? ?? {};
+            final detail = riwayatData['detail'] as List<dynamic>? ?? [];
+
+            logger.info('Statistik: $statistik');
+            logger.info('Detail count: ${detail.length}');
+
+            // Loop detail untuk build progress data
+            for (var item in detail) {
+              final sholatWajibId = item['sholat_wajib_id'] as int?;
+              final sholatKey = sholatWajibId != null
+                  ? wajibIdToKey[sholatWajibId]
+                  : null;
+
+              if (sholatKey != null) {
+                formattedProgress[sholatKey] = {
+                  'id': item['id'],
+                  'completed': true,
+                  'status': item['status'] as String? ?? 'tepat_waktu',
+                  'is_jamaah': item['is_jamaah'] == 1,
+                  'lokasi': item['lokasi'] as String? ?? '',
+                  'keterangan': item['keterangan'] as String? ?? '',
+                };
+                logger.info('$sholatKey: ${formattedProgress[sholatKey]}');
+              }
+            }
+
+            // Tambahkan sholat yang belum ada progress
+            statistik.forEach((key, value) {
+              if (!formattedProgress.containsKey(key)) {
+                formattedProgress[key] = {
+                  'completed': false,
+                  'status': 'tepat_waktu',
+                  'is_jamaah': false,
+                  'lokasi': '',
+                  'keterangan': '',
+                };
+                logger.info('$key: no progress');
+              }
+            });
+          } else {
+            // Format lama: langsung Map<String, bool/Map>
+            riwayatData.forEach((key, value) {
+              if (value is bool) {
+                formattedProgress[key] = {
+                  'completed': value,
+                  'status': 'tepat_waktu',
+                  'is_jamaah': false,
+                  'lokasi': '',
+                  'keterangan': '',
+                };
+              } else if (value is Map) {
+                formattedProgress[key] = value;
+              }
+            });
+          }
+
+          logger.info('=== FORMATTED WAJIB RIWAYAT: $formattedProgress ===');
+          return formattedProgress;
         }
 
-        statistik.forEach((key, value) {
-          if (!formattedProgress.containsKey(key)) {
-            formattedProgress[key] = {
-              'completed': value == true,
-              'is_on_time': false,
-              'is_jamaah': false,
-              'lokasi': '',
-            };
-          }
+        // Fallback: return empty map dengan 5 sholat wajib
+        wajibIdToKey.forEach((id, key) {
+          formattedProgress[key] = {
+            'completed': false,
+            'status': 'tepat_waktu',
+            'is_jamaah': false,
+            'lokasi': '',
+            'keterangan': '',
+          };
         });
 
         return formattedProgress;
-      }
+      } else {
+        // SUNNAH RIWAYAT: struktur bisa List atau Map
+        final riwayat = state.progressSunnahRiwayat;
+        final riwayatData = riwayat[dateKey]; // Jangan langsung cast ke Map
 
-      return riwayatData;
+        logger.info('Sunnah riwayat data type: ${riwayatData.runtimeType}');
+        logger.info('Sunnah riwayat data: $riwayatData');
+
+        final Map<String, dynamic> formattedProgress = {};
+
+        // Cek apakah riwayatData adalah List (format baru dari API)
+        if (riwayatData is List) {
+          logger.info('=== PARSING SUNNAH RIWAYAT (LIST) ===');
+          logger.info('Progress count: ${riwayatData.length}');
+
+          // Loop array untuk build progress data
+          for (var item in riwayatData) {
+            // Ambil sholat_sunnah dari item atau langsung dari root
+            final sholatSunnah = item['sholat_sunnah'] as Map<String, dynamic>?;
+
+            if (sholatSunnah != null) {
+              // Format dengan nested sholat_sunnah
+              final sholatSunnahId = sholatSunnah['id'] as int?;
+              final slug = sholatSunnah['slug'] as String?;
+              final progres = item['progres'] as bool? ?? false;
+
+              if (slug != null && sholatSunnahId != null) {
+                final dbKey = slug.replaceAll('-', '_');
+
+                formattedProgress[dbKey] = {
+                  'id': item['id'],
+                  'sholat_sunnah_id': sholatSunnahId,
+                  'completed': progres,
+                  'status': progres ? 'tepat_waktu' : '',
+                };
+                logger.info(
+                  '$dbKey: progres=$progres, sholat_sunnah_id=$sholatSunnahId',
+                );
+              }
+            } else {
+              // Format langsung (tanpa nested)
+              final sholatSunnahId = item['sholat_sunnah_id'] as int?;
+
+              if (sholatSunnahId != null) {
+                // Cari sholat sunnah dari jadwal berdasarkan ID
+                final jadwal = ref
+                    .read(sholatProvider.notifier)
+                    .getJadwalByDate(_selectedDate);
+                final sunnahList = jadwal?.sunnah ?? [];
+
+                final sunnahItem = sunnahList.firstWhere(
+                  (s) => s.id == sholatSunnahId,
+                  orElse: () =>
+                      SholatSunnah(id: 0, nama: '', slug: '', deskripsi: ''),
+                );
+
+                if (sunnahItem.id != 0) {
+                  final dbKey = sunnahItem.slug.replaceAll('-', '_');
+
+                  formattedProgress[dbKey] = {
+                    'id': item['id'],
+                    'sholat_sunnah_id': sholatSunnahId,
+                    'completed': true, // Ada di list = sudah ada progress
+                    'status': item['status'] as String? ?? 'tepat_waktu',
+                  };
+                  logger.info(
+                    '$dbKey: completed=true, sholat_sunnah_id=$sholatSunnahId',
+                  );
+                }
+              }
+            }
+          }
+        } else if (riwayatData is Map<String, dynamic>) {
+          // Jika ternyata Map (format lama atau berbeda)
+          logger.info('=== PARSING SUNNAH RIWAYAT (MAP) ===');
+          return riwayatData;
+        }
+
+        logger.info('=== FORMATTED SUNNAH RIWAYAT: $formattedProgress ===');
+        return formattedProgress;
+      }
     }
   }
 
@@ -1080,10 +1269,56 @@ class _SholatPageState extends ConsumerState<SholatPage>
         return progressToday.where((item) => item['progres'] == true).length;
       }
     } else {
-      // Untuk tanggal lain, gunakan _currentProgressData
-      return _currentProgressData.values
-          .where((v) => v is Map && (v['completed'] == true))
-          .length;
+      // Untuk tanggal lain (riwayat)
+      final formatter = DateFormat('yyyy-MM-dd');
+      final dateKey = formatter.format(_selectedDate);
+
+      if (jenis == 'wajib') {
+        // Untuk wajib riwayat, ambil langsung dari state
+        final riwayat = state.progressWajibRiwayat;
+        final riwayatData = riwayat[dateKey];
+
+        // Jika format List (langsung array progress items)
+        if (riwayatData is List) {
+          return riwayatData.length; // Jumlah item = jumlah completed
+        }
+        // Jika format Map
+        else if (riwayatData is Map<String, dynamic>) {
+          // Jika ada struktur statistik, gunakan total
+          if (riwayatData.containsKey('total')) {
+            return riwayatData['total'] as int? ?? 0;
+          }
+
+          // Jika ada detail, hitung dari detail
+          if (riwayatData.containsKey('detail')) {
+            final detail = riwayatData['detail'] as List<dynamic>? ?? [];
+            return detail.length;
+          }
+
+          // Fallback: gunakan _currentProgressData
+          return _currentProgressData.values
+              .where((v) => v is Map && (v['completed'] == true))
+              .length;
+        } else {
+          // Fallback: gunakan _currentProgressData
+          return _currentProgressData.values
+              .where((v) => v is Map && (v['completed'] == true))
+              .length;
+        }
+      } else {
+        // Untuk sunnah riwayat, ambil langsung dari state
+        final riwayat = state.progressSunnahRiwayat;
+        final riwayatData = riwayat[dateKey];
+
+        if (riwayatData is List) {
+          return riwayatData.where((item) => item['progres'] == true).length;
+        } else {
+          // Fallback: gunakan _currentProgressData
+          return _currentProgressData.values
+              .where((v) => v is Map && (v['completed'] == true))
+              .length;
+        }
+      }
     }
   }
 
@@ -1938,6 +2173,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
         final name = sunnahItem.nama as String;
         final slug = sunnahItem.slug as String;
         final deskripsi = sunnahItem.deskripsi as String;
+        final sunnahId = sunnahItem.id; // Ambil ID sholat sunnah
 
         // Konversi slug ke dbKey format (replace - dengan _)
         final dbKey = slug.replaceAll('-', '_');
@@ -1947,6 +2183,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
           'time': deskripsi,
           'icon': _getIconBySlug(slug),
           'dbKey': dbKey,
+          'sunnahId': sunnahId, // Tambahkan ID sunnah
         };
 
         final sholatProgress = progressData[dbKey] as Map<String, dynamic>?;

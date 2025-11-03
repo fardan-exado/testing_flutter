@@ -181,7 +181,7 @@ class _HomeTabContentState extends ConsumerState<HomeTabContent> {
     final error = homeState.message;
 
     // Get location data from state
-    final locationName = homeState.locationName;
+    final locationName = homeState.locationName ?? 'Memuat lokasi...';
     final localDate =
         homeState.localDate ?? DateTime.now().toIso8601String().split('T')[0];
 
@@ -281,7 +281,7 @@ class _HomeTabContentState extends ConsumerState<HomeTabContent> {
                                         SizedBox(width: _px(context, 4)),
                                         Flexible(
                                           child: Text(
-                                            locationName!,
+                                            locationName,
                                             style: TextStyle(
                                               color: Colors.white70,
                                               fontSize: _t(

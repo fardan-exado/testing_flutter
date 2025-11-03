@@ -67,6 +67,7 @@ class SholatService {
     bool? isJamaah,
     String? lokasi,
     String? keterangan,
+    int? sunnahId,
   }) async {
     try {
       final endpoint = jenis.toLowerCase() == 'wajib'
@@ -84,6 +85,7 @@ class SholatService {
           : {
               'sholat': sholat,
               'status': status, // tepat_waktu, terlambat, tidak_sholat
+              if (sunnahId != null) 'sholat_sunnah_id': sunnahId,
             };
 
       final response = await ApiClient.dio.post(endpoint, data: data);
@@ -128,9 +130,7 @@ class SholatService {
   // Get Progress Sholat Wajib Hari Ini
   static Future<Map<String, dynamic>> getProgressSholatWajibHariIni() async {
     try {
-      final response = await ApiClient.dio.get(
-        '/sholat/wajib/hari-ini',
-      );
+      final response = await ApiClient.dio.get('/sholat/wajib/hari-ini');
 
       final responseData = response.data as Map<String, dynamic>;
 
@@ -148,9 +148,7 @@ class SholatService {
   // Get Progress Sholat Sunnah Hari Ini
   static Future<Map<String, dynamic>> getProgressSholatSunnahHariIni() async {
     try {
-      final response = await ApiClient.dio.get(
-        '/sholat/sunnah/hari-ini',
-      );
+      final response = await ApiClient.dio.get('/sholat/sunnah/hari-ini');
 
       final responseData = response.data as Map<String, dynamic>;
 
@@ -186,9 +184,7 @@ class SholatService {
   // Get Progress Sunnah Riwayat
   static Future<Map<String, dynamic>> getProgressSholatSunnahRiwayat() async {
     try {
-      final response = await ApiClient.dio.get(
-        '/sholat/sunnah/riwayat',
-      );
+      final response = await ApiClient.dio.get('/sholat/sunnah/riwayat');
 
       final responseData = response.data as Map<String, dynamic>;
 
