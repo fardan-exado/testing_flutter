@@ -371,6 +371,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ),
                         _buildMenuItem(
                           context: context,
+                          icon: Icons.workspace_premium_rounded,
+                          title: 'Paket Premium',
+                          subtitle: isAuthenticated
+                              ? 'Upgrade akun dan lihat transaksi'
+                              : 'Login untuk akses premium',
+                          enabled: isAuthenticated && displayUser != null,
+                          onTap: () => Navigator.pushNamed(context, '/plan'),
+                        ),
+                        _buildMenuItem(
+                          context: context,
                           icon: Icons.help_outline,
                           title: 'Bantuan',
                           subtitle: 'FAQ dan dukungan pelanggan',

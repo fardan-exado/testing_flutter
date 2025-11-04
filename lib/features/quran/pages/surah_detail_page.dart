@@ -1018,142 +1018,63 @@ class _SurahDetailPageState extends ConsumerState<SurahDetailPage>
           child: Stack(
             children: [
               // Scroll indicator popup
-              if (_showScrollIndex)
-                Positioned(
-                  right: 65,
-                  top: MediaQuery.of(context).size.height * 0.35,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryBlue.withOpacity(0.5),
-                          blurRadius: 24,
-                          offset: const Offset(-4, 4),
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.bookmark_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Ayat',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                        ),
-                        Text(
-                          '$_currentScrollIndex',
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            height: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-              // Visible scroll track
-              Positioned(
-                right: 12,
-                top: 20,
-                bottom: 20,
-                child: Container(
-                  width: 6,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppTheme.primaryBlue.withOpacity(0.2),
-                        AppTheme.accentGreen.withOpacity(0.2),
-                        AppTheme.primaryBlue.withOpacity(0.2),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-
-              // Drag handle (thumb)
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppTheme.primaryBlue.withOpacity(0.8),
-                        AppTheme.accentGreen.withOpacity(0.8),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryBlue.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 20,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        width: 20,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        width: 20,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // if (_showScrollIndex)
+              //   Positioned(
+              //     right: 65,
+              //     top: MediaQuery.of(context).size.height * 0.35,
+              //     child: Container(
+              //       padding: const EdgeInsets.symmetric(
+              //         horizontal: 20,
+              //         vertical: 16,
+              //       ),
+              //       decoration: BoxDecoration(
+              //         gradient: LinearGradient(
+              //           begin: Alignment.topLeft,
+              //           end: Alignment.bottomRight,
+              //           colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
+              //         ),
+              //         borderRadius: BorderRadius.circular(16),
+              //         boxShadow: [
+              //           BoxShadow(
+              //             color: AppTheme.primaryBlue.withOpacity(0.5),
+              //             blurRadius: 24,
+              //             offset: const Offset(-4, 4),
+              //             spreadRadius: 2,
+              //           ),
+              //         ],
+              //       ),
+              //       child: Column(
+              //         mainAxisSize: MainAxisSize.min,
+              //         children: [
+              //           const Icon(
+              //             Icons.bookmark_rounded,
+              //             color: Colors.white,
+              //             size: 24,
+              //           ),
+              //           const SizedBox(height: 4),
+              //           Text(
+              //             'Ayat',
+              //             style: TextStyle(
+              //               fontFamily: 'Poppins',
+              //               fontSize: 12,
+              //               fontWeight: FontWeight.w500,
+              //               color: Colors.white.withOpacity(0.9),
+              //             ),
+              //           ),
+              //           Text(
+              //             '$_currentScrollIndex',
+              //             style: const TextStyle(
+              //               fontFamily: 'Poppins',
+              //               fontSize: 28,
+              //               fontWeight: FontWeight.bold,
+              //               color: Colors.white,
+              //               height: 1,
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //     ),
+              //   ),
             ],
           ),
         ),

@@ -21,6 +21,8 @@ import 'package:test_flutter/features/sedekah/pages/sedekah_page.dart';
 import 'package:test_flutter/features/sholat/pages/sholat_page.dart';
 import 'package:test_flutter/features/syahadat/pages/syahadat_page.dart';
 import 'package:test_flutter/features/tahajud/pages/tahajud_page.dart';
+import 'package:test_flutter/features/subscription/pages/plan_page.dart';
+import 'package:test_flutter/features/subscription/pages/transaction_history_page.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -47,6 +49,8 @@ class AppRoutes {
   static const String syahadat = '/syahadat';
   static const String komunitas = '/komunitas';
   static const String haji = '/haji';
+  static const String plan = '/plan';
+  static const String transactionHistory = '/transaction-history';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -120,6 +124,10 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const KomunitasPage());
       case haji:
         return MaterialPageRoute(builder: (_) => const HajiPage());
+      case plan:
+        return MaterialPageRoute(builder: (_) => const PlanPage());
+      case transactionHistory:
+        return MaterialPageRoute(builder: (_) => const TransactionHistoryPage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

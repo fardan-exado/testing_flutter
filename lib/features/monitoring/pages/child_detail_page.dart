@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:test_flutter/app/theme.dart';
 
+/// Child Detail Page - Halaman detail monitoring untuk setiap anak
+///
+/// Menampilkan:
+/// - Profile dan statistik anak
+/// - Summary bulanan untuk setiap kategori ibadah
+/// - Timeline aktivitas terbaru
+/// - Progress chart dan achievement
 class ChildDetailPage extends StatefulWidget {
   final Map<String, dynamic> childData;
 
