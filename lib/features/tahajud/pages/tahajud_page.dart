@@ -28,21 +28,41 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
   // Monthly tahajud count
   int monthlyTahajudCount = 12;
 
-  // Calendar data - tahajud completed dates
-  final Set<DateTime> completedDates = {
-    DateTime(2025, 10, 24),
-    DateTime(2025, 10, 25),
-    DateTime(2025, 10, 27),
-    DateTime(2025, 10, 28),
-    DateTime(2025, 10, 22),
-    DateTime(2025, 10, 20),
-    DateTime(2025, 10, 18),
-    DateTime(2025, 10, 16),
-    DateTime(2025, 10, 15),
-    DateTime(2025, 10, 13),
-    DateTime(2025, 10, 11),
-    DateTime(2025, 10, 10),
+  // Calendar data - tahajud completed dates with details
+  final Map<String, Map<String, dynamic>> tahajudData = {
+    '2025-10-24': {
+      'waktu_sholat': '03:30',
+      'rakaat': 8,
+      'makan_terakhir': '20:00',
+      'tidur': '22:00',
+      'keterangan': 'Sendiri',
+    },
+    '2025-10-25': {
+      'waktu_sholat': '03:30',
+      'rakaat': 0,
+      'makan_terakhir': '20:00',
+      'tidur': '01:00',
+      'keterangan': 'Tidak Sholat Tahajud karena Begadang',
+    },
+    '2025-10-27': {
+      'waktu_sholat': '04:00',
+      'rakaat': 6,
+      'makan_terakhir': '19:30',
+      'tidur': '21:30',
+      'keterangan': 'Berjamaah di masjid',
+    },
   };
+
+  Set<DateTime> get completedDates {
+    return tahajudData.keys.map((dateStr) {
+      final parts = dateStr.split('-');
+      return DateTime(
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+      );
+    }).toSet();
+  }
 
   DateTime selectedMonth = DateTime.now();
   PageController calendarPageController = PageController();
@@ -793,6 +813,27 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
     final connectionState = ref.read(connectionProvider);
     final isOffline = !connectionState.isOnline;
 
+    final dateKey =
+        '${currentDate.year}-${currentDate.month.toString().padLeft(2, '0')}-${currentDate.day.toString().padLeft(2, '0')}';
+    final existingData = tahajudData[dateKey];
+
+    // Controllers for form
+    final waktuSholatController = TextEditingController(
+      text: existingData?['waktu_sholat'] ?? '',
+    );
+    final rakaatController = TextEditingController(
+      text: existingData?['rakaat']?.toString() ?? '',
+    );
+    final makanController = TextEditingController(
+      text: existingData?['makan_terakhir'] ?? '',
+    );
+    final tidurController = TextEditingController(
+      text: existingData?['tidur'] ?? '',
+    );
+    final keteranganController = TextEditingController(
+      text: existingData?['keterangan'] ?? '',
+    );
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -806,261 +847,443 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
           ),
         ),
         padding: EdgeInsets.all(isTablet ? 28 : 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: isTablet ? 50 : 40,
-              height: isTablet ? 6 : 4,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: isTablet ? 50 : 40,
+                height: isTablet ? 6 : 4,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
+                  ),
+                  borderRadius: BorderRadius.circular(isTablet ? 3 : 2),
                 ),
-                borderRadius: BorderRadius.circular(isTablet ? 3 : 2),
               ),
-            ),
-            SizedBox(height: isTablet ? 24 : 20),
-            Text(
-              'Tahajud - ${DateFormat('d MMMM yyyy', 'id_ID').format(currentDate)}',
-              style: TextStyle(
-                fontSize: isTablet ? 24 : 20,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.onSurface,
+              SizedBox(height: isTablet ? 24 : 20),
+              Text(
+                'Tahajud - ${DateFormat('d MMMM yyyy', 'id_ID').format(currentDate)}',
+                style: TextStyle(
+                  fontSize: isTablet ? 24 : 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.onSurface,
+                ),
               ),
-            ),
-            SizedBox(height: isTablet ? 20 : 16),
-            Container(
-              padding: EdgeInsets.all(isTablet ? 20 : 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.accentGreen.withValues(alpha: 0.1),
-                    AppTheme.primaryBlue.withValues(alpha: 0.1),
+              SizedBox(height: isTablet ? 20 : 16),
+
+              // Show detail if exists, otherwise show form
+              if (isCompleted && existingData != null) ...[
+                // Detail View
+                Container(
+                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.accentGreen.withValues(alpha: 0.1),
+                        AppTheme.primaryBlue.withValues(alpha: 0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(isTablet ? 18 : 16),
+                    border: Border.all(
+                      color: AppTheme.accentGreen.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: AppTheme.accentGreen,
+                        size: isTablet ? 48 : 40,
+                      ),
+                      SizedBox(height: isTablet ? 12 : 10),
+                      Text(
+                        'Tahajud telah ditandai',
+                        style: TextStyle(
+                          fontSize: isTablet ? 16 : 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.onSurface,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: isTablet ? 20 : 16),
+
+                // Detail Data
+                Container(
+                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(isTablet ? 16 : 14),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDetailRow(
+                        'Waktu Sholat',
+                        existingData['waktu_sholat'] != null &&
+                                existingData['waktu_sholat'].isNotEmpty
+                            ? '${existingData['waktu_sholat']}'
+                            : '-',
+                        Icons.access_time_rounded,
+                        isTablet,
+                      ),
+                      SizedBox(height: isTablet ? 14 : 12),
+                      _buildDetailRow(
+                        'Rakaat',
+                        existingData['rakaat'] != null &&
+                                existingData['rakaat'] > 0
+                            ? '${existingData['rakaat']} rakaat'
+                            : '-',
+                        Icons.format_list_numbered_rounded,
+                        isTablet,
+                      ),
+                      SizedBox(height: isTablet ? 14 : 12),
+                      _buildDetailRow(
+                        'Makan Terakhir',
+                        existingData['makan_terakhir'] != null &&
+                                existingData['makan_terakhir'].isNotEmpty
+                            ? '${existingData['makan_terakhir']}'
+                            : '-',
+                        Icons.restaurant_rounded,
+                        isTablet,
+                      ),
+                      SizedBox(height: isTablet ? 14 : 12),
+                      _buildDetailRow(
+                        'Tidur',
+                        existingData['tidur'] != null &&
+                                existingData['tidur'].isNotEmpty
+                            ? '${existingData['tidur']}'
+                            : '-',
+                        Icons.bedtime_rounded,
+                        isTablet,
+                      ),
+                      if (existingData['keterangan'] != null &&
+                          existingData['keterangan'].isNotEmpty) ...[
+                        SizedBox(height: isTablet ? 14 : 12),
+                        Divider(color: Colors.grey.shade300),
+                        SizedBox(height: isTablet ? 14 : 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.notes_rounded,
+                              color: AppTheme.primaryBlue,
+                              size: isTablet ? 20 : 18,
+                            ),
+                            SizedBox(width: isTablet ? 12 : 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Keterangan',
+                                    style: TextStyle(
+                                      fontSize: isTablet ? 13 : 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    existingData['keterangan'],
+                                    style: TextStyle(
+                                      fontSize: isTablet ? 15 : 14,
+                                      color: AppTheme.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ] else ...[
+                // Form Input
+                Container(
+                  padding: EdgeInsets.all(isTablet ? 20 : 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(isTablet ? 16 : 14),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Detail Tahajud',
+                        style: TextStyle(
+                          fontSize: isTablet ? 16 : 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.onSurface,
+                        ),
+                      ),
+                      SizedBox(height: isTablet ? 16 : 14),
+
+                      // Waktu Sholat
+                      _buildTimeField(
+                        'Waktu Sholat (opsional)',
+                        waktuSholatController,
+                        Icons.access_time_rounded,
+                        isTablet,
+                        context,
+                      ),
+                      SizedBox(height: isTablet ? 14 : 12),
+
+                      // Rakaat
+                      _buildFormField(
+                        'Rakaat (opsional)',
+                        rakaatController,
+                        'Contoh: 8',
+                        Icons.format_list_numbered_rounded,
+                        isTablet,
+                        isNumber: true,
+                      ),
+                      SizedBox(height: isTablet ? 14 : 12),
+
+                      // Makan Terakhir
+                      _buildTimeField(
+                        'Makan Terakhir (opsional)',
+                        makanController,
+                        Icons.restaurant_rounded,
+                        isTablet,
+                        context,
+                      ),
+                      SizedBox(height: isTablet ? 14 : 12),
+
+                      // Tidur
+                      _buildTimeField(
+                        'Tidur (opsional)',
+                        tidurController,
+                        Icons.bedtime_rounded,
+                        isTablet,
+                        context,
+                      ),
+                      SizedBox(height: isTablet ? 14 : 12),
+
+                      // Keterangan
+                      _buildFormField(
+                        'Keterangan (opsional)',
+                        keteranganController,
+                        'Contoh: Sendiri, Berjamaah, dll',
+                        Icons.notes_rounded,
+                        isTablet,
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              SizedBox(height: isTablet ? 24 : 20),
+
+              if (!isCompleted) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 16 : 14,
+                          ),
+                          side: BorderSide(
+                            color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              isTablet ? 14 : 12,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Batal',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: isTablet ? 14 : 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: (isAuthenticated && !isOffline)
+                            ? () => _markTahajud(
+                                currentDate,
+                                waktuSholatController.text,
+                                rakaatController.text,
+                                makanController.text,
+                                tidurController.text,
+                                keteranganController.text,
+                              )
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 16 : 14,
+                          ),
+                          backgroundColor: AppTheme.accentGreen,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              isTablet ? 14 : 12,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: isTablet ? 20 : 18,
+                            ),
+                            SizedBox(width: isTablet ? 8 : 6),
+                            Text(
+                              'Tandai Tahajud',
+                              style: TextStyle(
+                                fontSize: isTablet ? 16 : 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(isTablet ? 18 : 16),
-                border: Border.all(
-                  color: isCompleted
-                      ? AppTheme.accentGreen.withValues(alpha: 0.3)
-                      : AppTheme.primaryBlue.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    isCompleted
-                        ? Icons.check_circle_rounded
-                        : Icons.nightlight_round,
-                    color: isCompleted
-                        ? AppTheme.accentGreen
-                        : AppTheme.primaryBlue,
-                    size: isTablet ? 48 : 40,
-                  ),
+                if (!isAuthenticated || isOffline) ...[
                   SizedBox(height: isTablet ? 12 : 10),
                   Text(
-                    isCompleted
-                        ? 'Tahajud telah ditandai'
-                        : 'Tandai tahajud hari ini?',
+                    !isAuthenticated
+                        ? 'Login untuk menandai tahajud'
+                        : 'Tidak dapat menandai saat offline',
                     style: TextStyle(
-                      fontSize: isTablet ? 16 : 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
+                      fontSize: isTablet ? 12 : 11,
+                      color: Colors.red.shade700,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: isTablet ? 8 : 6),
+                ],
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 16 : 14,
+                          ),
+                          side: BorderSide(
+                            color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              isTablet ? 14 : 12,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Tutup',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: isTablet ? 14 : 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: (isAuthenticated && !isOffline)
+                            ? () => _deleteTahajud(currentDate)
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isTablet ? 16 : 14,
+                          ),
+                          backgroundColor: Colors.red.shade600,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              isTablet ? 14 : 12,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.delete_outline_rounded,
+                              size: isTablet ? 20 : 18,
+                            ),
+                            SizedBox(width: isTablet ? 8 : 6),
+                            Text(
+                              'Hapus Tandai',
+                              style: TextStyle(
+                                fontSize: isTablet ? 16 : 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (!isAuthenticated || isOffline) ...[
+                  SizedBox(height: isTablet ? 12 : 10),
                   Text(
-                    isCompleted
-                        ? 'Alhamdulillah, tetap istiqomah!'
-                        : 'Catat ibadah tahajud Anda',
+                    !isAuthenticated
+                        ? 'Login untuk menghapus tandai'
+                        : 'Tidak dapat menghapus saat offline',
                     style: TextStyle(
-                      fontSize: isTablet ? 14 : 12,
-                      color: AppTheme.onSurfaceVariant,
+                      fontSize: isTablet ? 12 : 11,
+                      color: Colors.red.shade700,
                     ),
                     textAlign: TextAlign.center,
                   ),
                 ],
-              ),
-            ),
-
-            SizedBox(height: isTablet ? 24 : 20),
-
-            if (!isCompleted) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                          vertical: isTablet ? 16 : 14,
-                        ),
-                        side: BorderSide(
-                          color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            isTablet ? 14 : 12,
-                          ),
-                        ),
-                      ),
-                      child: Text(
-                        'Batal',
-                        style: TextStyle(
-                          fontSize: isTablet ? 16 : 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: isTablet ? 14 : 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: (isAuthenticated && !isOffline)
-                          ? () => _markTahajud(currentDate)
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                          vertical: isTablet ? 16 : 14,
-                        ),
-                        backgroundColor: AppTheme.accentGreen,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey.shade300,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            isTablet ? 14 : 12,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.check_circle_outline_rounded,
-                            size: isTablet ? 20 : 18,
-                          ),
-                          SizedBox(width: isTablet ? 8 : 6),
-                          Text(
-                            'Tandai Tahajud',
-                            style: TextStyle(
-                              fontSize: isTablet ? 16 : 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (!isAuthenticated || isOffline) ...[
-                SizedBox(height: isTablet ? 12 : 10),
-                Text(
-                  !isAuthenticated
-                      ? 'Login untuk menandai tahajud'
-                      : 'Tidak dapat menandai saat offline',
-                  style: TextStyle(
-                    fontSize: isTablet ? 12 : 11,
-                    color: Colors.red.shade700,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ] else ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                          vertical: isTablet ? 16 : 14,
-                        ),
-                        side: BorderSide(
-                          color: AppTheme.primaryBlue.withValues(alpha: 0.3),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            isTablet ? 14 : 12,
-                          ),
-                        ),
-                      ),
-                      child: Text(
-                        'Tutup',
-                        style: TextStyle(
-                          fontSize: isTablet ? 16 : 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: isTablet ? 14 : 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: (isAuthenticated && !isOffline)
-                          ? () => _deleteTahajud(currentDate)
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                          vertical: isTablet ? 16 : 14,
-                        ),
-                        backgroundColor: Colors.red.shade600,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.grey.shade300,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            isTablet ? 14 : 12,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.delete_outline_rounded,
-                            size: isTablet ? 20 : 18,
-                          ),
-                          SizedBox(width: isTablet ? 8 : 6),
-                          Text(
-                            'Hapus Tandai',
-                            style: TextStyle(
-                              fontSize: isTablet ? 16 : 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (!isAuthenticated || isOffline) ...[
-                SizedBox(height: isTablet ? 12 : 10),
-                Text(
-                  !isAuthenticated
-                      ? 'Login untuk menghapus tandai'
-                      : 'Tidak dapat menghapus saat offline',
-                  style: TextStyle(
-                    fontSize: isTablet ? 12 : 11,
-                    color: Colors.red.shade700,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
               ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  void _markTahajud(DateTime date) {
+  void _markTahajud(
+    DateTime date,
+    String waktuSholat,
+    String rakaat,
+    String makanTerakhir,
+    String tidur,
+    String keterangan,
+  ) {
+    final dateKey =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
     setState(() {
-      completedDates.add(DateTime(date.year, date.month, date.day));
+      tahajudData[dateKey] = {
+        'waktu_sholat': waktuSholat,
+        'rakaat': rakaat.isNotEmpty ? int.tryParse(rakaat) ?? 0 : 0,
+        'makan_terakhir': makanTerakhir,
+        'tidur': tidur,
+        'keterangan': keterangan,
+      };
+
       currentStreak++;
       tahajudCount++;
       if (currentStreak > longestStreak) {
@@ -1079,11 +1302,12 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
   }
 
   void _deleteTahajud(DateTime date) {
+    final dateKey =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
     setState(() {
-      completedDates.removeWhere(
-        (d) =>
-            d.year == date.year && d.month == date.month && d.day == date.day,
-      );
+      tahajudData.remove(dateKey);
+
       // Update streak and count
       if (tahajudCount > 0) tahajudCount--;
       if (currentStreak > 0) currentStreak--;
@@ -1096,6 +1320,196 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
       context,
       message: 'Tandai tahajud berhasil dihapus',
       type: ToastType.info,
+    );
+  }
+
+  // Helper widget for detail row
+  Widget _buildDetailRow(
+    String label,
+    String value,
+    IconData icon,
+    bool isTablet,
+  ) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.primaryBlue, size: isTablet ? 20 : 18),
+        SizedBox(width: isTablet ? 12 : 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: isTablet ? 13 : 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: isTablet ? 15 : 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper widget for time field with picker
+  Widget _buildTimeField(
+    String label,
+    TextEditingController controller,
+    IconData icon,
+    bool isTablet,
+    BuildContext context,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isTablet ? 13 : 12,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.onSurfaceVariant,
+          ),
+        ),
+        SizedBox(height: 8),
+        InkWell(
+          onTap: () async {
+            final TimeOfDay? picked = await showTimePicker(
+              context: context,
+              initialTime: TimeOfDay.now(),
+              builder: (context, child) {
+                return Theme(
+                  data: Theme.of(context).copyWith(
+                    timePickerTheme: TimePickerThemeData(
+                      backgroundColor: Colors.white,
+                      hourMinuteShape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      dayPeriodShape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    colorScheme: ColorScheme.light(
+                      primary: AppTheme.primaryBlue,
+                      onPrimary: Colors.white,
+                      surface: Colors.white,
+                      onSurface: AppTheme.onSurface,
+                    ),
+                  ),
+                  child: child!,
+                );
+              },
+            );
+            if (picked != null) {
+              final formattedTime =
+                  '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+              controller.text = formattedTime;
+            }
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 14 : 12,
+              vertical: isTablet ? 14 : 12,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: isTablet ? 20 : 18, color: Colors.grey.shade600),
+                SizedBox(width: isTablet ? 12 : 10),
+                Expanded(
+                  child: Text(
+                    controller.text.isEmpty
+                        ? 'Pilih waktu'
+                        : controller.text,
+                    style: TextStyle(
+                      fontSize: isTablet ? 14 : 13,
+                      color: controller.text.isEmpty
+                          ? Colors.grey.shade500
+                          : AppTheme.onSurface,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_drop_down_rounded,
+                  color: Colors.grey.shade600,
+                  size: isTablet ? 24 : 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper widget for form field
+  Widget _buildFormField(
+    String label,
+    TextEditingController controller,
+    String hint,
+    IconData icon,
+    bool isTablet, {
+    bool isNumber = false,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isTablet ? 13 : 12,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.onSurfaceVariant,
+          ),
+        ),
+        SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          maxLines: maxLines,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon, size: isTablet ? 20 : 18),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+              borderSide: BorderSide(color: AppTheme.primaryBlue, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 14 : 12,
+              vertical: isTablet ? 14 : 12,
+            ),
+          ),
+          style: TextStyle(fontSize: isTablet ? 14 : 13),
+        ),
+      ],
     );
   }
 

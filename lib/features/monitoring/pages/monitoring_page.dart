@@ -834,17 +834,42 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
         ),
         dividerColor: Colors.transparent,
         tabs: [
-          Tab(text: 'Laporan'),
-          Tab(text: 'Anak-anak'),
+          Tab(
+            child: Text(
+              'Laporan',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+          Tab(
+            child: Text(
+              'Anak-anak',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
           Tab(
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('Notifikasi'),
+                Flexible(
+                  child: Text(
+                    isTablet ? 'Notifikasi' : 'Notif',
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
                 if (unreadCount > 0) ...[
-                  SizedBox(width: 6),
+                  SizedBox(width: isTablet ? 6 : 4),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    constraints: BoxConstraints(
+                      minWidth: isTablet ? 20 : 18,
+                    ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 6 : 5,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(10),
@@ -853,9 +878,10 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
                       unreadCount > 99 ? '99+' : unreadCount.toString(),
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: isTablet ? 10 : 9,
                         fontWeight: FontWeight.bold,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],
