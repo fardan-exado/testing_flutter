@@ -7,6 +7,7 @@ import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/core/utils/connection/connection_provider.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/monitoring/pages/add_edit_child_page.dart';
+import 'package:test_flutter/features/subscription/widgets/premium_gate.dart';
 
 class MonitoringPage extends ConsumerStatefulWidget {
   const MonitoringPage({super.key});
@@ -247,20 +248,24 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final isAuthenticated = authState['status'] == AuthState.authenticated;
+
+    if (!isAuthenticated) return _buildLoginRequired();
+
+    // Wrap with Premium Gate
+    return PremiumGate(
+      featureName: 'Monitoring',
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     final isDesktop = screenWidth > 1024;
     final connectionState = ref.watch(connectionProvider);
     final isOffline = !connectionState.isOnline;
-    final authState = ref.watch(authProvider);
-    final isAuthenticated = authState['status'] == AuthState.authenticated;
-
-    // TODO: Add premium check when ready
-    // For now, set to true for development/testing
-    final isPremium = true;
-
-    if (!isAuthenticated) return _buildLoginRequired();
-    if (!isPremium) return _buildPremiumRequired();
 
     // Main content when authenticated and premium
     return Scaffold(
@@ -863,9 +868,7 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
                 if (unreadCount > 0) ...[
                   SizedBox(width: isTablet ? 6 : 4),
                   Container(
-                    constraints: BoxConstraints(
-                      minWidth: isTablet ? 20 : 18,
-                    ),
+                    constraints: BoxConstraints(minWidth: isTablet ? 20 : 18),
                     padding: EdgeInsets.symmetric(
                       horizontal: isTablet ? 6 : 5,
                       vertical: 2,
@@ -3013,5 +3016,4 @@ class _MonitoringPageState extends ConsumerState<MonitoringPage>
       ),
     );
   }
-
-    }
+}

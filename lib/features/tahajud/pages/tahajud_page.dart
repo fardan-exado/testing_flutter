@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/core/utils/connection/connection_provider.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
+import 'package:test_flutter/features/subscription/widgets/premium_gate.dart';
 
 class TahajudPage extends ConsumerStatefulWidget {
   const TahajudPage({super.key});
@@ -140,6 +141,14 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
 
   @override
   Widget build(BuildContext context) {
+    // Wrap with Premium Gate
+    return PremiumGate(
+      featureName: 'Tahajud Tracker',
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     final isDesktop = screenWidth > 1024;
@@ -1431,13 +1440,15 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
             ),
             child: Row(
               children: [
-                Icon(icon, size: isTablet ? 20 : 18, color: Colors.grey.shade600),
+                Icon(
+                  icon,
+                  size: isTablet ? 20 : 18,
+                  color: Colors.grey.shade600,
+                ),
                 SizedBox(width: isTablet ? 12 : 10),
                 Expanded(
                   child: Text(
-                    controller.text.isEmpty
-                        ? 'Pilih waktu'
-                        : controller.text,
+                    controller.text.isEmpty ? 'Pilih waktu' : controller.text,
                     style: TextStyle(
                       fontSize: isTablet ? 14 : 13,
                       color: controller.text.isEmpty
