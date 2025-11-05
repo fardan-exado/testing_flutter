@@ -142,10 +142,11 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
   @override
   Widget build(BuildContext context) {
     // Wrap with Premium Gate
-    return PremiumGate(
-      featureName: 'Tahajud Tracker',
-      child: _buildContent(context),
-    );
+    return _buildContent(context);
+    // return PremiumGate(
+    //   featureName: 'Tahajud Tracker',
+    //   child: _buildContent(context),
+    // );
   }
 
   Widget _buildContent(BuildContext context) {
