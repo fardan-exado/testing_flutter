@@ -1,24 +1,22 @@
+import 'package:flutter/material.dart';
+import 'package:test_flutter/app/theme.dart';
+import 'package:test_flutter/core/utils/responsive_helper.dart';
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_islamic_icons/flutter_islamic_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:test_flutter/app/theme.dart';
 import 'package:test_flutter/core/utils/format_helper.dart';
 import 'package:test_flutter/core/utils/logger.dart';
-import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/data/models/sholat/sholat.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/sholat/services/alarm_service.dart';
 import 'package:test_flutter/features/sholat/sholat_provider.dart';
 import 'package:test_flutter/features/sholat/sholat_state.dart';
-import 'package:test_flutter/features/sholat/widgets/sholat_card.dart';
-import 'package:test_flutter/features/sholat/widgets/sholat_header.dart';
 import 'package:test_flutter/features/sholat/widgets/sholat_calendar_modal.dart';
-import 'package:test_flutter/features/sholat/widgets/sholat_info_card.dart';
 
 class SholatPage extends ConsumerStatefulWidget {
   const SholatPage({super.key});
@@ -37,7 +35,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
   // State
   DateTime _selectedDate = DateTime.now();
   bool _isInitialized = false;
-  bool _isLoadingProgress = false; // TAMBAH INI
+  bool _isLoadingProgress = false;
 
   // Services
   final AlarmService _alarmService = AlarmService();
@@ -50,6 +48,29 @@ class _SholatPageState extends ConsumerState<SholatPage>
     'Maghrib': false,
     'Isya': false,
   };
+
+  // ---------- Responsive utils (berbasis ResponsiveHelper) ----------
+  double _scale(BuildContext c) {
+    if (ResponsiveHelper.isSmallScreen(c)) return .9;
+    if (ResponsiveHelper.isMediumScreen(c)) return 1.0;
+    if (ResponsiveHelper.isLargeScreen(c)) return 1.1;
+    return 1.2; // extra large
+  }
+
+  double _px(BuildContext c, double base) => base * _scale(c);
+
+  double _ts(BuildContext c, double base) =>
+      ResponsiveHelper.adaptiveTextSize(c, base);
+
+  EdgeInsets _hpad(BuildContext c) => EdgeInsets.symmetric(
+    horizontal: ResponsiveHelper.getResponsivePadding(c).left,
+  );
+
+  double _maxWidth(BuildContext c) {
+    if (ResponsiveHelper.isExtraLargeScreen(c)) return 980;
+    if (ResponsiveHelper.isLargeScreen(c)) return 860;
+    return double.infinity; // phone
+  }
 
   @override
   void initState() {
@@ -67,12 +88,10 @@ class _SholatPageState extends ConsumerState<SholatPage>
   }
 
   void _listenToAuthChanges() {
-    // Listen to auth state changes to clear progress on logout
     ref.listen(authProvider, (previous, next) {
       final wasAuthenticated = previous?['status'] == AuthState.authenticated;
       final isNowAuthenticated = next['status'] == AuthState.authenticated;
 
-      // If user logged out (was authenticated, now not)
       if (wasAuthenticated && !isNowAuthenticated) {
         logger.info('🔓 User logged out, clearing progress data from state');
         ref.read(sholatProvider.notifier).clearProgressData();
@@ -83,12 +102,10 @@ class _SholatPageState extends ConsumerState<SholatPage>
   void _initializeAlarmService() {
     _alarmService.initialize();
 
-    // TAMBAH: Monitor pending notifications (development only)
     if (kDebugMode) {
       Future.delayed(const Duration(seconds: 2), () async {
         final pending = await _alarmService.getPendingNotifications();
         logger.info('Active alarms: ${pending.length}');
-
         await _alarmService.debugAlarmStatus();
       });
     }
@@ -282,7 +299,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
     );
   }
 
-  /// Modal untuk input detail sholat (baru)
   Future<void> _showSholatDetailModal(
     BuildContext context,
     String sholatName,
@@ -318,7 +334,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Handle bar
                       Center(
                         child: Container(
                           width: 40,
@@ -330,8 +345,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // Header
                       Row(
                         children: [
                           Container(
@@ -378,8 +391,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                         ],
                       ),
                       const SizedBox(height: 24),
-
-                      // Status
                       Text(
                         'Status',
                         style: TextStyle(
@@ -440,8 +451,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                         ],
                       ),
                       const SizedBox(height: 20),
-
-                      // Berjamaah (hanya untuk wajib)
                       if (jenis == 'wajib') ...[
                         Text(
                           'Berjamaah',
@@ -480,8 +489,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                           ],
                         ),
                         const SizedBox(height: 20),
-
-                        // Tempat
                         Text(
                           'Tempat',
                           style: TextStyle(
@@ -534,8 +541,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                           ],
                         ),
                         const SizedBox(height: 20),
-
-                        // Keterangan
                         Text(
                           'Keterangan',
                           style: TextStyle(
@@ -581,8 +586,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                         ),
                         const SizedBox(height: 24),
                       ],
-
-                      // Button Simpan dengan loading
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -592,12 +595,9 @@ class _SholatPageState extends ConsumerState<SholatPage>
                                   isLoading
                               ? null
                               : () async {
-                                  setModalState(
-                                    () => isLoading = true,
-                                  ); // UPDATED: set loading true
+                                  setModalState(() => isLoading = true);
 
                                   try {
-                                    // Simpan ke database via provider
                                     final response = await ref
                                         .read(sholatProvider.notifier)
                                         .addProgressSholat(
@@ -619,26 +619,18 @@ class _SholatPageState extends ConsumerState<SholatPage>
                                         );
 
                                     if (response != null && mounted) {
-                                      // Tutup modal
                                       Navigator.pop(context, true);
-
-                                      // Refresh data progress dan tunggu selesai
                                       await _fetchProgressData();
-
-                                      // Force rebuild state untuk memastikan UI terupdate
                                       if (mounted) {
                                         setState(() {});
                                       }
-
                                       _showCompletionFeedback(sholatName);
                                     }
                                   } catch (e) {
                                     logger.severe('Error saving progress: $e');
 
-                                    // Ambil message dari exception
                                     String errorMessage =
                                         'Gagal menyimpan data';
-
                                     if (e is Exception) {
                                       final errorString = e.toString();
                                       if (errorString.contains('Exception:')) {
@@ -657,9 +649,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
                                     }
                                   } finally {
                                     if (mounted) {
-                                      setModalState(
-                                        () => isLoading = false,
-                                      ); // UPDATED: set loading false
+                                      setModalState(() => isLoading = false);
                                     }
                                   }
                                 },
@@ -706,13 +696,11 @@ class _SholatPageState extends ConsumerState<SholatPage>
       ),
     );
 
-    // Refresh data jika berhasil simpan
     if (result == true && mounted) {
       setState(() {});
     }
   }
 
-  /// Widget untuk option button (Ya/Tidak)
   Widget _buildOptionButton({
     required BuildContext context,
     required String label,
@@ -759,7 +747,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
     );
   }
 
-  /// Widget untuk place chip (Masjid, Rumah, dll)
   Widget _buildPlaceChip({
     required BuildContext context,
     required String label,
@@ -846,15 +833,10 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
                             if (mounted) {
                               Navigator.pop(context);
-
-                              // Refresh data dan tunggu selesai
                               await _fetchProgressData();
-
-                              // Force rebuild state untuk memastikan UI terupdate
                               if (mounted) {
                                 setState(() {});
                               }
-
                               showMessageToast(
                                 context,
                                 message: 'Progress berhasil dihapus',
@@ -899,10 +881,49 @@ class _SholatPageState extends ConsumerState<SholatPage>
   }
 
   void _showCompletionFeedback(String prayerName) {
-    showMessageToast(
-      context,
-      message: '✨ Alhamdulillah, $prayerName telah dicatat!',
-      type: ToastType.success,
+    final feedbacks = [
+      'Alhamdulillah! Sholat $prayerName tercatat',
+      'Barakallahu fiik! Semoga diterima',
+      'Masya Allah, istiqomah terus ya',
+      'Semoga berkah sholat ${prayerName}nya',
+      'Subhanallah, terus semangat beribadah',
+    ];
+    final msg = feedbacks[DateTime.now().millisecond % feedbacks.length];
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(_px(context, 6)),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: _px(context, 20),
+              ),
+            ),
+            SizedBox(width: _px(context, 12)),
+            Expanded(
+              child: Text(
+                msg,
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: _ts(context, 14),
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppTheme.accentGreen,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
     );
   }
 
@@ -955,7 +976,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
     super.dispose();
   }
 
-  // Getters
   bool get _isWajibTab => _tabController.index == 0;
 
   bool get _isToday {
@@ -965,14 +985,11 @@ class _SholatPageState extends ConsumerState<SholatPage>
         _selectedDate.day == now.day;
   }
 
-  // UPDATED: Get progress data based on selected date
   Map<String, dynamic> get _currentProgressData {
-    // Cek status login - jika guest, return empty data
     final authState = ref.watch(authProvider);
     final isLoggedIn = authState['status'] == AuthState.authenticated;
 
     if (!isLoggedIn) {
-      // User adalah guest, tidak ada progress data
       return {};
     }
 
@@ -985,16 +1002,13 @@ class _SholatPageState extends ConsumerState<SholatPage>
       logger.info('Progress Sunnah Hari Ini: ${state.progressSunnahHariIni}');
 
       if (jenis == 'wajib') {
-        // WAJIB: struktur { total: int, statistik: {...}, detail: [...] }
         final progressToday = state.progressWajibHariIni;
         final Map<String, dynamic> formattedProgress = {};
 
-        // Ambil statistik dan detail dari response
         final statistik =
             progressToday['statistik'] as Map<String, dynamic>? ?? {};
         final detail = progressToday['detail'] as List<dynamic>? ?? [];
 
-        // Map nama sholat dari sholat_wajib_id ke key
         final Map<int, String> wajibIdToKey = {
           1: 'shubuh',
           2: 'dzuhur',
@@ -1007,7 +1021,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
         logger.info('Statistik: $statistik');
         logger.info('Detail count: ${detail.length}');
 
-        // Loop detail untuk build progress data dengan informasi lengkap
         for (var item in detail) {
           final sholatWajibId = item['sholat_wajib_id'] as int;
           final sholatKey = wajibIdToKey[sholatWajibId];
@@ -1015,7 +1028,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
           if (sholatKey != null) {
             final progressItem = {
               'id': item['id'],
-              'completed': true, // Ada di detail = sudah ada progress
+              'completed': true,
               'status': item['status'] as String? ?? 'tepat_waktu',
               'is_jamaah': item['is_jamaah'] == 1,
               'lokasi': item['lokasi'] as String? ?? '',
@@ -1027,11 +1040,10 @@ class _SholatPageState extends ConsumerState<SholatPage>
           }
         }
 
-        // Tambahkan sholat yang belum ada progress (dari statistik)
         statistik.forEach((key, value) {
           if (!formattedProgress.containsKey(key)) {
             formattedProgress[key] = {
-              'completed': false, // Belum ada di detail = belum ada progress
+              'completed': false,
               'status': 'tepat_waktu',
               'is_jamaah': false,
               'lokasi': '',
@@ -1044,7 +1056,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
         logger.info('=== FORMATTED PROGRESS: $formattedProgress ===');
         return formattedProgress;
       } else {
-        // SUNNAH: struktur array [{ sholat_sunnah: {...}, progres: bool }]
         final progressToday =
             state.progressSunnahHariIni as List<dynamic>? ?? [];
         final Map<String, dynamic> formattedProgress = {};
@@ -1054,29 +1065,19 @@ class _SholatPageState extends ConsumerState<SholatPage>
         logger.info('Progress count: ${progressToday.length}');
         logger.info('Full progress data: $progressToday');
 
-        // Loop array untuk build progress data
         for (var item in progressToday) {
           final sholatSunnah = item['sholat_sunnah'] as Map<String, dynamic>?;
           final progres = item['progres'] as bool? ?? false;
 
-          // DEBUGGING: Log all fields in the item
           logger.info('=== Processing item ===');
           logger.info('Item keys: ${item.keys.toList()}');
           logger.info('Item full data: $item');
 
           if (sholatSunnah != null) {
             final slug = sholatSunnah['slug'] as String;
-            final dbKey = slug.replaceAll(
-              '-',
-              '-',
-            ); // FIX: Replace dash with underscore
+            final dbKey = slug.replaceAll('-', '-');
 
-            // FIX: Get progress record ID from item['id'], NOT sholatSunnah['id']
-            // sholatSunnah['id'] is the sunnah TYPE ID (e.g., 1 for Tahajud)
-            // item['id'] is the progress RECORD ID (e.g., 123 for the actual progress entry)
             final progressId = item['id'] as int?;
-
-            // Get status from item, not sholatSunnah (sholat_sunnah doesn't have status field)
             final progressStatus = item['status'] as String? ?? '';
 
             formattedProgress[dbKey] = {
@@ -1103,16 +1104,14 @@ class _SholatPageState extends ConsumerState<SholatPage>
       logger.info('Date: $dateKey, Jenis: $jenis');
 
       if (jenis == 'wajib') {
-        // WAJIB RIWAYAT: struktur bisa List atau Map
         final riwayat = state.progressWajibRiwayat;
-        final riwayatData = riwayat[dateKey]; // Jangan langsung cast
+        final riwayatData = riwayat[dateKey];
 
         logger.info('Wajib riwayat data type: ${riwayatData.runtimeType}');
         logger.info('Wajib riwayat data: $riwayatData');
 
         final Map<String, dynamic> formattedProgress = {};
 
-        // Map sholat_wajib_id ke key
         final Map<int, String> wajibIdToKey = {
           1: 'shubuh',
           2: 'dzuhur',
@@ -1121,12 +1120,10 @@ class _SholatPageState extends ConsumerState<SholatPage>
           5: 'isya',
         };
 
-        // Cek apakah riwayatData adalah List (format baru dari API)
         if (riwayatData is List) {
           logger.info('=== PARSING WAJIB RIWAYAT (LIST) ===');
           logger.info('Progress count: ${riwayatData.length}');
 
-          // Loop array untuk build progress data
           for (var item in riwayatData) {
             final sholatWajibId = item['sholat_wajib_id'] as int?;
             final sholatKey = sholatWajibId != null
@@ -1136,7 +1133,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
             if (sholatKey != null) {
               formattedProgress[sholatKey] = {
                 'id': item['id'],
-                'completed': true, // Ada di list = sudah ada progress
+                'completed': true,
                 'status': item['status'] as String? ?? 'tepat_waktu',
                 'is_jamaah': item['is_jamaah'] == 1,
                 'lokasi': item['lokasi'] as String? ?? '',
@@ -1146,7 +1143,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
             }
           }
 
-          // Tambahkan sholat yang belum ada progress (5 sholat wajib)
           wajibIdToKey.forEach((id, key) {
             if (!formattedProgress.containsKey(key)) {
               formattedProgress[key] = {
@@ -1162,12 +1158,9 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
           logger.info('=== FORMATTED WAJIB RIWAYAT: $formattedProgress ===');
           return formattedProgress;
-        }
-        // Cek apakah riwayatData adalah Map (format kompleks atau lama)
-        else if (riwayatData is Map<String, dynamic>) {
+        } else if (riwayatData is Map<String, dynamic>) {
           logger.info('=== PARSING WAJIB RIWAYAT (MAP) ===');
 
-          // Jika riwayat punya struktur kompleks (ada statistik & detail)
           if (riwayatData.containsKey('statistik')) {
             final statistik =
                 riwayatData['statistik'] as Map<String, dynamic>? ?? {};
@@ -1176,7 +1169,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
             logger.info('Statistik: $statistik');
             logger.info('Detail count: ${detail.length}');
 
-            // Loop detail untuk build progress data
             for (var item in detail) {
               final sholatWajibId = item['sholat_wajib_id'] as int?;
               final sholatKey = sholatWajibId != null
@@ -1196,7 +1188,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
               }
             }
 
-            // Tambahkan sholat yang belum ada progress
             statistik.forEach((key, value) {
               if (!formattedProgress.containsKey(key)) {
                 formattedProgress[key] = {
@@ -1210,7 +1201,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
               }
             });
           } else {
-            // Format lama: langsung Map<String, bool/Map>
             riwayatData.forEach((key, value) {
               if (value is bool) {
                 formattedProgress[key] = {
@@ -1230,7 +1220,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
           return formattedProgress;
         }
 
-        // Fallback: return empty map dengan 5 sholat wajib
         wajibIdToKey.forEach((id, key) {
           formattedProgress[key] = {
             'completed': false,
@@ -1243,27 +1232,22 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
         return formattedProgress;
       } else {
-        // SUNNAH RIWAYAT: struktur bisa List atau Map
         final riwayat = state.progressSunnahRiwayat;
-        final riwayatData = riwayat[dateKey]; // Jangan langsung cast ke Map
+        final riwayatData = riwayat[dateKey];
 
         logger.info('Sunnah riwayat data type: ${riwayatData.runtimeType}');
         logger.info('Sunnah riwayat data: $riwayatData');
 
         final Map<String, dynamic> formattedProgress = {};
 
-        // Cek apakah riwayatData adalah List (format baru dari API)
         if (riwayatData is List) {
           logger.info('=== PARSING SUNNAH RIWAYAT (LIST) ===');
           logger.info('Progress count: ${riwayatData.length}');
 
-          // Loop array untuk build progress data
-          // Format riwayat: langsung array tanpa nested sholat_sunnah
           for (var item in riwayatData) {
             final sholatSunnahId = item['sholat_sunnah_id'] as int?;
 
             if (sholatSunnahId != null) {
-              // Cari sholat sunnah dari jadwal berdasarkan ID
               final jadwal = ref
                   .read(sholatProvider.notifier)
                   .getJadwalByDate(_selectedDate);
@@ -1281,7 +1265,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
                 formattedProgress[dbKey] = {
                   'id': item['id'],
                   'sholat_sunnah_id': sholatSunnahId,
-                  'completed': true, // Ada di list = sudah ada progress
+                  'completed': true,
                   'status': item['status'] as String? ?? 'tepat_waktu',
                 };
                 logger.info(
@@ -1291,7 +1275,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
             }
           }
         } else if (riwayatData is Map<String, dynamic>) {
-          // Jika ternyata Map (format lama atau berbeda)
           logger.info('=== PARSING SUNNAH RIWAYAT (MAP) ===');
           return riwayatData;
         }
@@ -1303,16 +1286,13 @@ class _SholatPageState extends ConsumerState<SholatPage>
   }
 
   int get _completedCount {
-    // Cek status login - jika guest, return 0
     final authState = ref.watch(authProvider);
     final isLoggedIn = authState['status'] == AuthState.authenticated;
 
     if (!isLoggedIn) {
-      // User adalah guest, tidak ada progress
       return 0;
     }
 
-    // UPDATED: Gunakan _currentProgressData agar sesuai dengan tanggal yang dipilih
     final state = ref.watch(sholatProvider);
     final jenis = _isWajibTab ? 'wajib' : 'sunnah';
 
@@ -1322,57 +1302,45 @@ class _SholatPageState extends ConsumerState<SholatPage>
         final total = progressToday['total'] as int? ?? 0;
         return total;
       } else {
-        // Untuk sunnah, hitung dari array yang progres = true
         final progressToday =
             state.progressSunnahHariIni as List<dynamic>? ?? [];
         return progressToday.where((item) => item['progres'] == true).length;
       }
     } else {
-      // Untuk tanggal lain (riwayat)
       final formatter = DateFormat('yyyy-MM-dd');
       final dateKey = formatter.format(_selectedDate);
 
       if (jenis == 'wajib') {
-        // Untuk wajib riwayat, ambil langsung dari state
         final riwayat = state.progressWajibRiwayat;
         final riwayatData = riwayat[dateKey];
 
-        // Jika format List (langsung array progress items)
         if (riwayatData is List) {
-          return riwayatData.length; // Jumlah item = jumlah completed
-        }
-        // Jika format Map
-        else if (riwayatData is Map<String, dynamic>) {
-          // Jika ada struktur statistik, gunakan total
+          return riwayatData.length;
+        } else if (riwayatData is Map<String, dynamic>) {
           if (riwayatData.containsKey('total')) {
             return riwayatData['total'] as int? ?? 0;
           }
 
-          // Jika ada detail, hitung dari detail
           if (riwayatData.containsKey('detail')) {
             final detail = riwayatData['detail'] as List<dynamic>? ?? [];
             return detail.length;
           }
 
-          // Fallback: gunakan _currentProgressData
           return _currentProgressData.values
               .where((v) => v is Map && (v['completed'] == true))
               .length;
         } else {
-          // Fallback: gunakan _currentProgressData
           return _currentProgressData.values
               .where((v) => v is Map && (v['completed'] == true))
               .length;
         }
       } else {
-        // Untuk sunnah riwayat, ambil langsung dari state
         final riwayat = state.progressSunnahRiwayat;
         final riwayatData = riwayat[dateKey];
 
         if (riwayatData is List) {
           return riwayatData.where((item) => item['progres'] == true).length;
         } else {
-          // Fallback: gunakan _currentProgressData
           return _currentProgressData.values
               .where((v) => v is Map && (v['completed'] == true))
               .length;
@@ -1385,7 +1353,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
     if (_isWajibTab) {
       return 5;
     } else {
-      // Untuk sunnah, hitung dari jadwal sunnah yang tersedia
       final jadwal = ref
           .read(sholatProvider.notifier)
           .getJadwalByDate(_selectedDate);
@@ -1427,10 +1394,9 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
   String get _hijriDate => FormatHelper.getHijriDate(_selectedDate);
 
-  // Helper methods for prayer time validation
   bool _isPrayerTimeArrived(String prayerName, dynamic jadwal) {
     if (jadwal == null) return false;
-    if (!_isToday) return true; // Untuk tanggal lain, selalu enable
+    if (!_isToday) return true;
 
     final now = TimeOfDay.now();
     String? prayerTimeStr;
@@ -1483,25 +1449,114 @@ class _SholatPageState extends ConsumerState<SholatPage>
     return false;
   }
 
-  // Responsive helpers
-  double _px(BuildContext c, double base) {
-    if (ResponsiveHelper.isSmallScreen(c)) return base;
-    if (ResponsiveHelper.isMediumScreen(c)) return base * 1.1;
-    if (ResponsiveHelper.isLargeScreen(c)) return base * 1.2;
-    return base * 1.3;
-  }
+  Map<String, dynamic> _getCurrentPrayerInfo(dynamic jadwal) {
+    if (jadwal == null) {
+      return {
+        'name': 'Dzuhur',
+        'time': '11:37',
+        'icon': Icons.wb_sunny,
+        'color': Colors.amber,
+        'nextName': 'Dzuhur',
+        'nextTime': '2j 25m',
+      };
+    }
 
-  double _ts(BuildContext c, double base) =>
-      ResponsiveHelper.adaptiveTextSize(c, base * 1.1);
+    // Pakai localTime dari state kalau ada
+    final sholatState = ref.watch(sholatProvider);
+    final localTime = sholatState.localTime;
 
-  EdgeInsets _hpad(BuildContext c) => EdgeInsets.symmetric(
-    horizontal: ResponsiveHelper.getResponsivePadding(c).left,
-  );
+    TimeOfDay now;
+    if (localTime != null && localTime.isNotEmpty) {
+      // format: "HH:mm:ss"
+      now = _parseTime(localTime);
+    } else {
+      now = TimeOfDay.now();
+    }
 
-  double _maxWidth(BuildContext c) {
-    if (ResponsiveHelper.isExtraLargeScreen(c)) return 980;
-    if (ResponsiveHelper.isLargeScreen(c)) return 860;
-    return double.infinity;
+    final prayers = [
+      {
+        'name': 'Shubuh',
+        'time': jadwal.wajib.shubuh ?? '00:00',
+        'icon': Icons.wb_sunny_outlined,
+        'color': Colors.orange,
+      },
+      {
+        'name': 'Dzuhur',
+        'time': jadwal.wajib.dzuhur ?? '00:00',
+        'icon': Icons.wb_sunny,
+        'color': Colors.amber,
+      },
+      {
+        'name': 'Ashar',
+        'time': jadwal.wajib.ashar ?? '00:00',
+        'icon': Icons.wb_cloudy,
+        'color': Colors.blue,
+      },
+      {
+        'name': 'Maghrib',
+        'time': jadwal.wajib.maghrib ?? '00:00',
+        'icon': Icons.wb_twilight,
+        'color': Colors.deepOrange,
+      },
+      {
+        'name': 'Isya',
+        'time': jadwal.wajib.isya ?? '00:00',
+        'icon': Icons.nights_stay,
+        'color': Colors.indigo,
+      },
+    ];
+
+    final nowMinutes = now.hour * 60 + now.minute;
+
+    // --- Cari sholat berikutnya (upcoming) ---
+    int upcomingIndex = 0;
+    int upcomingMinutes = 0;
+    bool foundToday = false;
+
+    for (int i = 0; i < prayers.length; i++) {
+      final t = _parseTime(prayers[i]['time'] as String);
+      final m = t.hour * 60 + t.minute;
+
+      if (nowMinutes <= m) {
+        upcomingIndex = i;
+        upcomingMinutes = m;
+        foundToday = true;
+        break;
+      }
+    }
+
+    if (!foundToday) {
+      // Sudah lewat Isya → next-nya Shubuh besok
+      upcomingIndex = 0;
+      final shubuhTime = _parseTime(prayers[0]['time'] as String);
+      upcomingMinutes = shubuhTime.hour * 60 + shubuhTime.minute;
+    }
+
+    final upcomingPrayer = prayers[upcomingIndex];
+
+    // Hitung selisih menuju sholat upcoming
+    int diff;
+    if (foundToday) {
+      diff = upcomingMinutes - nowMinutes; // hari yg sama
+    } else {
+      // wrap ke hari berikutnya (Shubuh besok)
+      diff = (24 * 60 - nowMinutes) + upcomingMinutes;
+    }
+
+    final hours = diff ~/ 60;
+    final minutes = diff % 60;
+
+    return {
+      // "Current" di UI = sholat yang akan datang
+      'name': upcomingPrayer['name'],
+      'time': upcomingPrayer['time'],
+      'icon': upcomingPrayer['icon'],
+      'color': upcomingPrayer['color'],
+
+      // upcoming text: pakai nama yg sama
+      'nextName': upcomingPrayer['name'],
+      'nextTime': '${hours}j ${minutes}m',
+    };
   }
 
   @override
@@ -1511,12 +1566,10 @@ class _SholatPageState extends ConsumerState<SholatPage>
         .read(sholatProvider.notifier)
         .getJadwalByDate(_selectedDate);
 
-    // Clear progress data when user logs out
     ref.listen<Map<String, dynamic>>(authProvider, (previous, next) {
       if (previous?['status'] == AuthState.authenticated &&
           next['status'] != AuthState.authenticated) {
         logger.info('🔄 User logged out, clearing progress data...');
-        // Call async method without await (fire and forget)
         ref
             .read(sholatProvider.notifier)
             .clearProgressData()
@@ -1534,74 +1587,47 @@ class _SholatPageState extends ConsumerState<SholatPage>
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundWhite,
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
         color: AppTheme.primaryBlue,
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: _maxWidth(context)),
-              child: Column(
-                children: [
-                  AnimatedBuilder(
-                    animation: _headerAnimationController,
-                    builder: (context, child) {
-                      return SholatHeader(
-                        sholatState: sholatState,
-                        selectedDate: _selectedDate,
-                        formattedDate: _formattedDate,
-                        dayName: _dayName,
-                        hijriDate: _hijriDate,
-                        isToday: _isToday,
-                        completedCount: _completedCount,
-                        totalCount: _totalCount,
-                        isWajibTab: _isWajibTab,
-                        jadwal: jadwal,
-                        progressColor:
-                            _headerColorAnimation.value ?? AppTheme.primaryBlue,
-                        onPreviousDay: () async {
-                          setState(() {
-                            _selectedDate = _selectedDate.subtract(
-                              const Duration(days: 1),
-                            );
-                          });
-                          final authState = ref.read(authProvider);
-                          if (authState['status'] == AuthState.authenticated) {
-                            await _fetchProgressData();
-                          }
-                        },
-                        onNextDay: () async {
-                          setState(() {
-                            _selectedDate = _selectedDate.add(
-                              const Duration(days: 1),
-                            );
-                          });
-                          final authState = ref.read(authProvider);
-                          if (authState['status'] == AuthState.authenticated) {
-                            await _fetchProgressData();
-                          }
-                        },
-                        onLocationUpdate: _updateLocation,
-                      );
-                    },
-                  ),
-                  if (sholatState.status == SholatStatus.loading ||
-                      _isLoadingProgress)
-                    const Expanded(
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (sholatState.status == SholatStatus.error)
-                    _buildErrorState(sholatState)
-                  else
-                    Expanded(child: _buildPrayerTimesList(sholatState, jadwal)),
-                ],
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.primaryBlue,
+                AppTheme.primaryBlue.withValues(alpha: 0.9),
+                AppTheme.accentGreen.withValues(alpha: 0.8),
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+          child: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: _maxWidth(context)),
+                child: Column(
+                  children: [
+                    _buildHeader(context),
+                    _buildLocationAndStatus(context, sholatState),
+                    _buildCurrentPrayerTime(context, jadwal),
+                    if (sholatState.status == SholatStatus.loading ||
+                        _isLoadingProgress)
+                      const Expanded(
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (sholatState.status == SholatStatus.error)
+                      _buildErrorState(sholatState)
+                    else
+                      Expanded(child: _buildPrayerTimesList(context, jadwal)),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-      // TAMBAH: FAB untuk test alarm (development only)
       floatingActionButton: kDebugMode
           ? FloatingActionButton.extended(
               onPressed: () async {
@@ -1620,98 +1646,461 @@ class _SholatPageState extends ConsumerState<SholatPage>
     );
   }
 
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: _hpad(
+        context,
+      ).add(EdgeInsets.symmetric(vertical: _px(context, 12))),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _circleBtn(
+            context,
+            icon: Icons.chevron_left_rounded,
+            onTap: () async {
+              setState(() {
+                _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+              });
+              final authState = ref.read(authProvider);
+              if (authState['status'] == AuthState.authenticated) {
+                await _fetchProgressData();
+              }
+            },
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                Text(
+                  _isToday ? 'Hari ini' : _dayName,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: _ts(context, 18),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  _formattedDate,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: _ts(context, 14),
+                  ),
+                ),
+                Text(
+                  _hijriDate,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: _ts(context, 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _circleBtn(
+            context,
+            icon: Icons.chevron_right_rounded,
+            onTap: () async {
+              setState(() {
+                _selectedDate = _selectedDate.add(const Duration(days: 1));
+              });
+              final authState = ref.read(authProvider);
+              if (authState['status'] == AuthState.authenticated) {
+                await _fetchProgressData();
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _circleBtn(
+    BuildContext c, {
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: IconButton(
+        onPressed: onTap,
+        icon: Icon(icon, color: Colors.white, size: _px(c, 28)),
+      ),
+    );
+  }
+
+  Widget _buildLocationAndStatus(BuildContext context, SholatState state) {
+    final small = ResponsiveHelper.isSmallScreen(context);
+    final location = state.locationName ?? 'Lokasi tidak tersedia';
+
+    return Padding(
+      padding: _hpad(context),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: _updateLocation,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: _px(context, small ? 12 : 16),
+                  vertical: _px(context, small ? 6 : 8),
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_on_rounded,
+                      color: Colors.white,
+                      size: _px(context, small ? 16 : 18),
+                    ),
+                    SizedBox(width: _px(context, small ? 6 : 8)),
+                    Flexible(
+                      child: Text(
+                        location,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: _ts(context, small ? 12 : 14),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: _px(context, small ? 8 : 12)),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: _px(context, small ? 12 : 16),
+              vertical: _px(context, small ? 6 : 8),
+            ),
+            decoration: BoxDecoration(
+              color: AppTheme.accentGreen,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.accentGreen.withValues(alpha: 0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.white,
+                  size: _px(context, small ? 14 : 16),
+                ),
+                SizedBox(width: _px(context, small ? 4 : 6)),
+                Text(
+                  'AlAdhan',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: _ts(context, small ? 12 : 14),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentPrayerTime(BuildContext context, dynamic jadwal) {
+    final small = ResponsiveHelper.isSmallScreen(context);
+    final currentPrayer = _getCurrentPrayerInfo(jadwal);
+
+    return Padding(
+      padding: _hpad(
+        context,
+      ).add(EdgeInsets.symmetric(vertical: _px(context, 12))),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.all(_px(context, small ? 16 : 20)),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Waktu Sholat Sekarang',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: _ts(context, small ? 12 : 14),
+                    ),
+                  ),
+                  SizedBox(height: _px(context, small ? 6 : 8)),
+                  Row(
+                    children: [
+                      Text(
+                        currentPrayer['name'] as String,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: _ts(context, small ? 18 : 20),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: EdgeInsets.all(_px(context, 6)),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              (currentPrayer['color'] as Color).withValues(
+                                alpha: 0.8,
+                              ),
+                              currentPrayer['color'] as Color,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          currentPrayer['icon'] as IconData,
+                          color: Colors.white,
+                          size: _px(context, small ? 16 : 20),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: _px(context, small ? 2 : 4)),
+                  Text(
+                    currentPrayer['time'] as String,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: _ts(context, small ? 28 : 32),
+                      fontWeight: FontWeight.bold,
+                      height: 1.2,
+                    ),
+                  ),
+                  SizedBox(height: _px(context, small ? 6 : 8)),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: _px(context, 10),
+                      vertical: _px(context, 4),
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${currentPrayer['nextName']} dalam ${currentPrayer['nextTime']}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: _ts(context, small ? 11 : 13),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(width: _px(context, small ? 12 : 16)),
+          Container(
+            padding: EdgeInsets.all(_px(context, small ? 16 : 20)),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(_px(context, 8)),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentGreen.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_circle_rounded,
+                    color: AppTheme.accentGreen,
+                    size: _px(context, small ? 28 : 32),
+                  ),
+                ),
+                SizedBox(height: _px(context, small ? 10 : 12)),
+                Text(
+                  '$_completedCount/$_totalCount',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: _ts(context, small ? 20 : 24),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'selesai',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: _ts(context, small ? 11 : 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildErrorState(SholatState sholatState) {
     return Expanded(
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              sholatState.message ?? 'Terjadi kesalahan',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => ref
-                  .read(sholatProvider.notifier)
-                  .fetchJadwalSholat(forceRefresh: true),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Coba Lagi'),
-            ),
-          ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.backgroundWhite,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                sholatState.message ?? 'Terjadi kesalahan',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => ref
+                    .read(sholatProvider.notifier)
+                    .fetchJadwalSholat(forceRefresh: true),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildPrayerTimesList(SholatState sholatState, dynamic jadwal) {
+  Widget _buildPrayerTimesList(BuildContext context, dynamic jadwal) {
     final small = ResponsiveHelper.isSmallScreen(context);
 
-    return Column(
-      children: [
-        _buildTabs(small),
-        SizedBox(height: _px(context, 16)),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildWajibTab(jadwal, small),
-              _buildSunnahTab(jadwal, small),
-            ],
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundWhite,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
         ),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            margin: EdgeInsets.only(
+              top: _px(context, 16),
+              bottom: _px(context, 8),
+            ),
+            width: 50,
+            height: 5,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primaryBlue.withValues(alpha: 0.3),
+                  AppTheme.accentGreen.withValues(alpha: 0.3),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          _buildTabs(small),
+          _buildInfoCards(context, jadwal, small),
+          SizedBox(height: _px(context, 16)),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildWajibTab(jadwal, small),
+                _buildSunnahTab(jadwal, small),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildTabs(bool small) {
-    return Padding(
-      padding: _hpad(context).add(EdgeInsets.only(top: _px(context, 12))),
+    return Container(
+      margin: _hpad(context).add(EdgeInsets.only(bottom: _px(context, 8))),
       child: Row(
         children: [
           Expanded(
             child: Container(
-              padding: EdgeInsets.all(_px(context, 4)),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryBlue.withValues(alpha: 0.05),
+                    AppTheme.accentGreen.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: TabBar(
                 controller: _tabController,
+
+                // --- remove underline default ---
+                indicatorColor: Colors.transparent,
+                dividerColor: Colors.transparent,
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
+
                 indicator: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  gradient: LinearGradient(
+                    colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+
                 indicatorSize: TabBarIndicatorSize.tab,
-                labelColor: AppTheme.primaryBlue,
-                unselectedLabelColor: AppTheme.onSurfaceVariant,
+                labelColor: Colors.white,
+                unselectedLabelColor: AppTheme.onSurface,
                 labelStyle: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: _ts(context, small ? 13 : 14),
                 ),
-                dividerColor: Colors.transparent,
                 tabs: const [
-                  Tab(text: 'Wajib'),
-                  Tab(text: 'Sunnah'),
+                  Tab(text: 'Sholat Wajib'),
+                  Tab(text: 'Sholat Sunnah'),
                 ],
               ),
             ),
           ),
           const SizedBox(width: 12),
-          // Calendar button
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.primaryBlue,
+              gradient: LinearGradient(
+                colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
+              ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -1742,213 +2131,59 @@ class _SholatPageState extends ConsumerState<SholatPage>
     );
   }
 
-  // UPDATED: Test Alarm Card
-  Widget _buildTestAlarmCard() {
-    // State untuk test alarm
-    bool isTestAlarmActive = false;
-    String testTime = '';
-
-    return StatefulBuilder(
-      builder: (context, setTestState) {
-        return Container(
-          margin: EdgeInsets.only(bottom: _px(context, 12)),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.orange.shade400, Colors.deepOrange.shade600],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.orange.withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
+  Widget _buildInfoCards(BuildContext context, dynamic jadwal, bool small) {
+    return Container(
+      margin: _hpad(context),
+      padding: EdgeInsets.symmetric(vertical: _px(context, 10)),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.primaryBlue.withValues(alpha: 0.08),
+            AppTheme.accentGreen.withValues(alpha: 0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.dark_mode_rounded,
+            size: _px(context, small ? 14 : 16),
+            color: AppTheme.primaryBlue,
           ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () async {
-                // Get time 1 minute from now
-                final now = DateTime.now();
-                final testDateTime = now.add(const Duration(minutes: 1));
-                testTime =
-                    '${testDateTime.hour.toString().padLeft(2, '0')}:${testDateTime.minute.toString().padLeft(2, '0')}';
-
-                final newState = !isTestAlarmActive;
-
-                try {
-                  // Set alarm dengan waktu +1 menit
-                  await _alarmService.setAlarm('Test', newState, testTime);
-
-                  // Verify
-                  final isEnabled = await _alarmService.isAlarmEnabled('Test');
-
-                  setTestState(() {
-                    isTestAlarmActive = newState;
-                  });
-
-                  if (mounted) {
-                    showMessageToast(
-                      context,
-                      message: newState
-                          ? '🧪 Test alarm set untuk $testTime (1 menit lagi)'
-                          : '🧪 Test alarm dimatikan',
-                      type: ToastType.success,
-                    );
-                  }
-
-                  logger.info(
-                    'Test alarm ${newState ? "enabled" : "disabled"} for $testTime',
-                  );
-                  logger.info('Verification: $isEnabled');
-
-                  // Show debug info
-                  await _alarmService.debugAlarmStatus();
-                } catch (e) {
-                  logger.severe('Error setting test alarm: $e');
-                  if (mounted) {
-                    showMessageToast(
-                      context,
-                      message: 'Gagal set test alarm: $e',
-                      type: ToastType.error,
-                    );
-                  }
-                }
-              },
-              child: Padding(
-                padding: EdgeInsets.all(_px(context, 16)),
-                child: Row(
-                  children: [
-                    // Icon
-                    Container(
-                      padding: EdgeInsets.all(_px(context, 12)),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.science_rounded,
-                        color: Colors.white,
-                        size: _px(context, 28),
-                      ),
-                    ),
-                    SizedBox(width: _px(context, 16)),
-
-                    // Info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                '🧪 TEST ALARM',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: _ts(context, 16),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(width: _px(context, 8)),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: _px(context, 8),
-                                  vertical: _px(context, 4),
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'DEBUG',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: _ts(context, 10),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: _px(context, 4)),
-                          Text(
-                            testTime.isEmpty
-                                ? 'Tap untuk set alarm (+1 menit)'
-                                : 'Alarm: $testTime',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: _ts(context, 14),
-                            ),
-                          ),
-                          SizedBox(height: _px(context, 4)),
-                          Text(
-                            'Akan bunyi 1 menit dari sekarang',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: _ts(context, 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Alarm Toggle
-                    Container(
-                      width: _px(context, 50),
-                      height: _px(context, 30),
-                      decoration: BoxDecoration(
-                        color: isTestAlarmActive
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Stack(
-                        children: [
-                          AnimatedPositioned(
-                            duration: const Duration(milliseconds: 200),
-                            left: isTestAlarmActive
-                                ? _px(context, 22)
-                                : _px(context, 2),
-                            top: _px(context, 2),
-                            child: Container(
-                              width: _px(context, 26),
-                              height: _px(context, 26),
-                              decoration: BoxDecoration(
-                                color: isTestAlarmActive
-                                    ? Colors.orange.shade600
-                                    : Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.2),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.alarm,
-                                color: isTestAlarmActive
-                                    ? Colors.white
-                                    : Colors.orange.shade600,
-                                size: _px(context, 16),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          SizedBox(width: _px(context, small ? 6 : 8)),
+          Text(
+            'Imsak ${jadwal?.wajib.imsak ?? '04:03'}',
+            style: TextStyle(
+              color: AppTheme.onSurface,
+              fontSize: _ts(context, small ? 12 : 14),
+              fontWeight: FontWeight.w600,
             ),
           ),
-        );
-      },
+          SizedBox(width: _px(context, small ? 12 : 16)),
+          Container(
+            width: 1,
+            height: _px(context, 16),
+            color: AppTheme.primaryBlue.withValues(alpha: 0.3),
+          ),
+          SizedBox(width: _px(context, small ? 12 : 16)),
+          Icon(
+            Icons.wb_sunny,
+            size: _px(context, small ? 14 : 16),
+            color: AppTheme.accentGreen,
+          ),
+          SizedBox(width: _px(context, small ? 6 : 8)),
+          Text(
+            'Terbit ${jadwal?.wajib.sunrise ?? '05:25'}',
+            style: TextStyle(
+              color: AppTheme.onSurface,
+              fontSize: _ts(context, small ? 12 : 14),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1957,207 +2192,283 @@ class _SholatPageState extends ConsumerState<SholatPage>
     final isLoggedIn = authState['status'] == AuthState.authenticated;
     final progressData = _currentProgressData;
 
-    // Info-only items (Imsak & Sunrise)
-    final infoList = {
-      'Imsak': {
-        'time': jadwal?.wajib.imsak ?? '--:--',
-        'icon': Icons.dark_mode_rounded,
-      },
-      'Sunrise': {
-        'time': jadwal?.wajib.sunrise ?? '--:--',
-        'icon': Icons.wb_sunny_rounded,
-      },
-    };
-
     final wajibList = {
       'Shubuh': {
         'time': jadwal?.wajib.shubuh ?? '--:--',
         'icon': Icons.wb_sunny_outlined,
+        'color': Colors.orange,
         'dbKey': 'shubuh',
       },
       'Dzuhur': {
         'time': jadwal?.wajib.dzuhur ?? '--:--',
         'icon': Icons.wb_sunny,
+        'color': Colors.amber,
         'dbKey': 'dzuhur',
       },
       'Ashar': {
         'time': jadwal?.wajib.ashar ?? '--:--',
         'icon': Icons.wb_cloudy,
+        'color': Colors.blue,
         'dbKey': 'ashar',
       },
       'Maghrib': {
         'time': jadwal?.wajib.maghrib ?? '--:--',
         'icon': Icons.wb_twilight,
+        'color': Colors.deepOrange,
         'dbKey': 'maghrib',
       },
       'Isya': {
         'time': jadwal?.wajib.isya ?? '--:--',
         'icon': Icons.nights_stay,
+        'color': Colors.indigo,
         'dbKey': 'isya',
       },
     };
 
-    // Total items = info cards (2) + wajib cards (5) + test card (1 in debug)
-    final totalInfoItems = infoList.length;
-    final totalWajibItems = wajibList.length;
-    final hasTestCard = kDebugMode;
-    final totalItems = totalInfoItems + totalWajibItems + (hasTestCard ? 1 : 0);
-
     return ListView.builder(
-      padding: _hpad(context).add(EdgeInsets.only(bottom: _px(context, 16))),
+      padding: _hpad(context),
       physics: const BouncingScrollPhysics(),
-      itemCount: totalItems,
+      itemCount: wajibList.length,
       itemBuilder: (_, i) {
-        // Test card di posisi pertama (debug mode only)
-        if (kDebugMode && i == 0) {
-          return _buildTestAlarmCard();
-        }
-
-        // Adjust index jika ada test card
-        final adjustedIndex = kDebugMode ? i - 1 : i;
-
-        // Info cards (Imsak & Sunrise)
-        if (adjustedIndex < totalInfoItems) {
-          final name = infoList.keys.elementAt(adjustedIndex);
-          final infoData = infoList[name]!;
-          return SholatInfoCard(
-            name: name,
-            time: infoData['time'] as String,
-            icon: infoData['icon'] as IconData,
-            jenis: 'wajib',
-          );
-        }
-
-        // Wajib cards (Shubuh, Dzuhur, Ashar, Maghrib, Isya)
-        final wajibIndex = adjustedIndex - totalInfoItems;
-        final name = wajibList.keys.elementAt(wajibIndex);
+        final name = wajibList.keys.elementAt(i);
         final jadwalData = wajibList[name]!;
         final dbKey = jadwalData['dbKey'] as String;
         final time = jadwalData['time'] as String;
         final sholatProgress = progressData[dbKey] as Map<String, dynamic>?;
         final isCompleted = sholatProgress?['completed'] as bool? ?? false;
 
-        logger.info(
-          'Sholat: $name, dbKey: $dbKey, isCompleted: $isCompleted, progress: $sholatProgress',
-        );
-
-        // Check if prayer time has arrived
         final bool timeArrived = _isPrayerTimeArrived(name, jadwal);
+        final iconColor = jadwalData['color'] as Color;
 
-        return SholatCard(
-          name: name,
-          jadwalData: jadwalData,
-          isCompleted: isCompleted,
-          status: sholatProgress?['status'] as String? ?? 'tepat_waktu',
-          isJamaah: sholatProgress?['is_jamaah'] as bool? ?? false,
-          lokasi: sholatProgress?['lokasi'] as String? ?? '',
-          jenis: 'wajib',
-          canTap:
-              jadwal != null &&
-              time != '--:--' &&
-              (timeArrived || isCompleted || !_isToday),
-          isAlarmActive: _wajibAlarms[name] ?? false,
-          onTap: () async {
-            if (!isLoggedIn) {
-              _showLoginRequired();
-              return;
-            }
+        return Container(
+          margin: EdgeInsets.only(bottom: _px(context, 12)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isCompleted
+                  ? AppTheme.accentGreen.withValues(alpha: 0.3)
+                  : Colors.grey.shade200,
+              width: isCompleted ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isCompleted
+                    ? AppTheme.accentGreen.withValues(alpha: 0.1)
+                    : Colors.grey.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(_px(context, small ? 14 : 16)),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () async {
+                    if (!isLoggedIn) {
+                      _showLoginRequired();
+                      return;
+                    }
 
-            // Jika waktu belum tiba untuk hari ini
-            if (_isToday && !timeArrived && !isCompleted) {
-              showMessageToast(
-                context,
-                message: 'Waktu sholat $name belum tiba',
-                type: ToastType.warning,
-              );
-              return;
-            }
+                    if (_isToday && !timeArrived && !isCompleted) {
+                      showMessageToast(
+                        context,
+                        message: 'Waktu sholat $name belum tiba',
+                        type: ToastType.warning,
+                      );
+                      return;
+                    }
 
-            // Jika bukan hari ini, tampilkan warning
-            if (!_isToday && !isCompleted) {
-              showMessageToast(
-                context,
-                message: 'Hanya bisa menambah progress untuk hari ini',
-                type: ToastType.warning,
-              );
-              return;
-            }
+                    if (!_isToday && !isCompleted) {
+                      showMessageToast(
+                        context,
+                        message: 'Hanya bisa menambah progress untuk hari ini',
+                        type: ToastType.warning,
+                      );
+                      return;
+                    }
 
-            // UPDATED: Logic untuk modal
-            if (isCompleted) {
-              // Jika sudah ada progress, tampilkan modal detail dengan opsi hapus
-              _showDetailWithDeleteOption(
-                context,
-                name,
-                jadwalData,
-                'wajib',
-                sholatProgress,
-                sholatProgress?['id'] as int?,
-              );
-            } else {
-              // Jika belum ada progress dan hari ini, tampilkan modal input
-              if (_isToday) {
-                await _showSholatDetailModal(
-                  context,
-                  name,
-                  jadwalData,
-                  'wajib',
-                );
-              } else {
-                showMessageToast(
-                  context,
-                  message: 'Tidak ada data progress untuk tanggal ini',
-                  type: ToastType.info,
-                );
-              }
-            }
-          },
-          onAlarmTap: () async {
-            if (!isLoggedIn) {
-              _showLoginRequired();
-              return;
-            }
+                    if (isCompleted) {
+                      _showDetailWithDeleteOption(
+                        context,
+                        name,
+                        jadwalData,
+                        'wajib',
+                        sholatProgress,
+                        sholatProgress?['id'] as int?,
+                      );
+                    } else {
+                      if (_isToday) {
+                        await _showSholatDetailModal(
+                          context,
+                          name,
+                          jadwalData,
+                          'wajib',
+                        );
+                      } else {
+                        showMessageToast(
+                          context,
+                          message: 'Tidak ada data progress untuk tanggal ini',
+                          type: ToastType.info,
+                        );
+                      }
+                    }
+                  },
+                  child: Container(
+                    width: _px(context, 24),
+                    height: _px(context, 24),
+                    decoration: BoxDecoration(
+                      color: isCompleted
+                          ? AppTheme.accentGreen
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: isCompleted
+                            ? AppTheme.accentGreen
+                            : Colors.grey.shade400,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: isCompleted
+                        ? Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: _px(context, 16),
+                          )
+                        : null,
+                  ),
+                ),
+                SizedBox(width: _px(context, small ? 12 : 16)),
+                Container(
+                  width: _px(context, small ? 48 : 52),
+                  height: _px(context, small ? 48 : 52),
+                  decoration: BoxDecoration(
+                    gradient: isCompleted
+                        ? LinearGradient(
+                            colors: [
+                              AppTheme.accentGreen,
+                              AppTheme.accentGreen.withValues(alpha: 0.8),
+                            ],
+                          )
+                        : LinearGradient(
+                            colors: [
+                              iconColor.withValues(alpha: 0.2),
+                              iconColor.withValues(alpha: 0.1),
+                            ],
+                          ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    isCompleted
+                        ? Icons.check_circle_rounded
+                        : jadwalData['icon'] as IconData,
+                    color: isCompleted ? Colors.white : iconColor,
+                    size: _px(context, small ? 24 : 28),
+                  ),
+                ),
+                SizedBox(width: _px(context, small ? 12 : 16)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: _ts(context, small ? 15 : 16),
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.onSurface,
+                        ),
+                      ),
+                      SizedBox(height: _px(context, 4)),
+                      Text(
+                        time,
+                        style: TextStyle(
+                          fontSize: _ts(context, small ? 13 : 14),
+                          color: AppTheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    if (!isLoggedIn) {
+                      _showLoginRequired();
+                      return;
+                    }
 
-            final newState = !(_wajibAlarms[name] ?? false);
+                    final newState = !(_wajibAlarms[name] ?? false);
 
-            if (time == '--:--') {
-              showMessageToast(
-                context,
-                message: 'Waktu sholat belum tersedia',
-                type: ToastType.warning,
-              );
-              return;
-            }
+                    if (time == '--:--') {
+                      showMessageToast(
+                        context,
+                        message: 'Waktu sholat belum tersedia',
+                        type: ToastType.warning,
+                      );
+                      return;
+                    }
 
-            try {
-              await _alarmService.setAlarm(name, newState, time);
+                    try {
+                      await _alarmService.setAlarm(name, newState, time);
+                      final isEnabled = await _alarmService.isAlarmEnabled(
+                        name,
+                      );
+                      logger.info('Alarm verification for $name: $isEnabled');
 
-              final isEnabled = await _alarmService.isAlarmEnabled(name);
-              logger.info('Alarm verification for $name: $isEnabled');
+                      if (mounted) {
+                        setState(() {
+                          _wajibAlarms[name] = newState;
+                        });
 
-              if (mounted) {
-                setState(() {
-                  _wajibAlarms[name] = newState;
-                });
-
-                showMessageToast(
-                  context,
-                  message: newState
-                      ? 'Alarm $name diaktifkan pada $time'
-                      : 'Alarm $name dinonaktifkan',
-                  type: ToastType.success,
-                );
-              }
-            } catch (e) {
-              if (mounted) {
-                showMessageToast(
-                  context,
-                  message: 'Gagal mengatur alarm: $e',
-                  type: ToastType.error,
-                );
-              }
-            }
-          },
+                        showMessageToast(
+                          context,
+                          message: newState
+                              ? 'Alarm $name diaktifkan pada $time'
+                              : 'Alarm $name dinonaktifkan',
+                          type: ToastType.success,
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        showMessageToast(
+                          context,
+                          message: 'Gagal mengatur alarm: $e',
+                          type: ToastType.error,
+                        );
+                      }
+                    }
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(_px(context, small ? 10 : 12)),
+                    decoration: BoxDecoration(
+                      gradient: (_wajibAlarms[name] ?? false)
+                          ? LinearGradient(
+                              colors: [
+                                AppTheme.primaryBlue,
+                                AppTheme.primaryBlue.withValues(alpha: 0.8),
+                              ],
+                            )
+                          : null,
+                      color: (_wajibAlarms[name] ?? false)
+                          ? null
+                          : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.alarm_rounded,
+                      color: (_wajibAlarms[name] ?? false)
+                          ? Colors.white
+                          : Colors.grey.shade600,
+                      size: _px(context, small ? 20 : 22),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -2168,15 +2479,12 @@ class _SholatPageState extends ConsumerState<SholatPage>
     final isLoggedIn = authState['status'] == AuthState.authenticated;
     final progressData = _currentProgressData;
 
-    // Ambil list sunnah dari jadwal (dari API)
     final sunnahList = jadwal?.sunnah ?? [];
 
-    // Map icon berdasarkan slug
     IconData _getIconBySlug(String slug) {
       return FlutterIslamicIcons.prayingPerson;
     }
 
-    // Jika tidak ada data sunnah
     if (sunnahList.isEmpty) {
       return Center(
         child: Padding(
@@ -2197,7 +2505,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
     }
 
     return ListView.builder(
-      padding: _hpad(context).add(EdgeInsets.only(bottom: _px(context, 16))),
+      padding: _hpad(context),
       physics: const BouncingScrollPhysics(),
       itemCount: sunnahList.length,
       itemBuilder: (_, i) {
@@ -2205,85 +2513,172 @@ class _SholatPageState extends ConsumerState<SholatPage>
         final name = sunnahItem.nama as String;
         final slug = sunnahItem.slug as String;
         final deskripsi = sunnahItem.deskripsi as String;
-        final sunnahId = sunnahItem.id; // Ambil ID sholat sunnah
+        final sunnahId = sunnahItem.id;
 
-        // Konversi slug ke dbKey format (replace - dengan _)
         final dbKey = slug.replaceAll('-', '-');
 
-        // Build jadwalData dengan format yang sesuai
         final jadwalData = {
           'time': deskripsi,
           'icon': _getIconBySlug(slug),
           'dbKey': dbKey,
-          'sunnahId': sunnahId, // Tambahkan ID sunnah
+          'sunnahId': sunnahId,
         };
 
         final sholatProgress = progressData[dbKey] as Map<String, dynamic>?;
         final isCompleted = sholatProgress?['completed'] as bool? ?? false;
 
-        return SholatCard(
-          name: name,
-          jadwalData: jadwalData,
-          isCompleted: isCompleted,
-          status: sholatProgress?['status'] as String? ?? 'tepat_waktu',
-          isJamaah: false, // sunnah tidak ada is_jamaah
-          lokasi: '', // sunnah tidak ada lokasi
-          jenis: 'sunnah',
-          canTap: true,
-          isAlarmActive: false,
-          onTap: () async {
-            if (!isLoggedIn) {
-              _showLoginRequired();
-              return;
-            }
+        return Container(
+          margin: EdgeInsets.only(bottom: _px(context, 12)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isCompleted
+                  ? AppTheme.accentGreen.withValues(alpha: 0.3)
+                  : Colors.grey.shade200,
+              width: isCompleted ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isCompleted
+                    ? AppTheme.accentGreen.withValues(alpha: 0.1)
+                    : Colors.grey.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(_px(context, small ? 14 : 16)),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () async {
+                    if (!isLoggedIn) {
+                      _showLoginRequired();
+                      return;
+                    }
 
-            // Jika bukan hari ini, tampilkan warning
-            if (!_isToday && !isCompleted) {
-              showMessageToast(
-                context,
-                message: 'Hanya bisa menambah progress untuk hari ini',
-                type: ToastType.warning,
-              );
-              return;
-            }
+                    if (!_isToday && !isCompleted) {
+                      showMessageToast(
+                        context,
+                        message: 'Hanya bisa menambah progress untuk hari ini',
+                        type: ToastType.warning,
+                      );
+                      return;
+                    }
 
-            // UPDATED: Logic untuk modal
-            if (isCompleted) {
-              // Jika sudah ada progress, tampilkan modal detail dengan opsi hapus
-              _showDetailWithDeleteOption(
-                context,
-                name,
-                jadwalData,
-                'sunnah',
-                sholatProgress,
-                sholatProgress?['id'] as int?,
-              );
-            } else {
-              // Jika belum ada progress dan hari ini, tampilkan modal input
-              if (_isToday) {
-                await _showSholatDetailModal(
-                  context,
-                  name,
-                  jadwalData,
-                  'sunnah',
-                );
-              } else {
-                showMessageToast(
-                  context,
-                  message: 'Tidak ada data progress untuk tanggal ini',
-                  type: ToastType.info,
-                );
-              }
-            }
-          },
+                    if (isCompleted) {
+                      _showDetailWithDeleteOption(
+                        context,
+                        name,
+                        jadwalData,
+                        'sunnah',
+                        sholatProgress,
+                        sholatProgress?['id'] as int?,
+                      );
+                    } else {
+                      if (_isToday) {
+                        await _showSholatDetailModal(
+                          context,
+                          name,
+                          jadwalData,
+                          'sunnah',
+                        );
+                      } else {
+                        showMessageToast(
+                          context,
+                          message: 'Tidak ada data progress untuk tanggal ini',
+                          type: ToastType.info,
+                        );
+                      }
+                    }
+                  },
+                  child: Container(
+                    width: _px(context, 24),
+                    height: _px(context, 24),
+                    decoration: BoxDecoration(
+                      color: isCompleted
+                          ? AppTheme.accentGreen
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: isCompleted
+                            ? AppTheme.accentGreen
+                            : Colors.grey.shade400,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: isCompleted
+                        ? Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: _px(context, 16),
+                          )
+                        : null,
+                  ),
+                ),
+                SizedBox(width: _px(context, small ? 12 : 16)),
+                Container(
+                  width: _px(context, small ? 48 : 52),
+                  height: _px(context, small ? 48 : 52),
+                  decoration: BoxDecoration(
+                    gradient: isCompleted
+                        ? LinearGradient(
+                            colors: [
+                              AppTheme.accentGreen,
+                              AppTheme.accentGreen.withValues(alpha: 0.8),
+                            ],
+                          )
+                        : LinearGradient(
+                            colors: [
+                              AppTheme.primaryBlue.withValues(alpha: 0.15),
+                              AppTheme.accentGreen.withValues(alpha: 0.15),
+                            ],
+                          ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    isCompleted
+                        ? Icons.check_circle_rounded
+                        : jadwalData['icon'] as IconData,
+                    color: isCompleted ? Colors.white : AppTheme.primaryBlue,
+                    size: _px(context, small ? 24 : 28),
+                  ),
+                ),
+                SizedBox(width: _px(context, small ? 12 : 16)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: _ts(context, small ? 15 : 16),
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.onSurface,
+                        ),
+                      ),
+                      SizedBox(height: _px(context, 4)),
+                      Text(
+                        deskripsi,
+                        style: TextStyle(
+                          fontSize: _ts(context, small ? 12 : 13),
+                          color: AppTheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
   }
 
-  // ...existing code...
-
-  /// Modal untuk detail sholat dengan opsi hapus (UPDATED)
   void _showDetailWithDeleteOption(
     BuildContext context,
     String name,
@@ -2312,7 +2707,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Handle bar
                   Center(
                     child: Container(
                       width: 40,
@@ -2324,8 +2718,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // Header dengan icon
                   Row(
                     children: [
                       Container(
@@ -2368,7 +2760,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                           ],
                         ),
                       ),
-                      // Badge "Completed"
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -2404,8 +2795,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                     ],
                   ),
                   const SizedBox(height: 24),
-
-                  // Detail Progress
                   if (sholatProgress != null) ...[
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -2416,7 +2805,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                       ),
                       child: Column(
                         children: [
-                          // Status
                           _buildInfoRow(
                             'Status',
                             _formatStatus(
@@ -2454,8 +2842,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                     ),
                   ],
                   const SizedBox(height: 24),
-
-                  // Button Hapus (hanya untuk hari ini)
                   if (_isToday)
                     SizedBox(
                       width: double.infinity,
@@ -2482,7 +2868,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                       ),
                     )
                   else
-                    // Info jika bukan hari ini
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
