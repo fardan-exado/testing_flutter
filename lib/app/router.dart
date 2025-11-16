@@ -14,6 +14,9 @@ import 'package:test_flutter/features/home/pages/home_page.dart';
 import 'package:test_flutter/features/komunitas/pages/komunitas_page.dart';
 import 'package:test_flutter/features/monitoring/pages/monitoring_page.dart';
 import 'package:test_flutter/features/profile/pages/profile_page.dart';
+import 'package:test_flutter/features/profile/pages/edit_profile_page.dart';
+import 'package:test_flutter/features/profile/pages/change_password_page.dart';
+import 'package:test_flutter/features/profile/pages/manage_family_page.dart';
 import 'package:test_flutter/features/puasa/pages/puasa_page.dart';
 import 'package:test_flutter/features/quran/pages/quran_page.dart';
 import 'package:test_flutter/features/quran/pages/surah_detail_page.dart';
@@ -45,6 +48,9 @@ class AppRoutes {
   static const String articleDetail = '/article-detail';
   static const String alarmSettings = '/alarm-settings';
   static const String profile = '/profile';
+  static const String editProfile = '/edit-profile';
+  static const String changePassword = '/change-password';
+  static const String manageFamily = '/manage-family';
   static const String article = '/article';
   static const String syahadat = '/syahadat';
   static const String komunitas = '/komunitas';
@@ -66,9 +72,21 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ForgotPasswordPage());
       case otp:
         final otpArgs = settings.arguments as Map<String, dynamic>?;
-        final otpType = otpArgs?['type'] == 'registration'
-            ? OTPType.registration
-            : OTPType.forgotPassword;
+        final typeString = otpArgs?['type'] as String? ?? 'registration';
+
+        OTPType otpType;
+        switch (typeString.toLowerCase()) {
+          case 'registration':
+            otpType = OTPType.registration;
+            break;
+          case 'login':
+            otpType = OTPType.login;
+            break;
+          case 'forgotpassword':
+          default:
+            otpType = OTPType.forgotPassword;
+        }
+
         return MaterialPageRoute(
           builder: (_) => OTPPage(
             email: otpArgs?['email'] ?? '',
@@ -118,6 +136,12 @@ class AppRoutes {
         );
       case profile:
         return MaterialPageRoute(builder: (_) => const ProfilePage());
+      case editProfile:
+        return MaterialPageRoute(builder: (_) => const EditProfilePage());
+      case changePassword:
+        return MaterialPageRoute(builder: (_) => const ChangePasswordPage());
+      case manageFamily:
+        return MaterialPageRoute(builder: (_) => const ManageFamilyPage());
       case syahadat:
         return MaterialPageRoute(builder: (_) => const SyahadatPage());
       case komunitas:
@@ -127,7 +151,9 @@ class AppRoutes {
       case plan:
         return MaterialPageRoute(builder: (_) => const PlanPage());
       case transactionHistory:
-        return MaterialPageRoute(builder: (_) => const TransactionHistoryPage());
+        return MaterialPageRoute(
+          builder: (_) => const TransactionHistoryPage(),
+        );
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

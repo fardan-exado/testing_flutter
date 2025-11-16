@@ -49,6 +49,63 @@ class _PrayerTimeDisplayState extends ConsumerState<PrayerTimeDisplay> {
 
   double _icon(BuildContext context, double base) => _px(context, base);
 
+  /// Method untuk menghitung countdown dengan detik secara real-time
+  String? _getCountdownWithSeconds(WidgetRef ref) {
+    final notifier = ref.read(homeProvider.notifier);
+    final sholat = ref.watch(homeProvider).jadwalSholat;
+
+    if (sholat == null) return null;
+
+    final now = DateTime.now();
+
+    // Konversi waktu sholat string ke DateTime
+    final nextPrayerTimeStr = notifier.getCurrentPrayerTime();
+    if (nextPrayerTimeStr == null) return null;
+
+    try {
+      final parts = nextPrayerTimeStr.split(':');
+      if (parts.length < 2) return null;
+
+      final hour = int.parse(parts[0].trim());
+      final minute = int.parse(parts[1].trim());
+
+      // Buat DateTime untuk sholat berikutnya
+      DateTime nextPrayerDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        hour,
+        minute,
+      );
+
+      // Jika waktu sudah terlewat hari ini, gunakan besok
+      if (nextPrayerDateTime.isBefore(now)) {
+        nextPrayerDateTime = nextPrayerDateTime.add(const Duration(days: 1));
+      }
+
+      // Hitung selisih
+      final difference = nextPrayerDateTime.difference(now);
+
+      if (difference.inSeconds <= 0) {
+        return 'Segera!';
+      }
+
+      final hours = difference.inHours;
+      final minutes = (difference.inMinutes % 60);
+      final seconds = (difference.inSeconds % 60);
+
+      if (hours > 0) {
+        return '${hours} jam ${minutes} menit ${seconds} detik lagi';
+      } else if (minutes > 0) {
+        return '${minutes} menit ${seconds} detik lagi';
+      } else {
+        return '${seconds} detik lagi';
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final homeState = ref.watch(homeProvider);
@@ -79,17 +136,6 @@ class _PrayerTimeDisplayState extends ConsumerState<PrayerTimeDisplay> {
           size: _icon(context, 40),
         ),
         SizedBox(height: _px(context, 12)),
-        Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: ResponsiveHelper.getScreenWidth(context) * 0.04,
-          ),
-          child: Text(
-            'Gagal memuat jadwal sholat',
-            style: TextStyle(color: Colors.white70, fontSize: _t(context, 14)),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        SizedBox(height: _px(context, 8)),
         TextButton(
           onPressed: () {
             ref
@@ -119,12 +165,12 @@ class _PrayerTimeDisplayState extends ConsumerState<PrayerTimeDisplay> {
   ) {
     final now = DateTime.now();
     final currentTime =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
 
     final notifier = ref.read(homeProvider.notifier);
     final currentPrayerName = notifier.getCurrentPrayerName();
     final nextPrayerTime = notifier.getCurrentPrayerTime();
-    final timeLeft = notifier.getTimeUntilNextPrayer();
+    final timeLeft = _getCountdownWithSeconds(ref); // Gunakan method baru
 
     if (currentPrayerName == null || nextPrayerTime == null) {
       return _buildInvalidDataState(context, ref, currentTime);

@@ -24,10 +24,50 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
   bool _isGoogleAuth = false;
   bool _isLoading = true;
 
+  ProviderSubscription? _profileSub;
+
   @override
   void initState() {
     super.initState();
     _checkAuthMethod();
+
+    // Setup manual listener for profile state changes
+    _profileSub = ref.listenManual(profileProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      if (next.status == ProfileStatus.success && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.success,
+          duration: const Duration(seconds: 3),
+        );
+        ref.read(profileProvider.notifier).clearMessage();
+        ref.read(profileProvider.notifier).resetStatus();
+
+        // Clear form fields
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        _confirmPasswordController.clear();
+
+        // Navigate back after successful password change
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.pushNamed(context, '/profile');
+          }
+        });
+      } else if (next.status == ProfileStatus.error && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!.replaceFirst('Exception: ', ''),
+          type: ToastType.error,
+          duration: const Duration(seconds: 4),
+        );
+        ref.read(profileProvider.notifier).clearMessage();
+      }
+    });
   }
 
   Future<void> _checkAuthMethod() async {
@@ -49,6 +89,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
 
   @override
   void dispose() {
+    _profileSub?.close();
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
@@ -79,36 +120,6 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
     // Watch profile state
     final profileState = ref.watch(profileProvider);
     final isProfileLoading = profileState.status == ProfileStatus.loading;
-
-    // Listen to state changes for showing messages
-    ref.listen<ProfileState>(profileProvider, (previous, next) {
-      if (next.status == ProfileStatus.success && next.message != null) {
-        showMessageToast(
-          context,
-          message: next.message!,
-          type: ToastType.success,
-          duration: const Duration(seconds: 3),
-        );
-        ref.read(profileProvider.notifier).clearMessage();
-        ref.read(profileProvider.notifier).resetStatus();
-
-        // Clear form fields
-        _currentPasswordController.clear();
-        _newPasswordController.clear();
-        _confirmPasswordController.clear();
-
-        // Navigate back after successful password change
-        Navigator.pushReplacementNamed(context, '/profile');
-      } else if (next.status == ProfileStatus.error && next.message != null) {
-        showMessageToast(
-          context,
-          message: next.message!.replaceFirst('Exception: ', ''),
-          type: ToastType.error,
-          duration: const Duration(seconds: 4),
-        );
-        ref.read(profileProvider.notifier).clearMessage();
-      }
-    });
 
     // Show loading while checking auth method
     if (_isLoading) {
@@ -143,11 +154,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: isProfileLoading
               ? null
-              : () => Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/profile',
-                  (route) => false,
-                ),
+              : () => Navigator.pushNamed(context, '/profile'),
         ),
       ),
       body: SafeArea(

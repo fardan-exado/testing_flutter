@@ -7,9 +7,6 @@ import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/profile/profile_provider.dart';
 import 'package:test_flutter/features/profile/profile_state.dart';
-import 'edit_profile_page.dart';
-import 'change_password_page.dart';
-import 'manage_family_page.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -21,6 +18,8 @@ class ProfilePage extends ConsumerStatefulWidget {
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   String selectedLanguage = 'Indonesia';
   final ImagePicker _imagePicker = ImagePicker();
+
+  ProviderSubscription? _profileSub;
 
   // --- Helpers berbasis ResponsiveHelper ---
   double _scale(BuildContext c) {
@@ -70,6 +69,36 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ref.read(profileProvider.notifier).loadUser();
       }
     });
+
+    // Setup manual listener for profile state changes
+    _profileSub = ref.listenManual(profileProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      if (next.status == ProfileStatus.error && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.error,
+        );
+        ref.read(profileProvider.notifier).clearMessage();
+      } else if (next.status == ProfileStatus.success && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.success,
+        );
+        ref.read(profileProvider.notifier).clearMessage();
+        ref.read(profileProvider.notifier).resetStatus();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _profileSub?.close();
+    super.dispose();
   }
 
   @override
@@ -94,26 +123,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               'phone': null,
             },
           };
-
-    // Listen to state changes for showing messages
-    ref.listen<ProfileState>(profileProvider, (previous, next) {
-      if (next.status == ProfileStatus.error && next.message != null) {
-        showMessageToast(
-          context,
-          message: next.message!,
-          type: ToastType.error,
-        );
-        ref.read(profileProvider.notifier).clearMessage();
-      } else if (next.status == ProfileStatus.success && next.message != null) {
-        showMessageToast(
-          context,
-          message: next.message!,
-          type: ToastType.success,
-        );
-        ref.read(profileProvider.notifier).clearMessage();
-        ref.read(profileProvider.notifier).resetStatus();
-      }
-    });
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -323,18 +332,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               ? 'Ubah informasi profil Anda'
                               : 'Login untuk mengedit profil',
                           enabled: isAuthenticated && displayUser != null,
-                          onTap: () async {
-                            final result = await Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const EditProfilePage(),
-                              ),
-                              (route) => false,
-                            );
-                            // Refresh if profile was updated
-                            if (result == true) {
-                              ref.read(profileProvider.notifier).loadUser();
-                            }
+                          onTap: () {
+                            Navigator.pushNamed(context, '/edit-profile');
                           },
                         ),
                         _buildMenuItem(
@@ -345,13 +344,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               ? 'Ubah password untuk keamanan akun'
                               : 'Login untuk mengubah password',
                           enabled: isAuthenticated && displayUser != null,
-                          onTap: () => Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ChangePasswordPage(),
-                            ),
-                            (route) => false,
-                          ),
+                          onTap: () =>
+                              Navigator.pushNamed(context, '/change-password'),
                         ),
                         _buildMenuItem(
                           context: context,
@@ -361,13 +355,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               ? 'Tambah atau edit anggota keluarga'
                               : 'Login untuk mengelola keluarga',
                           enabled: isAuthenticated && displayUser != null,
-                          onTap: () => Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ManageFamilyPage(),
-                            ),
-                            (route) => false,
-                          ),
+                          onTap: () =>
+                              Navigator.pushNamed(context, '/manage-family'),
                         ),
                         _buildMenuItem(
                           context: context,
@@ -567,7 +556,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     // Handle case when user is null
     final name = user != null ? (user['name'] ?? '-') : '-';
     final email = user != null ? (user['email'] ?? '-') : '-';
-    final phone = user != null ? (user['phone'] ?? '-') : '-';
     final avatarPath = user != null ? user['avatar'] as String? : null;
     final avatarUrl = _buildAvatarUrl(avatarPath);
     final isDataAvailable = user != null;

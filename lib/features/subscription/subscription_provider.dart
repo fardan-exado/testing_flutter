@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/legacy.dart';
 
-import './models/plan_model.dart';
+import 'models/paket.dart';
 import './models/transaction_model.dart';
 import './models/subscription_model.dart';
 

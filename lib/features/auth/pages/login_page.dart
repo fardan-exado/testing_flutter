@@ -25,6 +25,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  ProviderSubscription? _authSub;
+
   @override
   void initState() {
     super.initState();
@@ -51,10 +53,64 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
     _fadeController.forward();
     _slideController.forward();
+
+    // 🔥 pindahin listener ke sini, tapi pake listenManual
+    _authSub = ref.listenManual(authProvider, (previous, next) {
+      // Pastikan widget masih mounted dan route ini lagi di paling atas
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      final status = next['status'];
+      final error = next['error'];
+
+      if (status == AuthState.error &&
+          error != null &&
+          error.toString().contains(
+            'Email belum diverifikasi. Silakan verifikasi terlebih dahulu.',
+          )) {
+        final email = next['email'];
+
+        showMessageToast(
+          context,
+          message:
+              'Email belum diverifikasi. Silakan verifikasi terlebih dahulu.',
+          type: ToastType.warning,
+        );
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(
+              context,
+            ).pushNamed('/otp', arguments: {'email': email, 'type': 'login'});
+          }
+        });
+      } else if (status == AuthState.error && error != null) {
+        showMessageToast(
+          context,
+          message: error.toString(),
+          type: ToastType.error,
+        );
+        ref.read(authProvider.notifier).clearError();
+      } else if (status == AuthState.authenticated) {
+        showMessageToast(
+          context,
+          message: 'Login berhasil! Selamat datang kembali.',
+          type: ToastType.success,
+        );
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed('/home');
+          }
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _authSub?.close();
     _emailController.dispose();
     _passwordController.dispose();
     _fadeController.dispose();
@@ -83,34 +139,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
     final isMedium = ResponsiveHelper.isMediumScreen(context);
     final isLarge = ResponsiveHelper.isLargeScreen(context);
     final isXL = ResponsiveHelper.isExtraLargeScreen(context);
-
-    ref.listen(authProvider, (previous, next) {
-      final status = next['status'];
-      final error = next['error'];
-
-      if (status == AuthState.error && error != null) {
-        showMessageToast(
-          context,
-          message: error.toString(),
-          type: ToastType.error,
-          duration: const Duration(seconds: 4),
-        );
-        ref.read(authProvider.notifier).clearError();
-      } else if (status == AuthState.authenticated) {
-        showMessageToast(
-          context,
-          message: 'Login berhasil! Selamat datang kembali.',
-          type: ToastType.success,
-          duration: const Duration(seconds: 3),
-        );
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            Navigator.of(context).pushReplacementNamed('/home');
-          }
-        });
-      }
-    });
 
     // Watch auth state for UI updates
     final authState = ref.watch(authProvider);

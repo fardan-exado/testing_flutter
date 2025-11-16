@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
-import 'package:test_flutter/features/subscription/subscription_provider.dart';
+import 'package:test_flutter/features/subscription/providers/subscription_provider.dart';
+// import 'package:test_flutter/features/subscription/subscription_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'transaction_history_page.dart';
 
@@ -21,13 +22,39 @@ class _PlanPageState extends ConsumerState<PlanPage> {
     decimalDigits: 0,
   );
 
+  ProviderSubscription? _subscriptionSub;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(subscriptionProvider.notifier).loadPlans();
+      ref.read(subscriptionProvider.notifier).loadPakets();
       ref.read(subscriptionProvider.notifier).loadActiveSubscription();
     });
+    // 🔥 Setup manual listener untuk subscription state
+    _subscriptionSub = ref.listenManual(subscriptionProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      if (next.error != null) {
+        showMessageToast(context, message: next.error!, type: ToastType.error);
+        ref.read(subscriptionProvider.notifier).clearError();
+      } else if (next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.success,
+        );
+        ref.read(subscriptionProvider.notifier).clearMessage();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscriptionSub?.close();
+    super.dispose();
   }
 
   // Helper methods
@@ -42,8 +69,8 @@ class _PlanPageState extends ConsumerState<PlanPage> {
       ResponsiveHelper.adaptiveTextSize(c, base);
 
   EdgeInsets _pageHPad(BuildContext c) => EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.getResponsivePadding(c).left,
-      );
+    horizontal: ResponsiveHelper.getResponsivePadding(c).left,
+  );
 
   double _contentMaxWidth(BuildContext c) {
     if (ResponsiveHelper.isExtraLargeScreen(c)) return 1200;
@@ -54,28 +81,9 @@ class _PlanPageState extends ConsumerState<PlanPage> {
   @override
   Widget build(BuildContext context) {
     final subscriptionState = ref.watch(subscriptionProvider);
-    final plans = subscriptionState.plans;
+    final pakets = subscriptionState.pakets;
     final activeSubscription = subscriptionState.activeSubscription;
     final isPremium = subscriptionState.isPremium;
-
-    // Listen to state changes
-    ref.listen<SubscriptionState>(subscriptionProvider, (previous, next) {
-      if (next.error != null) {
-        showMessageToast(
-          context,
-          message: next.error!,
-          type: ToastType.error,
-        );
-        ref.read(subscriptionProvider.notifier).clearError();
-      } else if (next.message != null) {
-        showMessageToast(
-          context,
-          message: next.message!,
-          type: ToastType.success,
-        );
-        ref.read(subscriptionProvider.notifier).clearMessage();
-      }
-    });
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -111,12 +119,7 @@ class _PlanPageState extends ConsumerState<PlanPage> {
                   // Transaction History Button
                   IconButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TransactionHistoryPage(),
-                        ),
-                      );
+                      Navigator.pushNamed(context, '/transaction-history');
                     },
                     icon: const Icon(Icons.history_rounded),
                     color: const Color(0xFF1E88E5),
@@ -128,7 +131,7 @@ class _PlanPageState extends ConsumerState<PlanPage> {
 
             // Content
             Expanded(
-              child: subscriptionState.isLoading && plans.isEmpty
+              child: subscriptionState.isLoading && pakets.isEmpty
                   ? const Center(
                       child: CircularProgressIndicator(
                         color: Color(0xFF1E88E5),
@@ -158,10 +161,10 @@ class _PlanPageState extends ConsumerState<PlanPage> {
                               SizedBox(height: _px(context, 32)),
 
                               // Plans Grid
-                              if (plans.isEmpty)
+                              if (pakets.isEmpty)
                                 _buildEmptyState(context)
                               else
-                                _buildPlansGrid(context, plans, isPremium),
+                                _buildPlansGrid(context, pakets, isPremium),
 
                               SizedBox(height: _px(context, 32)),
 
@@ -230,7 +233,7 @@ class _PlanPageState extends ConsumerState<PlanPage> {
                       ),
                     ),
                     Text(
-                      subscription.planName,
+                      subscription.planName ?? 'Premium Plan',
                       style: TextStyle(
                         fontSize: _ts(context, 14),
                         color: Colors.white.withValues(alpha: 0.9),
@@ -262,8 +265,7 @@ class _PlanPageState extends ConsumerState<PlanPage> {
                       ),
                     ),
                     Text(
-                      DateFormat('dd MMM yyyy', 'id_ID')
-                          .format(subscription.endDate),
+                      'TBD',
                       style: TextStyle(
                         fontSize: _ts(context, 16),
                         fontWeight: FontWeight.bold,
@@ -283,7 +285,7 @@ class _PlanPageState extends ConsumerState<PlanPage> {
                       ),
                     ),
                     Text(
-                      '${subscription.daysRemaining} hari',
+                      'TBD',
                       style: TextStyle(
                         fontSize: _ts(context, 16),
                         fontWeight: FontWeight.bold,
@@ -341,7 +343,9 @@ class _PlanPageState extends ConsumerState<PlanPage> {
 
   Widget _buildPlansGrid(BuildContext context, plans, bool isPremium) {
     final isTablet = ResponsiveHelper.isMediumScreen(context);
-    final isDesktop = ResponsiveHelper.isLargeScreen(context) || ResponsiveHelper.isExtraLargeScreen(context);
+    final isDesktop =
+        ResponsiveHelper.isLargeScreen(context) ||
+        ResponsiveHelper.isExtraLargeScreen(context);
 
     return GridView.builder(
       shrinkWrap: true,
@@ -697,9 +701,7 @@ class _PlanPageState extends ConsumerState<PlanPage> {
         content: const Text(
           'Anda akan diarahkan ke halaman pembayaran Midtrans. Lanjutkan?',
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

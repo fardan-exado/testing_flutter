@@ -1,3 +1,43 @@
+class Paket{
+  final int id;
+  final String nama;
+  final String coverPath;
+  final String deskripsi;
+  final double harga;
+  final int durasi;
+
+  Paket({
+    required this.id,
+    required this.nama,
+    required this.coverPath,
+    required this.deskripsi,
+    required this.harga,
+    required this.durasi,
+  });
+
+  factory Paket.fromJson(Map<String, dynamic> json) {
+    return Paket(
+      id: json['id'],
+      nama: json['nama'],
+      coverPath: json['cover_path'],
+      deskripsi: json['deskripsi'],
+      harga: json['harga'].toDouble(),
+      durasi: json['durasi'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nama': nama,
+      'cover_path': coverPath,
+      'deskripsi': deskripsi,
+      'harga': harga,
+      'durasi': durasi,
+    };
+  }
+}
+
 class PlanModel {
   final String id;
   final String name;

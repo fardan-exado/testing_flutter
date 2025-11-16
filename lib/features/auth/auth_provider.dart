@@ -18,6 +18,7 @@ enum AuthState {
   passwordReset,
   otpSent,
   otpVerified,
+  emailNotVerified,
 }
 
 class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
@@ -133,7 +134,22 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
 
       // Call API
       final response = await AuthService.login(email, password);
+      final status = response['status'];
       final data = response['data'];
+      final message = response['message'];
+
+      // Check if email is not verified
+      if (!status &&
+          message?.toString().contains('Email belum diverifikasi') == true) {
+        state = {
+          'status': AuthState.emailNotVerified,
+          'email': email,
+          'error': null,
+          'message': message,
+        };
+        logger.fine('Email not verified. Redirect to OTP page.');
+        return;
+      }
 
       if (data == null) {
         throw Exception('Invalid response from server');

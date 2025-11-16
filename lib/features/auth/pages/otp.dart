@@ -11,6 +11,7 @@ import '../../../app/theme.dart';
 enum OTPType {
   registration, // Untuk verifikasi registrasi
   forgotPassword, // Untuk forgot password flow
+  login, // Untuk login dengan email belum terverifikasi
 }
 
 class OTPPage extends ConsumerStatefulWidget {
@@ -29,6 +30,37 @@ class OTPPage extends ConsumerStatefulWidget {
     this.confirmationPassword,
   });
 
+  // Factory constructor to handle string type from routing
+  factory OTPPage.fromString({
+    required String email,
+    required String type,
+    String? name,
+    String? password,
+    String? confirmationPassword,
+  }) {
+    OTPType otpType;
+
+    switch (type.toLowerCase()) {
+      case 'registration':
+        otpType = OTPType.registration;
+        break;
+      case 'login':
+        otpType = OTPType.login;
+        break;
+      case 'forgotpassword':
+      default:
+        otpType = OTPType.forgotPassword;
+    }
+
+    return OTPPage(
+      email: email,
+      type: otpType,
+      name: name,
+      password: password,
+      confirmationPassword: confirmationPassword,
+    );
+  }
+
   @override
   ConsumerState<OTPPage> createState() => _OTPPageState();
 }
@@ -45,6 +77,8 @@ class _OTPPageState extends ConsumerState<OTPPage>
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+
+  ProviderSubscription? _authSub;
 
   Timer? _timer;
   int _resendCountdown = 60;
@@ -78,10 +112,97 @@ class _OTPPageState extends ConsumerState<OTPPage>
     _slideController.forward();
 
     _startResendTimer();
+
+    // Auto send OTP when page is loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _autoSendOTP();
+    });
+
+    // 🔥 listener di sini juga pakai listenManual
+    _authSub = ref.listenManual(authProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      final status = next['status'];
+      final error = next['error'];
+      final message = next['message'];
+
+      if (status == AuthState.error && error != null) {
+        showMessageToast(
+          context,
+          message: error.toString(),
+          type: ToastType.error,
+          duration: const Duration(seconds: 4),
+        );
+        ref.read(authProvider.notifier).clearError();
+      } else if (status == AuthState.otpVerified) {
+        // Handle untuk registration dan login
+        if (widget.type == OTPType.registration ||
+            widget.type == OTPType.login) {
+          showMessageToast(
+            context,
+            message:
+                message?.toString() ?? 'Verifikasi berhasil! Silakan login.',
+            type: ToastType.success,
+            duration: const Duration(seconds: 3),
+          );
+
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) {
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/login', (route) => false);
+            }
+          });
+        }
+      } else if (status == AuthState.otpSent) {
+        showMessageToast(
+          context,
+          message: message?.toString() ?? 'Kode OTP telah dikirim ulang.',
+          type: ToastType.success,
+          duration: const Duration(seconds: 3),
+        );
+      }
+    });
+  }
+
+  void _autoSendOTP() async {
+    if (widget.type == OTPType.registration) {
+      // For registration type, resend OTP
+      if (widget.name != null &&
+          widget.password != null &&
+          widget.confirmationPassword != null) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          await ref
+              .read(authProvider.notifier)
+              .resendOTP(
+                name: widget.name!,
+                email: widget.email,
+                password: widget.password!,
+                confirmationPassword: widget.confirmationPassword!,
+              );
+        }
+      } else {
+        // For login with unverified email, send forgot password OTP
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          await ref.read(authProvider.notifier).forgotPassword(widget.email);
+        }
+      }
+    } else {
+      // For forgot password type
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        await ref.read(authProvider.notifier).forgotPassword(widget.email);
+      }
+    }
   }
 
   @override
   void dispose() {
+    _authSub?.close();
     for (var controller in _otpControllers) {
       controller.dispose();
     }
@@ -201,48 +322,6 @@ class _OTPPageState extends ConsumerState<OTPPage>
 
     // Padding global responsif
     final pagePadding = ResponsiveHelper.getResponsivePadding(context);
-
-    // Listen to auth state changes
-    ref.listen(authProvider, (previous, next) {
-      final status = next['status'];
-      final error = next['error'];
-      final message = next['message'];
-
-      if (status == AuthState.error && error != null) {
-        showMessageToast(
-          context,
-          message: error.toString(),
-          type: ToastType.error,
-          duration: const Duration(seconds: 4),
-        );
-        ref.read(authProvider.notifier).clearError();
-      } else if (status == AuthState.otpVerified &&
-          widget.type == OTPType.registration) {
-        // OTP berhasil diverifikasi, navigate ke login page
-        showMessageToast(
-          context,
-          message: message?.toString() ?? 'Verifikasi berhasil! Silakan login.',
-          type: ToastType.success,
-          duration: const Duration(seconds: 3),
-        );
-
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) {
-            Navigator.of(
-              context,
-            ).pushNamedAndRemoveUntil('/login', (route) => false);
-          }
-        });
-      } else if (status == AuthState.otpSent) {
-        // OTP berhasil dikirim ulang
-        showMessageToast(
-          context,
-          message: message?.toString() ?? 'Kode OTP telah dikirim ulang.',
-          type: ToastType.success,
-          duration: const Duration(seconds: 3),
-        );
-      }
-    });
 
     // Watch auth state for UI updates
     final authState = ref.watch(authProvider);

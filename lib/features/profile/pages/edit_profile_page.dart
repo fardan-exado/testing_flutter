@@ -17,10 +17,45 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
 
+  ProviderSubscription? _profileSub;
+
   @override
   void initState() {
     super.initState();
     _loadProfileData();
+
+    // Setup manual listener for profile state changes
+    _profileSub = ref.listenManual(profileProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      if (next.status == ProfileStatus.success && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.success,
+          duration: const Duration(seconds: 3),
+        );
+        ref.read(profileProvider.notifier).clearMessage();
+        ref.read(profileProvider.notifier).resetStatus();
+
+        // Navigate back with success result
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.pushNamed(context, '/profile');
+          }
+        });
+      } else if (next.status == ProfileStatus.error && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.error,
+          duration: const Duration(seconds: 4),
+        );
+        ref.read(profileProvider.notifier).clearMessage();
+      }
+    });
   }
 
   void _loadProfileData() {
@@ -39,6 +74,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   @override
   void dispose() {
+    _profileSub?.close();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -70,31 +106,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     final profileState = ref.watch(profileProvider);
     final isLoading = profileState.status == ProfileStatus.loading;
 
-    // Listen to state changes for showing messages
-    ref.listen<ProfileState>(profileProvider, (previous, next) {
-      if (next.status == ProfileStatus.success && next.message != null) {
-        showMessageToast(
-          context,
-          message: next.message!,
-          type: ToastType.success,
-          duration: const Duration(seconds: 3),
-        );
-        ref.read(profileProvider.notifier).clearMessage();
-        ref.read(profileProvider.notifier).resetStatus();
-
-        // Navigate back with success result
-        Navigator.pushReplacementNamed(context, '/profile');
-      } else if (next.status == ProfileStatus.error && next.message != null) {
-        showMessageToast(
-          context,
-          message: next.message!,
-          type: ToastType.error,
-          duration: const Duration(seconds: 4),
-        );
-        ref.read(profileProvider.notifier).clearMessage();
-      }
-    });
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -110,11 +121,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: isLoading
               ? null
-              : () => Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/profile',
-                  (route) => false,
-                ),
+              : () => Navigator.pushNamed(context, '/profile'),
         ),
       ),
       body: SafeArea(
@@ -262,7 +269,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                 //   },
                 //   isTablet: isTablet,
                 // ),
-
                 SizedBox(height: isTablet ? 40 : 32),
 
                 // Save Button
