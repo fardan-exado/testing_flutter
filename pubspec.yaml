@@ -75,6 +75,7 @@ dependencies:
   internet_connection_checker: ^3.0.1
   quran: ^1.4.1
   scrollable_positioned_list: ^0.3.8
+  midtrans_sdk: ^1.1.0
 
 dev_dependencies:
   flutter_test:

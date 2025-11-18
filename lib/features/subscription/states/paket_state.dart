@@ -5,16 +5,12 @@ enum SubscriptionStatus { initial, loading, success, error }
 class SubscriptionState {
   final SubscriptionStatus status;
   final List<Paket> pakets;
-  final dynamic activeSubscription;
-  final bool isPremium;
   final String? error;
   final String? message;
 
   SubscriptionState({
     this.status = SubscriptionStatus.initial,
     this.pakets = const [],
-    this.activeSubscription,
-    this.isPremium = false,
     this.error,
     this.message,
   });
@@ -32,8 +28,6 @@ class SubscriptionState {
     return SubscriptionState(
       status: status ?? this.status,
       pakets: pakets ?? this.pakets,
-      activeSubscription: activeSubscription ?? this.activeSubscription,
-      isPremium: isPremium ?? this.isPremium,
       error: error,
       message: message,
     );

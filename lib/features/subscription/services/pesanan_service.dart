@@ -20,6 +20,29 @@ class PesananService {
     }
   }
 
+  // Buy Package
+  static Future<Map<String, dynamic>> buyPackage({
+    required int paketId,
+  }) async {
+    try {
+      final response = await ApiClient.dio.post(
+        '/premium/pesanan/beli-paket',
+        data: {'paket_id': paketId},
+      );
+
+      final responseData = response.data as Map<String, dynamic>;
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
+        'data': responseData['data'],
+      };
+    } on DioException catch (e) {
+      final error = ApiClient.parseDioError(e);
+      throw Exception(error);
+    }
+  }
+
   // Get Detail Pesanan
   static Future<Map<String, dynamic>> getDetailPesanan({
     required String pesananId,

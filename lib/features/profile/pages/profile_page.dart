@@ -7,6 +7,7 @@ import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/profile/profile_provider.dart';
 import 'package:test_flutter/features/profile/profile_state.dart';
+import 'package:test_flutter/features/subscription/providers/pesanan_provider.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -842,6 +843,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
+              // Clear subscription provider state first
+              ref.read(pesananProvider.notifier).clearPremiumStatus();
+              // Then logout from auth
               ref.read(authProvider.notifier).logout();
               showMessageToast(
                 context,

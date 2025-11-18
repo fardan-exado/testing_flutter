@@ -8,10 +8,10 @@ class Pesanan {
   final double hargaTotal;
   final String status;
   final String midtransId;
-  final String dibayarPada;
-  final String kadaluarsaPada;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final String? dibayarPada;
+  final String? kadaluarsaPada;
+  final String createdAt;
+  final String updatedAt;
   final Paket premiumPaket;
 
   Pesanan({
@@ -22,8 +22,8 @@ class Pesanan {
     required this.hargaTotal,
     required this.status,
     required this.midtransId,
-    required this.dibayarPada,
-    required this.kadaluarsaPada,
+    this.dibayarPada,
+    this.kadaluarsaPada,
     required this.createdAt,
     required this.updatedAt,
     required this.premiumPaket,
@@ -40,9 +40,11 @@ class Pesanan {
       midtransId: json['midtrans_id'],
       dibayarPada: json['dibayar_pada'],
       kadaluarsaPada: json['kadaluarsa_pada'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
-      premiumPaket: Paket.fromJson(json['premium_paket']),
+      createdAt: (json['created_at']),
+      updatedAt: (json['updated_at']),
+      premiumPaket: Paket.fromJson(
+        json['premium_paket'] as Map<String, dynamic>,
+      ),
     );
   }
 
@@ -57,8 +59,8 @@ class Pesanan {
       'midtrans_id': midtransId,
       'dibayar_pada': dibayarPada,
       'kadaluarsa_pada': kadaluarsaPada,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'created_at': createdAt,
+      'updated_at': updatedAt,
       'premium_paket': premiumPaket.toJson(),
     };
   }

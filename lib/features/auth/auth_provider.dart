@@ -322,6 +322,15 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
       await StorageHelper.clearUserData();
       logger.fine('User data cleared from storage');
 
+      // Clear premium status from flutter_secure_storage
+      logger.info('🗑️ Clearing premium status...');
+      try {
+        await StorageHelper.clearPremiumStatus();
+        logger.info('✓ Premium status cleared successfully');
+      } catch (e) {
+        logger.warning('Warning clearing premium status: $e');
+      }
+
       // Clear only sholat-related caches from Hive
       logger.info('🗑️ Starting to clear sholat caches...');
 

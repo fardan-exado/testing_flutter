@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
-import 'package:test_flutter/features/subscription/subscription_provider.dart';
-import 'package:test_flutter/features/subscription/pages/plan_page.dart';
+import 'package:test_flutter/features/subscription/pages/paket_page.dart';
+import 'package:test_flutter/features/subscription/providers/pesanan_provider.dart';
 
 class PremiumGate extends ConsumerWidget {
   final Widget child;
@@ -16,7 +16,7 @@ class PremiumGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final subscriptionState = ref.watch(subscriptionProvider);
+    final subscriptionState = ref.watch(pesananProvider);
     final isPremium = subscriptionState.isPremium;
 
     // If premium, show the feature
@@ -169,16 +169,8 @@ class _PremiumLockedScreen extends StatelessWidget {
                               '✅',
                               'Notifikasi Premium',
                             ),
-                            _buildFeatureItem(
-                              context,
-                              '✅',
-                              'Laporan Detail',
-                            ),
-                            _buildFeatureItem(
-                              context,
-                              '✅',
-                              'Priority Support',
-                            ),
+                            _buildFeatureItem(context, '✅', 'Laporan Detail'),
+                            _buildFeatureItem(context, '✅', 'Priority Support'),
                           ],
                         ),
                       ),
@@ -190,11 +182,9 @@ class _PremiumLockedScreen extends StatelessWidget {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
-                            Navigator.push(
+                            Navigator.pushNamed(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => const PlanPage(),
-                              ),
+                              '/plan',
                             );
                           },
                           style: ElevatedButton.styleFrom(
@@ -257,10 +247,7 @@ class _PremiumLockedScreen extends StatelessWidget {
       padding: EdgeInsets.only(bottom: _px(context, 10)),
       child: Row(
         children: [
-          Text(
-            emoji,
-            style: TextStyle(fontSize: _ts(context, 18)),
-          ),
+          Text(emoji, style: TextStyle(fontSize: _ts(context, 18))),
           SizedBox(width: _px(context, 12)),
           Expanded(
             child: Text(

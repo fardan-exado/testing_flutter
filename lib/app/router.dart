@@ -22,10 +22,12 @@ import 'package:test_flutter/features/quran/pages/quran_page.dart';
 import 'package:test_flutter/features/quran/pages/surah_detail_page.dart';
 import 'package:test_flutter/features/sedekah/pages/sedekah_page.dart';
 import 'package:test_flutter/features/sholat/pages/sholat_page.dart';
+import 'package:test_flutter/features/subscription/models/pesanan.dart';
+import 'package:test_flutter/features/subscription/pages/pesanan_detail_page.dart';
 import 'package:test_flutter/features/syahadat/pages/syahadat_page.dart';
 import 'package:test_flutter/features/tahajud/pages/tahajud_page.dart';
-import 'package:test_flutter/features/subscription/pages/plan_page.dart';
-import 'package:test_flutter/features/subscription/pages/transaction_history_page.dart';
+import 'package:test_flutter/features/subscription/pages/paket_page.dart';
+import 'package:test_flutter/features/subscription/pages/riwayat_page.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -57,6 +59,7 @@ class AppRoutes {
   static const String haji = '/haji';
   static const String plan = '/plan';
   static const String transactionHistory = '/transaction-history';
+  static const String pesananDetail = '/pesanan-detail';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -149,10 +152,16 @@ class AppRoutes {
       case haji:
         return MaterialPageRoute(builder: (_) => const HajiPage());
       case plan:
-        return MaterialPageRoute(builder: (_) => const PlanPage());
+        return MaterialPageRoute(builder: (_) => const PaketPage());
       case transactionHistory:
+        return MaterialPageRoute(builder: (_) => const RiwayatPage());
+      case pesananDetail:
+        final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
-          builder: (_) => const TransactionHistoryPage(),
+          builder: (_) => PesananDetailPage(
+            pesanan: args['pesanan'] as Pesanan,
+            snapToken: args['snapToken'] as String?,
+          ),
         );
       default:
         return MaterialPageRoute(

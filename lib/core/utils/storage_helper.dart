@@ -44,4 +44,26 @@ class StorageHelper {
     // Hapus token dari secure storage
     await _storage.delete(key: 'auth_token');
   }
+
+  // Clear premium status and all related subscription data
+  static Future<void> clearPremiumStatus() async {
+    try {
+      // Delete premium status flag
+      await _storage.delete(key: 'is_premium');
+      print('✓ Premium status cleared from secure storage');
+    } catch (e) {
+      print('Error clearing premium status: $e');
+    }
+  }
+
+  // Clear all subscription data
+  static Future<void> clearAllSubscriptionData() async {
+    try {
+      // Delete premium status flag
+      await _storage.delete(key: 'is_premium');
+      print('✓ All subscription data cleared');
+    } catch (e) {
+      print('Error clearing subscription data: $e');
+    }
+  }
 }
