@@ -4,8 +4,8 @@ import 'package:test_flutter/app/theme.dart';
 import 'package:test_flutter/core/utils/storage_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/features/profile/helpers/profile_responsive_helper.dart';
-import 'package:test_flutter/features/profile/profile_provider.dart';
-import 'package:test_flutter/features/profile/profile_state.dart';
+import 'package:test_flutter/features/profile/providers/profile_provider.dart';
+import 'package:test_flutter/features/profile/states/profile_state.dart';
 
 class ChangePasswordPage extends ConsumerStatefulWidget {
   const ChangePasswordPage({super.key});

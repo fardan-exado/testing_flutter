@@ -6,6 +6,7 @@ import 'package:test_flutter/core/utils/storage_helper.dart';
 import 'package:test_flutter/data/services/cache/cache_service.dart';
 import 'package:test_flutter/data/services/google/google_auth_service.dart';
 import 'package:test_flutter/features/auth/auth_service.dart';
+import 'package:test_flutter/features/profile/states/family_state.dart';
 
 enum AuthState {
   initial,
@@ -317,6 +318,13 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
     try {
       // Call API
       await AuthService.logout();
+
+      // CLEAR STATE
+      FamilyState(
+        anakAktif: List.empty(),
+        pengajuanAnak: List.empty(),
+        status: FamilyStatus.initial,
+      );
 
       // Clear local user data
       await StorageHelper.clearUserData();
