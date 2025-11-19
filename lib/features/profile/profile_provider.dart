@@ -105,6 +105,30 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     }
   }
 
+  // Delete avatar pengguna.
+  Future<void> deleteAvatar() async {
+    state = state.copyWith(status: ProfileStatus.loading);
+    try {
+      final response = await ProfileService.deleteAvatar();
+      final data = response['data'];
+      final updatedUser = data['user'];
+
+      // Simpan user yang sudah diperbarui ke local storage
+      await StorageHelper.saveUser(updatedUser as Map<String, dynamic>);
+
+      state = state.copyWith(
+        status: ProfileStatus.success,
+        profile: updatedUser,
+        message: response['message'],
+      );
+    } catch (e) {
+      state = state.copyWith(
+        status: ProfileStatus.error,
+        message: e.toString(),
+      );
+    }
+  }
+
   /// Membersihkan pesan (error/sukses) setelah ditampilkan di UI.
   void clearMessage() {
     state = state.copyWith(clearMessage: true);

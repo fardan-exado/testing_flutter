@@ -88,4 +88,23 @@ class ProfileService {
       throw Exception(error);
     }
   }
+
+  // Delete Avatar
+  static Future<Map<String, dynamic>> deleteAvatar() async {
+    try {
+      final response = await ApiClient.dio.post('/delete-avatar');
+
+      final responseData = response.data as Map<String, dynamic>;
+      final data = responseData['data'];
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
+        'data': data,
+      };
+    } on DioException catch (e) {
+      final error = ApiClient.parseDioError(e);
+      throw Exception(error);
+    }
+  }
 }

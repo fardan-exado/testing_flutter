@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:test_flutter/app/theme.dart';
+import 'package:test_flutter/features/profile/helpers/profile_responsive_helper.dart';
 
 class FamilyMember {
   final String id;
@@ -67,302 +68,421 @@ class _ManageFamilyPageState extends State<ManageFamilyPage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-    final isLargeScreen = screenWidth > 800;
-
-    // Responsive values
-    final horizontalPadding = isLargeScreen ? 32.0 : (isTablet ? 24.0 : 20.0);
-    final cardPadding = isTablet ? 20.0 : 16.0;
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(
-          'Kelola Keluarga',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: isTablet ? 22 : 20,
+      backgroundColor: const Color(0xFF1E88E5),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF1E88E5).withValues(alpha: 0.1),
+              const Color(0xFF26A69A).withValues(alpha: 0.05),
+            ],
+            stops: const [0.0, 1.0],
           ),
         ),
-        backgroundColor: AppTheme.primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add, size: isTablet ? 28 : 24),
-            onPressed: () => _showAddMemberDialog(context),
-            tooltip: 'Tambah Anggota',
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header Info
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.all(horizontalPadding),
-              padding: EdgeInsets.all(cardPadding),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E88E5), Color(0xFF26A69A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ===== Header dengan Gradient =====
+              Container(
+                padding: ProfileResponsiveHelper.getHeaderPadding(context),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.family_restroom,
-                        color: Colors.white,
-                        size: isTablet ? 32 : 28,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(
+                        ProfileResponsiveHelper.px(context, 12),
                       ),
-                      SizedBox(width: isTablet ? 16 : 12),
-                      Expanded(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Icon(
+                          Icons.arrow_back_rounded,
+                          color: Colors.white,
+                          size: ProfileResponsiveHelper.getIconSize(
+                            context,
+                            small: 20,
+                            medium: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Kelola Keluarga',
+                          style: TextStyle(
+                            fontSize: ProfileResponsiveHelper.textSize(
+                              context,
+                              20,
+                            ),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.all(
+                        ProfileResponsiveHelper.px(context, 12),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: GestureDetector(
+                        onTap: () => _showAddMemberDialog(context),
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: Colors.white,
+                          size: ProfileResponsiveHelper.getIconSize(
+                            context,
+                            small: 20,
+                            medium: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ===== Content =====
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: ProfileResponsiveHelper.getPageHorizontalPadding(
+                    context,
+                  ),
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ProfileResponsiveHelper.verticalGap(context, medium: 32),
+                      // Header Info
+                      Container(
+                        width: double.infinity,
+                        padding: ProfileResponsiveHelper.getCardPadding(
+                          context,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1E88E5), Color(0xFF26A69A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Total Anggota Keluarga',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.family_restroom,
+                                  color: Colors.white,
+                                  size: ProfileResponsiveHelper.px(context, 32),
+                                ),
+                                ProfileResponsiveHelper.horizontalGap(context),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Total Anggota Keluarga',
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.9,
+                                          ),
+                                          fontSize:
+                                              ProfileResponsiveHelper.textSize(
+                                                context,
+                                                14,
+                                              ),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${familyMembers.length} Orang',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize:
+                                              ProfileResponsiveHelper.textSize(
+                                                context,
+                                                20,
+                                              ),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            ProfileResponsiveHelper.verticalGap(
+                              context,
+                              medium: 16,
                             ),
                             Text(
-                              '${familyMembers.length} Orang',
+                              'Kelola anggota keluarga untuk monitoring ibadah yang lebih baik',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isTablet ? 24 : 20,
-                                fontWeight: FontWeight.bold,
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: ProfileResponsiveHelper.textSize(
+                                  context,
+                                  13,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
+
+                      ProfileResponsiveHelper.verticalGap(context, medium: 24),
+
+                      // Anggota Keluarga Section
+                      Text(
+                        'Anggota Keluarga',
+                        style: TextStyle(
+                          fontSize: ProfileResponsiveHelper.textSize(
+                            context,
+                            18,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2D3748),
+                        ),
+                      ),
+                      ProfileResponsiveHelper.verticalGap(context, medium: 16),
+
+                      // Family Members Cards
+                      ...familyMembers.map(
+                        (member) => Container(
+                          constraints: BoxConstraints(
+                            maxWidth:
+                                ProfileResponsiveHelper.getContentMaxWidth(
+                                  context,
+                                ),
+                          ),
+                          margin: EdgeInsets.only(
+                            bottom: ProfileResponsiveHelper.px(context, 12),
+                          ),
+                          child: _buildMemberCard(member),
+                        ),
+                      ),
+
+                      ProfileResponsiveHelper.verticalGap(context, medium: 24),
+
+                      // Add Member Button
+                      Container(
+                        constraints: BoxConstraints(
+                          maxWidth: ProfileResponsiveHelper.getContentMaxWidth(
+                            context,
+                          ),
+                        ),
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showAddMemberDialog(context),
+                          icon: Icon(
+                            Icons.person_add,
+                            size: ProfileResponsiveHelper.getIconSize(
+                              context,
+                              small: 20,
+                              medium: 24,
+                            ),
+                          ),
+                          label: Text(
+                            'Tambah Anggota Keluarga',
+                            style: TextStyle(
+                              fontSize: ProfileResponsiveHelper.textSize(
+                                context,
+                                16,
+                              ),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF1E88E5),
+                            side: const BorderSide(
+                              color: Color(0xFF1E88E5),
+                              width: 2,
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              vertical: ProfileResponsiveHelper.px(context, 12),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      ProfileResponsiveHelper.verticalGap(context, medium: 32),
                     ],
                   ),
-                  SizedBox(height: isTablet ? 16 : 12),
-                  Text(
-                    'Kelola anggota keluarga untuk monitoring ibadah yang lebih baik',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: isTablet ? 15 : 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Family Members List
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Anggota Keluarga',
-                      style: TextStyle(
-                        fontSize: isTablet ? 20 : 18,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF2D3748),
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 16 : 12),
-
-                    // Family Members Cards
-                    ...familyMembers.map(
-                      (member) => Container(
-                        constraints: BoxConstraints(
-                          maxWidth: isLargeScreen ? 600 : double.infinity,
-                        ),
-                        margin: EdgeInsets.only(bottom: isTablet ? 16 : 12),
-                        child: _buildMemberCard(
-                          member,
-                          isTablet,
-                          isLargeScreen,
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: isTablet ? 24 : 20),
-
-                    // Add Member Button
-                    Container(
-                      constraints: BoxConstraints(
-                        maxWidth: isLargeScreen ? 600 : double.infinity,
-                      ),
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showAddMemberDialog(context),
-                        icon: Icon(Icons.person_add, size: isTablet ? 24 : 20),
-                        label: Text(
-                          'Tambah Anggota Keluarga',
-                          style: TextStyle(
-                            fontSize: isTablet ? 18 : 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF1E88E5),
-                          side: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
-                          ),
-                          padding: EdgeInsets.symmetric(
-                            vertical: isTablet ? 16 : 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: isTablet ? 32 : 24),
-                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildMemberCard(
-    FamilyMember member,
-    bool isTablet,
-    bool isLargeScreen,
-  ) {
-    final cardPadding = isTablet ? 20.0 : 16.0;
-    final avatarSize = isTablet ? 60.0 : 50.0;
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: EdgeInsets.all(cardPadding),
-        child: Row(
-          children: [
-            // Avatar
-            Container(
-              width: avatarSize,
-              height: avatarSize,
-              decoration: BoxDecoration(
-                color: _getRoleColor(member.role).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  member.avatar,
-                  style: TextStyle(fontSize: isTablet ? 28 : 24),
-                ),
-              ),
-            ),
-
-            SizedBox(width: isTablet ? 16 : 12),
-
-            // Member Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    member.name,
-                    style: TextStyle(
-                      fontSize: isTablet ? 18 : 16,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF2D3748),
+  Widget _buildMemberCard(FamilyMember member) {
+    return Builder(
+      builder: (context) {
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: ProfileResponsiveHelper.getCardPadding(context),
+            child: Row(
+              children: [
+                // Avatar
+                Container(
+                  width: ProfileResponsiveHelper.px(context, 50),
+                  height: ProfileResponsiveHelper.px(context, 50),
+                  decoration: BoxDecoration(
+                    color: _getRoleColor(member.role).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      member.avatar,
+                      style: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 24),
+                      ),
                     ),
                   ),
-                  SizedBox(height: isTablet ? 6 : 4),
-                  Row(
+                ),
+
+                ProfileResponsiveHelper.horizontalGap(context),
+
+                // Member Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isTablet ? 10 : 8,
-                          vertical: isTablet ? 6 : 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getRoleColor(member.role),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          member.role,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isTablet ? 12 : 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: isTablet ? 12 : 8),
                       Text(
-                        '${member.age} tahun',
+                        member.name,
                         style: TextStyle(
-                          fontSize: isTablet ? 14 : 12,
-                          color: const Color(0xFF4A5568),
+                          fontSize: ProfileResponsiveHelper.textSize(
+                            context,
+                            16,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2D3748),
                         ),
+                      ),
+                      SizedBox(height: ProfileResponsiveHelper.px(context, 4)),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: ProfileResponsiveHelper.px(
+                                context,
+                                8,
+                              ),
+                              vertical: ProfileResponsiveHelper.px(context, 4),
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getRoleColor(member.role),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              member.role,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: ProfileResponsiveHelper.textSize(
+                                  context,
+                                  10,
+                                ),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: ProfileResponsiveHelper.px(context, 8),
+                          ),
+                          Text(
+                            '${member.age} tahun',
+                            style: TextStyle(
+                              fontSize: ProfileResponsiveHelper.textSize(
+                                context,
+                                12,
+                              ),
+                              color: const Color(0xFF4A5568),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            // Actions
-            PopupMenuButton<String>(
-              icon: Icon(
-                Icons.more_vert,
-                size: isTablet ? 24 : 20,
-                color: const Color(0xFF4A5568),
-              ),
-              onSelected: (value) {
-                switch (value) {
-                  case 'edit':
-                    _showEditMemberDialog(context, member);
-                    break;
-                  case 'delete':
-                    _showDeleteConfirmation(context, member);
-                    break;
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 18),
-                      SizedBox(width: 8),
-                      Text('Edit'),
-                    ],
-                  ),
                 ),
-                if (member.role != 'Ayah' && member.role != 'Ibu')
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Hapus', style: TextStyle(color: Colors.red)),
-                      ],
+
+                // Actions
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    size: ProfileResponsiveHelper.getIconSize(
+                      context,
+                      small: 20,
+                      medium: 24,
                     ),
+                    color: const Color(0xFF4A5568),
                   ),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'edit':
+                        _showEditMemberDialog(context, member);
+                        break;
+                      case 'delete':
+                        _showDeleteConfirmation(context, member);
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 18),
+                          SizedBox(width: 8),
+                          Text('Edit'),
+                        ],
+                      ),
+                    ),
+                    if (member.role != 'Ayah' && member.role != 'Ibu')
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Hapus', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -380,9 +500,6 @@ class _ManageFamilyPageState extends State<ManageFamilyPage> {
   }
 
   void _showAddMemberDialog(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-
     final nameController = TextEditingController();
     final ageController = TextEditingController();
     String selectedRole = 'Anak';
@@ -392,121 +509,148 @@ class _ManageFamilyPageState extends State<ManageFamilyPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text(
-            'Tambah Anggota Keluarga',
-            style: TextStyle(
-              fontSize: isTablet ? 20 : 18,
-              fontWeight: FontWeight.bold,
+          title: Builder(
+            builder: (context) => Text(
+              'Tambah Anggota Keluarga',
+              style: TextStyle(
+                fontSize: ProfileResponsiveHelper.textSize(context, 18),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          content: SizedBox(
-            width: isTablet ? 400 : 300,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Avatar Selection
-                Text(
-                  'Pilih Avatar:',
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.w600,
+          content: Builder(
+            builder: (context) => SizedBox(
+              width: ProfileResponsiveHelper.getContentMaxWidth(context),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Avatar Selection
+                  Text(
+                    'Pilih Avatar:',
+                    style: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                SizedBox(height: isTablet ? 12 : 8),
-                Wrap(
-                  spacing: isTablet ? 12 : 8,
-                  children: ['👦', '👧', '👶', '🧒', '👨', '👩'].map((avatar) {
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedAvatar = avatar;
-                        });
-                      },
-                      child: Container(
-                        width: isTablet ? 50 : 40,
-                        height: isTablet ? 50 : 40,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: selectedAvatar == avatar
-                                ? const Color(0xFF1E88E5)
-                                : Colors.grey[300]!,
-                            width: 2,
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 8)),
+                  Wrap(
+                    spacing: ProfileResponsiveHelper.px(context, 8),
+                    children: ['👦', '👧', '👶', '🧒', '👨', '👩'].map((
+                      avatar,
+                    ) {
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedAvatar = avatar;
+                          });
+                        },
+                        child: Container(
+                          width: ProfileResponsiveHelper.px(context, 40),
+                          height: ProfileResponsiveHelper.px(context, 40),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: selectedAvatar == avatar
+                                  ? const Color(0xFF1E88E5)
+                                  : Colors.grey[300]!,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            avatar,
-                            style: TextStyle(fontSize: isTablet ? 24 : 20),
+                          child: Center(
+                            child: Text(
+                              avatar,
+                              style: TextStyle(
+                                fontSize: ProfileResponsiveHelper.textSize(
+                                  context,
+                                  20,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
+                      );
+                    }).toList(),
+                  ),
+
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
+
+                  // Name Field
+                  TextField(
+                    controller: nameController,
+                    style: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Nama Lengkap',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.person_outline),
+                      labelStyle: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 14),
                       ),
-                    );
-                  }).toList(),
-                ),
-
-                SizedBox(height: isTablet ? 20 : 16),
-
-                // Name Field
-                TextField(
-                  controller: nameController,
-                  style: TextStyle(fontSize: isTablet ? 16 : 14),
-                  decoration: InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.person_outline),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                    ),
                   ),
-                ),
 
-                SizedBox(height: isTablet ? 16 : 12),
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
 
-                // Age Field
-                TextField(
-                  controller: ageController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(fontSize: isTablet ? 16 : 14),
-                  decoration: InputDecoration(
-                    labelText: 'Usia',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.cake_outlined),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                  // Age Field
+                  TextField(
+                    controller: ageController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Usia',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.cake_outlined),
+                      labelStyle: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                      ),
+                    ),
                   ),
-                ),
 
-                SizedBox(height: isTablet ? 16 : 12),
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
 
-                // Role Dropdown
-                DropdownButtonFormField<String>(
-                  initialValue: selectedRole,
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    color: const Color(0xFF2D3748),
+                  // Role Dropdown
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedRole,
+                    style: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                      color: const Color(0xFF2D3748),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Peran',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.family_restroom),
+                      labelStyle: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                      ),
+                    ),
+                    items: ['Anak', 'Ayah', 'Ibu', 'Kakek', 'Nenek'].map((
+                      role,
+                    ) {
+                      return DropdownMenuItem(value: role, child: Text(role));
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedRole = value!;
+                      });
+                    },
                   ),
-                  decoration: InputDecoration(
-                    labelText: 'Peran',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.family_restroom),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
-                  ),
-                  items: ['Anak', 'Ayah', 'Ibu', 'Kakek', 'Nenek'].map((role) {
-                    return DropdownMenuItem(value: role, child: Text(role));
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedRole = value!;
-                    });
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Batal',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
+              child: Builder(
+                builder: (context) => Text(
+                  'Batal',
+                  style: TextStyle(
+                    fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                  ),
+                ),
               ),
             ),
             ElevatedButton(
@@ -536,9 +680,13 @@ class _ManageFamilyPageState extends State<ManageFamilyPage> {
                   );
                 }
               },
-              child: Text(
-                'Tambah',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
+              child: Builder(
+                builder: (context) => Text(
+                  'Tambah',
+                  style: TextStyle(
+                    fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                  ),
+                ),
               ),
             ),
           ],
@@ -548,9 +696,6 @@ class _ManageFamilyPageState extends State<ManageFamilyPage> {
   }
 
   void _showEditMemberDialog(BuildContext context, FamilyMember member) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-
     final nameController = TextEditingController(text: member.name);
     final ageController = TextEditingController(text: member.age.toString());
     String selectedRole = member.role;
@@ -560,121 +705,148 @@ class _ManageFamilyPageState extends State<ManageFamilyPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text(
-            'Edit Anggota Keluarga',
-            style: TextStyle(
-              fontSize: isTablet ? 20 : 18,
-              fontWeight: FontWeight.bold,
+          title: Builder(
+            builder: (context) => Text(
+              'Edit Anggota Keluarga',
+              style: TextStyle(
+                fontSize: ProfileResponsiveHelper.textSize(context, 18),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          content: SizedBox(
-            width: isTablet ? 400 : 300,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Avatar Selection
-                Text(
-                  'Pilih Avatar:',
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.w600,
+          content: Builder(
+            builder: (context) => SizedBox(
+              width: ProfileResponsiveHelper.getContentMaxWidth(context),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Avatar Selection
+                  Text(
+                    'Pilih Avatar:',
+                    style: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                SizedBox(height: isTablet ? 12 : 8),
-                Wrap(
-                  spacing: isTablet ? 12 : 8,
-                  children: ['👦', '👧', '👶', '🧒', '👨', '👩'].map((avatar) {
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedAvatar = avatar;
-                        });
-                      },
-                      child: Container(
-                        width: isTablet ? 50 : 40,
-                        height: isTablet ? 50 : 40,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: selectedAvatar == avatar
-                                ? const Color(0xFF1E88E5)
-                                : Colors.grey[300]!,
-                            width: 2,
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 8)),
+                  Wrap(
+                    spacing: ProfileResponsiveHelper.px(context, 8),
+                    children: ['👦', '👧', '👶', '🧒', '👨', '👩'].map((
+                      avatar,
+                    ) {
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedAvatar = avatar;
+                          });
+                        },
+                        child: Container(
+                          width: ProfileResponsiveHelper.px(context, 40),
+                          height: ProfileResponsiveHelper.px(context, 40),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: selectedAvatar == avatar
+                                  ? const Color(0xFF1E88E5)
+                                  : Colors.grey[300]!,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            avatar,
-                            style: TextStyle(fontSize: isTablet ? 24 : 20),
+                          child: Center(
+                            child: Text(
+                              avatar,
+                              style: TextStyle(
+                                fontSize: ProfileResponsiveHelper.textSize(
+                                  context,
+                                  20,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
+                      );
+                    }).toList(),
+                  ),
+
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
+
+                  // Name Field
+                  TextField(
+                    controller: nameController,
+                    style: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Nama Lengkap',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.person_outline),
+                      labelStyle: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 14),
                       ),
-                    );
-                  }).toList(),
-                ),
-
-                SizedBox(height: isTablet ? 20 : 16),
-
-                // Name Field
-                TextField(
-                  controller: nameController,
-                  style: TextStyle(fontSize: isTablet ? 16 : 14),
-                  decoration: InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.person_outline),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                    ),
                   ),
-                ),
 
-                SizedBox(height: isTablet ? 16 : 12),
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
 
-                // Age Field
-                TextField(
-                  controller: ageController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(fontSize: isTablet ? 16 : 14),
-                  decoration: InputDecoration(
-                    labelText: 'Usia',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.cake_outlined),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                  // Age Field
+                  TextField(
+                    controller: ageController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Usia',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.cake_outlined),
+                      labelStyle: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                      ),
+                    ),
                   ),
-                ),
 
-                SizedBox(height: isTablet ? 16 : 12),
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
 
-                // Role Dropdown
-                DropdownButtonFormField<String>(
-                  initialValue: selectedRole,
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    color: const Color(0xFF2D3748),
+                  // Role Dropdown
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedRole,
+                    style: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                      color: const Color(0xFF2D3748),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Peran',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.family_restroom),
+                      labelStyle: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                      ),
+                    ),
+                    items: ['Anak', 'Ayah', 'Ibu', 'Kakek', 'Nenek'].map((
+                      role,
+                    ) {
+                      return DropdownMenuItem(value: role, child: Text(role));
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedRole = value!;
+                      });
+                    },
                   ),
-                  decoration: InputDecoration(
-                    labelText: 'Peran',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.family_restroom),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
-                  ),
-                  items: ['Anak', 'Ayah', 'Ibu', 'Kakek', 'Nenek'].map((role) {
-                    return DropdownMenuItem(value: role, child: Text(role));
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedRole = value!;
-                    });
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Batal',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
+              child: Builder(
+                builder: (context) => Text(
+                  'Batal',
+                  style: TextStyle(
+                    fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                  ),
+                ),
               ),
             ),
             ElevatedButton(
@@ -707,9 +879,13 @@ class _ManageFamilyPageState extends State<ManageFamilyPage> {
                   );
                 }
               },
-              child: Text(
-                'Simpan',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
+              child: Builder(
+                builder: (context) => Text(
+                  'Simpan',
+                  style: TextStyle(
+                    fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                  ),
+                ),
               ),
             ),
           ],
@@ -719,29 +895,36 @@ class _ManageFamilyPageState extends State<ManageFamilyPage> {
   }
 
   void _showDeleteConfirmation(BuildContext context, FamilyMember member) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Hapus Anggota',
-          style: TextStyle(
-            fontSize: isTablet ? 20 : 18,
-            fontWeight: FontWeight.bold,
+        title: Builder(
+          builder: (context) => Text(
+            'Hapus Anggota',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 18),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-        content: Text(
-          'Apakah Anda yakin ingin menghapus ${member.name} dari keluarga?',
-          style: TextStyle(fontSize: isTablet ? 16 : 14),
+        content: Builder(
+          builder: (context) => Text(
+            'Apakah Anda yakin ingin menghapus ${member.name} dari keluarga?',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 14),
+            ),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Batal',
-              style: TextStyle(fontSize: isTablet ? 16 : 14),
+            child: Builder(
+              builder: (context) => Text(
+                'Batal',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
             ),
           ),
           ElevatedButton(
@@ -764,9 +947,13 @@ class _ManageFamilyPageState extends State<ManageFamilyPage> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: Text(
-              'Hapus',
-              style: TextStyle(fontSize: isTablet ? 16 : 14),
+            child: Builder(
+              builder: (context) => Text(
+                'Hapus',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
             ),
           ),
         ],
