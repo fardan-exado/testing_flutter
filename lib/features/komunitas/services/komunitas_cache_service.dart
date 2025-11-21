@@ -1,8 +1,8 @@
 import 'package:test_flutter/core/constants/cache_keys.dart';
 import 'package:test_flutter/data/models/cache/cache.dart';
-import 'package:test_flutter/data/models/komunitas/kategori_komunitas.dart';
-import 'package:test_flutter/data/models/komunitas/komunitas.dart';
 import 'package:test_flutter/data/services/cache/cache_service.dart';
+import 'package:test_flutter/features/komunitas/models/kategori/kategori_komunitas.dart';
+import 'package:test_flutter/features/komunitas/models/komunitas/komunitas.dart';
 
 class KomunitasCacheService {
   static const Duration _cacheDuration = Duration(hours: 24);

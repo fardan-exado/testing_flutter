@@ -128,8 +128,8 @@ class _TambahPostinganPageState extends ConsumerState<TambahPostinganPage>
       return {
         'id': e.id,
         'nama': e.nama,
-        'icon': e.icon.isNotEmpty && storage.isNotEmpty
-            ? '$storage/${e.icon}'
+        'icon_path': e.iconPath!.isNotEmpty && storage.isNotEmpty
+            ? '$storage/${e.iconPath}'
             : null,
       };
     }).toList();
@@ -666,11 +666,12 @@ class _TambahPostinganPageState extends ConsumerState<TambahPostinganPage>
                                                     fontSize: inputSize,
                                                     fontWeight: FontWeight.w500,
                                                   ),
-                                                  items: availableKategori.map<DropdownMenuItem<int>>((k) {
+                                                  items: availableKategori.map<DropdownMenuItem<int>>((
+                                                    k,
+                                                  ) {
                                                     final nama =
                                                         k['nama'] as String;
-                                                    final id =
-                                                        k['id'] as int;
+                                                    final id = k['id'] as int;
                                                     final kategoriIcon =
                                                         k['icon'] as String?;
                                                     final categoryColor =

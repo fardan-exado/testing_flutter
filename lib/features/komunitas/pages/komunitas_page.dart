@@ -8,7 +8,7 @@ import 'package:test_flutter/core/utils/format_helper.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
-import 'package:test_flutter/data/models/komunitas/komunitas.dart';
+import 'package:test_flutter/features/komunitas/models/komunitas/komunitas.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/komunitas/komunitas_provider.dart';
 import 'package:test_flutter/features/komunitas/komunitas_state.dart';
@@ -162,8 +162,8 @@ class _KomunitasPageState extends ConsumerState<KomunitasPage>
         (e) => {
           'id': e.id.toString(),
           'nama': e.nama,
-          'icon': e.icon.isNotEmpty
-              ? '${dotenv.env['STORAGE_URL'] ?? ''}/${e.icon}'
+          'icon_path': e.iconPath!.isNotEmpty
+              ? '${dotenv.env['STORAGE_URL'] ?? ''}/${e.iconPath}'
               : null,
         },
       ),
@@ -178,31 +178,38 @@ class _KomunitasPageState extends ConsumerState<KomunitasPage>
 
     return postingan.map((item) {
       final storage = dotenv.env['STORAGE_URL'] ?? '';
-      final coverPath = item.cover;
-      final iconPath = item.kategori.icon;
-      final galeriList = (item.daftarGambar)
+      final coverPath = item.coverPath;
+      final iconPath = item.kategori?.iconPath;
+      final galeriList = (item.daftarGambar ?? [])
           .where((e) => (e).isNotEmpty)
           .map((e) => '$storage/$e')
           .toList();
+
+      // Get author name - use user?.name if not anonymous, else 'Anonymous'
+      final authorName = item.isAnonymous
+          ? 'Anonymous'
+          : (item.user?.name ?? 'User');
 
       return {
         'id': (item.id),
         'judul': item.judul,
         'excerpt': item.excerpt,
         'authorId': (item.userId),
-        'penulis': item.penulis,
-        'kategoriId': (item.kategoriId),
-        'kategoriNama': item.kategori.nama,
-        'kategoriIcon': iconPath!.isNotEmpty && storage.isNotEmpty
+        'penulis': authorName,
+        'kategoriId': (item.kategori?.id ?? 0),
+        'kategoriNama': item.kategori?.nama ?? 'Umum',
+        'kategoriIcon':
+            (iconPath != null && iconPath.isNotEmpty && storage.isNotEmpty)
             ? '$storage/$iconPath'
             : null,
         'date': FormatHelper.formatTimeAgo(item.createdAt),
-        'coverUrl': coverPath.isNotEmpty && storage.isNotEmpty
+        'coverUrl':
+            (coverPath != null && coverPath.isNotEmpty && storage.isNotEmpty)
             ? '$storage/$coverPath'
             : null,
         'galeri': galeriList,
-        'totalLikes': item.totalLikes,
-        'totalKomentar': item.totalKomentar,
+        'likesCount': item.likesCount ?? 0,
+        'komentarsCount': item.komentarsCount ?? 0,
       };
     }).toList();
   }
@@ -1680,7 +1687,7 @@ class _KomunitasPageState extends ConsumerState<KomunitasPage>
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${post['totalLikes'] ?? 0}',
+                        '${post['likesCount'] ?? 0}',
                         style: TextStyle(
                           color: AppTheme.onSurfaceVariant,
                           fontSize: ResponsiveHelper.adaptiveTextSize(
@@ -1701,7 +1708,7 @@ class _KomunitasPageState extends ConsumerState<KomunitasPage>
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${post['totalKomentar'] ?? 0}',
+                        '${post['komentarsCount'] ?? 0}',
                         style: TextStyle(
                           color: AppTheme.onSurfaceVariant,
                           fontSize: ResponsiveHelper.adaptiveTextSize(

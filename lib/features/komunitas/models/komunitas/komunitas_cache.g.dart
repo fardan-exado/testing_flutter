@@ -20,53 +20,62 @@ class KomunitasPostinganCacheAdapter
     return KomunitasPostinganCache(
       id: fields[0] as int,
       userId: fields[1] as int,
-      kategoriId: fields[2] as int,
+      postinganId: fields[2] as int?,
       judul: fields[3] as String,
-      excerpt: fields[4] as String,
-      cover: fields[5] as String,
-      daftarGambar: (fields[6] as List).cast<String>(),
-      totalLikes: fields[7] as int,
-      totalKomentar: fields[8] as int,
-      createdAt: fields[9] as DateTime,
-      updatedAt: fields[10] as DateTime,
-      cachedAt: fields[11] as DateTime,
-      penulis: fields[12] as String,
-      kategori: fields[13] as KategoriArtikelCache,
+      konten: fields[4] as String?,
+      excerpt: fields[5] as String,
+      isAnonymous: fields[6] as bool,
+      isPublished: fields[7] as bool,
+      createdAt: fields[8] as DateTime,
+      updatedAt: fields[9] as DateTime,
+      cachedAt: fields[10] as DateTime,
+      kategori: fields[11] as KategoriArtikelCache?,
+      likesCount: fields[12] as int?,
+      komentarsCount: fields[13] as int?,
+      liked: fields[14] as bool?,
+      daftarGambar: (fields[15] as List?)?.cast<String>(),
+      coverPath: fields[16] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, KomunitasPostinganCache obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.userId)
       ..writeByte(2)
-      ..write(obj.kategoriId)
+      ..write(obj.postinganId)
       ..writeByte(3)
       ..write(obj.judul)
       ..writeByte(4)
-      ..write(obj.excerpt)
+      ..write(obj.konten)
       ..writeByte(5)
-      ..write(obj.cover)
+      ..write(obj.excerpt)
       ..writeByte(6)
-      ..write(obj.daftarGambar)
+      ..write(obj.isAnonymous)
       ..writeByte(7)
-      ..write(obj.totalLikes)
+      ..write(obj.isPublished)
       ..writeByte(8)
-      ..write(obj.totalKomentar)
-      ..writeByte(9)
       ..write(obj.createdAt)
-      ..writeByte(10)
+      ..writeByte(9)
       ..write(obj.updatedAt)
-      ..writeByte(11)
+      ..writeByte(10)
       ..write(obj.cachedAt)
+      ..writeByte(11)
+      ..write(obj.kategori)
       ..writeByte(12)
-      ..write(obj.penulis)
+      ..write(obj.likesCount)
       ..writeByte(13)
-      ..write(obj.kategori);
+      ..write(obj.komentarsCount)
+      ..writeByte(14)
+      ..write(obj.liked)
+      ..writeByte(15)
+      ..write(obj.daftarGambar)
+      ..writeByte(16)
+      ..write(obj.coverPath);
   }
 
   @override
@@ -96,17 +105,19 @@ class KomentarPostinganCacheAdapter
       postinganId: fields[1] as int,
       userId: fields[2] as int,
       komentar: fields[3] as String,
-      penulis: fields[4] as String,
-      createdAt: fields[5] as DateTime,
-      updatedAt: fields[6] as DateTime,
-      cachedAt: fields[7] as DateTime,
+      isAnonymous: fields[4] as bool?,
+      isPublished: fields[5] as bool?,
+      createdAt: fields[6] as DateTime,
+      updatedAt: fields[7] as DateTime,
+      cachedAt: fields[9] as DateTime,
+      user: fields[8] as User?,
     );
   }
 
   @override
   void write(BinaryWriter writer, KomentarPostinganCache obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -116,12 +127,16 @@ class KomentarPostinganCacheAdapter
       ..writeByte(3)
       ..write(obj.komentar)
       ..writeByte(4)
-      ..write(obj.penulis)
+      ..write(obj.isAnonymous)
       ..writeByte(5)
-      ..write(obj.createdAt)
+      ..write(obj.isPublished)
       ..writeByte(6)
-      ..write(obj.updatedAt)
+      ..write(obj.createdAt)
       ..writeByte(7)
+      ..write(obj.updatedAt)
+      ..writeByte(8)
+      ..write(obj.user)
+      ..writeByte(9)
       ..write(obj.cachedAt);
   }
 

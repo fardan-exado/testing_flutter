@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:test_flutter/core/utils/logger.dart';
-import 'package:test_flutter/data/models/komunitas/kategori_komunitas.dart';
-import 'package:test_flutter/data/models/komunitas/komunitas.dart';
 import 'package:test_flutter/data/models/paginated.dart';
 import 'package:test_flutter/features/komunitas/komunitas_state.dart';
+import 'package:test_flutter/features/komunitas/models/kategori/kategori_komunitas.dart';
+import 'package:test_flutter/features/komunitas/models/komunitas/komunitas.dart';
 import 'package:test_flutter/features/komunitas/services/komunitas_cache_service.dart';
 import 'package:test_flutter/features/komunitas/services/komunitas_service.dart';
 
@@ -158,6 +158,7 @@ class KomunitasPostinganNotifier extends StateNotifier<KomunitasState> {
     try {
       final resp = await KomunitasService.getPostinganById(id);
       final postinganMap = resp['data'] as Map<String, dynamic>;
+      logger.fine('state postingan: ${postinganMap}');
       final postingan = KomunitasPostingan.fromJson(postinganMap);
 
       state = state.copyWith(
@@ -165,7 +166,6 @@ class KomunitasPostinganNotifier extends StateNotifier<KomunitasState> {
         postingan: postingan,
       );
 
-      logger.fine('state postingan: ${state.postingan}');
     } catch (e) {
       logger.warning('Error fetching postingan by id: $e');
       state = state.copyWith(
@@ -239,10 +239,10 @@ class KomunitasPostinganNotifier extends StateNotifier<KomunitasState> {
       final updatedList = state.postinganList.map((post) {
         if (post.id.toString() == postinganId) {
           final isLiked = post.liked ?? false;
-          return post.copyWith(
-            liked: !isLiked,
-            totalLikes: isLiked ? post.totalLikes - 1 : post.totalLikes + 1,
-          );
+          final newLikesCount = isLiked
+              ? (post.likesCount ?? 0) - 1
+              : (post.likesCount ?? 0) + 1;
+          return post.copyWith(liked: !isLiked, likesCount: newLikesCount);
         }
         return post;
       }).toList();
@@ -251,11 +251,12 @@ class KomunitasPostinganNotifier extends StateNotifier<KomunitasState> {
       KomunitasPostingan? updatedPostingan;
       if (state.postingan?.id.toString() == postinganId) {
         final isLiked = state.postingan!.liked ?? false;
+        final newLikesCount = isLiked
+            ? (state.postingan!.likesCount ?? 0) - 1
+            : (state.postingan!.likesCount ?? 0) + 1;
         updatedPostingan = state.postingan!.copyWith(
           liked: !isLiked,
-          totalLikes: isLiked
-              ? state.postingan!.totalLikes - 1
-              : state.postingan!.totalLikes + 1,
+          likesCount: newLikesCount,
         );
       }
 
@@ -265,7 +266,7 @@ class KomunitasPostinganNotifier extends StateNotifier<KomunitasState> {
         message: response['message'],
       );
     } catch (e) {
-      logger.warning('Error toggling like: $e');
+      logger.warning  ('Error toggling like: $e');
       // Don't update state on error to avoid disrupting UI
     }
   }
@@ -287,26 +288,17 @@ class KomunitasPostinganNotifier extends StateNotifier<KomunitasState> {
 
       final commentData = response['data'] as Komentar;
 
-      // Manually create new comment with correct penulis name based on isAnonymous
-      final newComment = Komentar(
-        id: commentData.id,
-        postinganId: commentData.postinganId,
-        userId: commentData.userId,
-        komentar: commentData.komentar,
-        createdAt: commentData.createdAt,
-        updatedAt: commentData.updatedAt,
-        penulis: isAnonymous ? 'Anonymous' : (userName ?? 'User'),
-        isAnonymous: isAnonymous,
-      );
-
       // Update postingan with new comment
       if (state.postingan?.id.toString() == postinganId) {
+        final updatedKomentars = [...?state.postingan?.komentars, commentData];
+        final newKomentarsCount = (state.postingan?.komentarsCount ?? 0) + 1;
+
         state = state.copyWith(
           status: KomunitasStatus.success,
           message: response['message'],
           postingan: state.postingan?.copyWith(
-            komentars: [...?state.postingan?.komentars, newComment],
-            totalKomentar: (state.postingan?.totalKomentar ?? 0) + 1,
+            komentars: updatedKomentars,
+            komentarsCount: newKomentarsCount,
           ),
         );
       } else {

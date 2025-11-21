@@ -7,7 +7,7 @@ import 'package:test_flutter/core/utils/format_helper.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
 
-import 'package:test_flutter/data/models/komunitas/komunitas.dart';
+import 'package:test_flutter/features/komunitas/models/komunitas/komunitas.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/komunitas/komunitas_provider.dart';
 import 'package:test_flutter/features/komunitas/komunitas_state.dart';
@@ -547,7 +547,7 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
   }
 
   Widget _buildPostCard(KomunitasPostingan post) {
-    final kategoriNama = post.kategori.nama;
+    final kategoriNama = post.kategori?.nama ?? 'Umum';
     final categoryColor = _getCategoryColor(kategoriNama);
     final categoryIcon = _getCategoryIcon(kategoriNama);
 
@@ -596,7 +596,9 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
                   radius: ResponsiveHelper.isSmallScreen(context) ? 22 : 24,
                   backgroundColor: Colors.white,
                   child: Text(
-                    (post.penulis.isNotEmpty ? post.penulis[0] : 'G')
+                    (post.isAnonymous
+                            ? 'Anonymous'
+                            : (post.user?.name ?? 'User'))[0]
                         .toUpperCase(),
                     style: TextStyle(
                       color: categoryColor,
@@ -612,7 +614,9 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      post.penulis,
+                      post.isAnonymous
+                          ? 'Anonymous'
+                          : (post.user?.name ?? 'User'),
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: ResponsiveHelper.adaptiveTextSize(
@@ -689,9 +693,9 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
           ),
           const SizedBox(height: 10),
 
-          // Konten (pakai isi jika ada; fallback excerpt)
+          // Konten (pakai konten jika ada; fallback excerpt)
           Text(
-            (post.isi?.isNotEmpty == true) ? post.isi! : post.excerpt,
+            (post.konten?.isNotEmpty == true) ? post.konten! : post.excerpt,
             style: TextStyle(
               fontSize: bodySize,
               color: AppTheme.onSurface.withValues(alpha: 0.9),
@@ -700,16 +704,16 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
           ),
 
           // Galeri
-          if (gallery.isNotEmpty) ...[
+          if ((gallery ?? []).isNotEmpty) ...[
             const SizedBox(height: 16),
             SizedBox(
               height: 110,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: gallery.length,
+                itemCount: gallery?.length ?? 0,
                 separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (context, i) {
-                  final url = '${dotenv.env['STORAGE_URL']}/${gallery[i]}';
+                  final url = '${dotenv.env['STORAGE_URL']}/${gallery![i]}';
                   return GestureDetector(
                     onTap: () {
                       // Create full URLs list for viewer
@@ -779,7 +783,7 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${post.totalLikes}',
+                        '${post.likesCount ?? 0}',
                         style: TextStyle(
                           color: liked ? Colors.red : AppTheme.onSurfaceVariant,
                           fontSize: ResponsiveHelper.adaptiveTextSize(
@@ -815,7 +819,7 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${post.totalKomentar}',
+                      '${post.komentarsCount ?? 0}',
                       style: TextStyle(
                         color: categoryColor,
                         fontSize: ResponsiveHelper.adaptiveTextSize(
@@ -964,7 +968,7 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
 
   Widget _buildCommentItem(Komentar comment, KomunitasPostingan post) {
     final isAnonymous = comment.isAnonymous ?? false;
-    final kategoriNama = post.kategori.nama;
+    final kategoriNama = post.kategori?.nama ?? 'Umum';
     final categoryColor = _getCategoryColor(kategoriNama);
 
     final nameSize = ResponsiveHelper.adaptiveTextSize(context, 14);
@@ -1011,10 +1015,7 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
                           size: nameSize,
                         )
                       : Text(
-                          (comment.penulis.isNotEmpty
-                                  ? comment.penulis[0]
-                                  : 'U')
-                              .toUpperCase(),
+                          (comment.user?.name ?? 'User')[0].toUpperCase(),
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -1035,7 +1036,9 @@ class _DetailPostinganPageState extends ConsumerState<DetailPostinganPage> {
                       children: [
                         Flexible(
                           child: Text(
-                            comment.penulis,
+                            isAnonymous
+                                ? 'Anonymous'
+                                : (comment.user?.name ?? 'User'),
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: nameSize,

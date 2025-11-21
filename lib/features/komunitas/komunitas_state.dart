@@ -1,7 +1,8 @@
 // Bagian 1: Enum untuk Status UI
 // Ini mendefinisikan semua kemungkinan status yang bisa dimiliki oleh UI.
-import 'package:test_flutter/data/models/komunitas/kategori_komunitas.dart';
-import 'package:test_flutter/data/models/komunitas/komunitas.dart';
+
+import 'package:test_flutter/features/komunitas/models/kategori/kategori_komunitas.dart';
+import 'package:test_flutter/features/komunitas/models/komunitas/komunitas.dart';
 
 enum KomunitasStatus {
   initial,

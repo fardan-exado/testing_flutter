@@ -1,4 +1,4 @@
-class KategoriArtikel {
+class KategoriKomunitas {
   final int id;
   final String nama;
   final String? iconPath;
@@ -6,7 +6,7 @@ class KategoriArtikel {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  KategoriArtikel({
+  KategoriKomunitas({
     required this.id,
     required this.nama,
     this.iconPath,
@@ -15,8 +15,8 @@ class KategoriArtikel {
     required this.updatedAt,
   });
 
-  factory KategoriArtikel.fromJson(Map<String, dynamic> json) {
-    return KategoriArtikel(
+  factory KategoriKomunitas.fromJson(Map<String, dynamic> json) {
+    return KategoriKomunitas(
       id: json['id'] as int,
       nama: json['nama'] as String,
       iconPath: json['icon_path'] as String? ?? '',
@@ -41,8 +41,8 @@ class KategoriArtikel {
     };
   }
 
-  factory KategoriArtikel.empty() {
-    return KategoriArtikel(
+  factory KategoriKomunitas.empty() {
+    return KategoriKomunitas(
       id: 0,
       nama: '',
       iconPath: '',
