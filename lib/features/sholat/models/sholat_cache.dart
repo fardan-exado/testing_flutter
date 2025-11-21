@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:test_flutter/core/constants/hive_type_id.dart';
-import 'package:test_flutter/data/models/sholat/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat.dart';
 
 part 'sholat_cache.g.dart';
 

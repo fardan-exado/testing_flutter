@@ -1,4 +1,4 @@
-import 'package:test_flutter/data/models/sholat/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat.dart';
 
 bool _parseBool(dynamic value) {
   if (value is bool) return value;

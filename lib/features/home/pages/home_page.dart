@@ -10,7 +10,7 @@ import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/widgets/menu/custom_bottom_app_bar.dart';
 import 'package:test_flutter/core/widgets/offline_badge.dart';
 import 'package:test_flutter/data/models/artikel/artikel.dart';
-import 'package:test_flutter/data/models/sholat/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat.dart';
 import 'package:test_flutter/features/home/home_provider.dart';
 import 'package:test_flutter/features/home/home_state.dart';
 import 'package:test_flutter/features/home/widgets/prayer_time_display.dart';

@@ -5,7 +5,7 @@ import 'package:test_flutter/core/utils/connection/connection_provider.dart';
 import 'package:test_flutter/core/utils/connection/connection_state.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/data/models/artikel/artikel.dart';
-import 'package:test_flutter/data/models/sholat/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat.dart';
 import 'package:test_flutter/data/services/location/location_service.dart';
 import 'package:test_flutter/features/artikel/services/artikel_service.dart';
 import 'package:test_flutter/features/home/home_state.dart';

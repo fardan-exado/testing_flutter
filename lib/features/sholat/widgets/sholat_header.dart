@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
-import 'package:test_flutter/features/sholat/sholat_state.dart';
+import 'package:test_flutter/features/sholat/states/sholat_state.dart';
 
 class SholatHeader extends ConsumerStatefulWidget {
   final SholatState sholatState;

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:test_flutter/app/theme.dart';
 import 'package:test_flutter/core/utils/logger.dart';
-import 'package:test_flutter/features/sholat/sholat_provider.dart';
+import 'package:test_flutter/features/sholat/providers/sholat_provider.dart';
 
 class SholatCalendarModal extends ConsumerStatefulWidget {
   final DateTime initialDate;

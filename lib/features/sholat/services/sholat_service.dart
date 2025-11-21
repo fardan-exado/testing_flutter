@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:test_flutter/core/utils/api_client.dart';
-import 'package:test_flutter/data/models/sholat/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat.dart';
 
 class SholatService {
   /// Get Jadwal Sholat from Kemenag API
@@ -89,6 +89,34 @@ class SholatService {
             };
 
       final response = await ApiClient.dio.post(endpoint, data: data);
+
+      final responseData = response.data as Map<String, dynamic>;
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
+        'data': responseData['data'],
+      };
+    } on DioException catch (e) {
+      final error = ApiClient.parseDioError(e);
+      throw Exception(error);
+    }
+  }
+
+  // Get Progress Sholat by Tanggal
+  static Future<Map<String, dynamic>> getProgressSholatByTanggal({
+    required String jenis,
+    required String tanggal, // Format: YYYY-MM-DD
+  }) async {
+    try {
+      final endpoint = jenis.toLowerCase() == 'wajib'
+          ? '/sholat/wajib/progres'
+          : '/sholat/sunnah/progres';
+
+      final response = await ApiClient.dio.get(
+        endpoint,
+        queryParameters: {'tanggal': tanggal},
+      );
 
       final responseData = response.data as Map<String, dynamic>;
 
