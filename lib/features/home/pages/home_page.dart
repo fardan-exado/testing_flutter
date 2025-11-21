@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_islamic_icons/flutter_islamic_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_flutter/app/router.dart';
@@ -9,7 +10,7 @@ import 'package:test_flutter/core/utils/format_helper.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/widgets/menu/custom_bottom_app_bar.dart';
 import 'package:test_flutter/core/widgets/offline_badge.dart';
-import 'package:test_flutter/data/models/artikel/artikel.dart';
+import 'package:test_flutter/features/artikel/models/artikel/artikel.dart';
 import 'package:test_flutter/features/sholat/models/sholat/sholat.dart';
 import 'package:test_flutter/features/home/home_provider.dart';
 import 'package:test_flutter/features/home/home_state.dart';
@@ -671,12 +672,13 @@ class _HomeTabContentState extends ConsumerState<HomeTabContent> {
             article: article,
             title: article.judul,
             summary: article.excerpt ?? '',
-            imageUrl: article.cover.isNotEmpty
-                ? '$storageUrl/${article.cover}'
+            imageUrl: article.coverPath.isNotEmpty
+                ? '$storageUrl/${article.coverPath}'
                 : 'https://picsum.photos/120/100?random=${article.id}',
             date: _formatDate(article.createdAt),
             context: context,
             category: article.kategori.nama,
+            kategori: article.kategori,
           );
         }),
       ],
@@ -980,6 +982,94 @@ class _HomeTabContentState extends ConsumerState<HomeTabContent> {
     );
   }
 
+  /// Build category badge with icon for home page article card
+  Widget _buildHomeArticleCategoryBadge(
+    BuildContext context,
+    dynamic kategori,
+    String categoryName,
+    bool isVideo,
+    Function px,
+    Function ts,
+  ) {
+    final storage = dotenv.env['STORAGE_URL'] ?? '';
+    final iconPath = kategori?.iconPath;
+    final iconUrl =
+        (iconPath != null && iconPath.isNotEmpty && storage.isNotEmpty)
+        ? '$storage/$iconPath'
+        : '';
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: px(8.0), vertical: px(4.0)),
+      decoration: BoxDecoration(
+        color: isVideo ? Colors.red.shade600 : AppTheme.primaryBlue,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Category Icon
+          if (!isVideo && iconUrl.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(right: px(3.0)),
+              child: SizedBox(
+                width: px(10.0),
+                height: px(7.5), // 4:3 ratio
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(1),
+                  child: Image.network(
+                    iconUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.category_rounded,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        size: px(8.0),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Icon(
+                        Icons.category_rounded,
+                        color: Colors.white.withValues(alpha: 0.5),
+                        size: px(8.0),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            )
+          else if (!isVideo)
+            Padding(
+              padding: EdgeInsets.only(right: px(3.0)),
+              child: Icon(
+                Icons.category_rounded,
+                color: Colors.white,
+                size: px(10.0),
+              ),
+            )
+          else
+            Padding(
+              padding: EdgeInsets.only(right: px(3.0)),
+              child: Icon(
+                Icons.videocam_rounded,
+                color: Colors.white,
+                size: px(10.0),
+              ),
+            ),
+          // Label
+          Text(
+            categoryName,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: ts(10.0),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEnhancedArticleCard({
     required Artikel article,
     required String title,
@@ -988,6 +1078,7 @@ class _HomeTabContentState extends ConsumerState<HomeTabContent> {
     required String date,
     required String category,
     required BuildContext context,
+    required dynamic kategori,
   }) {
     double scale(BuildContext c) {
       if (ResponsiveHelper.isSmallScreen(c)) return .9;
@@ -1095,38 +1186,13 @@ class _HomeTabContentState extends ConsumerState<HomeTabContent> {
                       Positioned(
                         top: 6,
                         left: 6,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: px(8),
-                            vertical: px(4),
-                          ),
-                          decoration: BoxDecoration(
-                            color: isVideo
-                                ? Colors.red.shade600
-                                : AppTheme.primaryBlue,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isVideo) ...[
-                                Icon(
-                                  Icons.videocam_rounded,
-                                  color: Colors.white,
-                                  size: px(12),
-                                ),
-                                SizedBox(width: px(4)),
-                              ],
-                              Text(
-                                category,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: ts(10),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: _buildHomeArticleCategoryBadge(
+                          context,
+                          kategori,
+                          category,
+                          isVideo,
+                          px,
+                          ts,
                         ),
                       ),
                     ],

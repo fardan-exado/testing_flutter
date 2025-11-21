@@ -7,9 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_flutter/app/theme.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
-import 'package:test_flutter/data/models/artikel/artikel.dart';
-import 'package:test_flutter/features/artikel/artikel_provider.dart';
-import 'package:test_flutter/features/artikel/artikel_state.dart';
+import 'package:test_flutter/features/artikel/models/artikel/artikel.dart';
+import 'package:test_flutter/features/artikel/providers/artikel_provider.dart';
+import 'package:test_flutter/features/artikel/states/artikel_state.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ArtikelDetailPage extends ConsumerStatefulWidget {
@@ -59,6 +59,163 @@ class _ArtikelDetailPageState extends ConsumerState<ArtikelDetailPage> {
       final months = (difference.inDays / 30).floor();
       return '$months bulan lalu';
     }
+  }
+
+  /// Build category badge for detail page header
+  Widget _buildCategoryBadgeDetail(bool isVideo, Artikel artikel) {
+    final contentColor = isVideo ? Colors.red : AppTheme.primaryBlue;
+    final storage = dotenv.env['STORAGE_URL'] ?? '';
+    final iconPath = artikel.kategori.iconPath;
+    final iconUrl =
+        (iconPath != null && iconPath.isNotEmpty && storage.isNotEmpty)
+        ? '$storage/$iconPath'
+        : '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: contentColor,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: contentColor.withValues(alpha: 0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Category Icon for non-video
+          if (!isVideo && iconUrl.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: SizedBox(
+                width: 16,
+                height: 12, // 4:3 ratio
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: Image.network(
+                    iconUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.category_rounded,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        size: 12,
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Icon(
+                        Icons.category_rounded,
+                        color: Colors.white.withValues(alpha: 0.5),
+                        size: 12,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            )
+          else if (!isVideo)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Icon(Icons.article_rounded, color: Colors.white, size: 18),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Icon(
+                Icons.play_circle_outline_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+          // Label
+          Text(
+            isVideo ? 'Video' : artikel.kategori.nama,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build category badge for video detail page (bottom right)
+  Widget _buildCategoryBadgeVideoDetail(Artikel artikel) {
+    final storage = dotenv.env['STORAGE_URL'] ?? '';
+    final iconPath = artikel.kategori.iconPath;
+    final iconUrl =
+        (iconPath != null && iconPath.isNotEmpty && storage.isNotEmpty)
+        ? '$storage/$iconPath'
+        : '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Category Icon
+          if (iconUrl.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: SizedBox(
+                width: 14,
+                height: 10.5, // 4:3 ratio
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: Image.network(
+                    iconUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.category_rounded,
+                        color: AppTheme.onSurface.withValues(alpha: 0.5),
+                        size: 10,
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Icon(
+                        Icons.category_rounded,
+                        color: AppTheme.onSurface.withValues(alpha: 0.3),
+                        size: 10,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Icon(
+                Icons.category_rounded,
+                color: AppTheme.onSurface.withValues(alpha: 0.5),
+                size: 12,
+              ),
+            ),
+          // Label
+          Text(
+            artikel.kategori.nama,
+            style: TextStyle(
+              color: AppTheme.onSurface,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Launch YouTube video
@@ -251,7 +408,7 @@ class _ArtikelDetailPageState extends ConsumerState<ArtikelDetailPage> {
   Widget _buildContent(Artikel artikel) {
     final isVideo = artikel.tipe == 'video';
     final contentColor = isVideo ? Colors.red : AppTheme.primaryBlue;
-    final coverUrl = _buildImageUrl(artikel.cover);
+    final coverUrl = _buildImageUrl(artikel.coverPath);
     final daftarGambar = artikel.daftarGambar
         ?.where((path) => path.isNotEmpty)
         .map(_buildImageUrl)
@@ -479,44 +636,7 @@ class _ArtikelDetailPageState extends ConsumerState<ArtikelDetailPage> {
             Positioned(
               bottom: 20,
               left: 20,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: contentColor,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: contentColor.withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isVideo
-                          ? Icons.play_circle_outline_rounded
-                          : Icons.article_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      isVideo ? 'Video' : artikel.kategori.nama,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: _buildCategoryBadgeDetail(isVideo, artikel),
             ),
 
             // Category name for video
@@ -524,24 +644,7 @@ class _ArtikelDetailPageState extends ConsumerState<ArtikelDetailPage> {
               Positioned(
                 bottom: 20,
                 right: 20,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    artikel.kategori.nama,
-                    style: TextStyle(
-                      color: AppTheme.onSurface,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                child: _buildCategoryBadgeVideoDetail(artikel),
               ),
           ],
         ),
@@ -766,9 +869,9 @@ class _ArtikelDetailPageState extends ConsumerState<ArtikelDetailPage> {
                           ],
                         ),
                       ),
-                      child: artikel.cover.isNotEmpty
+                      child: artikel.coverPath.isNotEmpty
                           ? Image.network(
-                              _buildImageUrl(artikel.cover),
+                              _buildImageUrl(artikel.coverPath),
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return Icon(
@@ -1311,29 +1414,29 @@ class _ImageLightboxViewerState extends State<ImageLightboxViewer> {
                       ),
 
                       // Download button (placeholder)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.download_rounded,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Fitur download akan segera hadir',
-                                ),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+                      //   Container(
+                      //     decoration: BoxDecoration(
+                      //       color: Colors.black.withValues(alpha: 0.5),
+                      //       shape: BoxShape.circle,
+                      //     ),
+                      //     child: IconButton(
+                      //       icon: Icon(
+                      //         Icons.download_rounded,
+                      //         color: Colors.white,
+                      //         size: 24,
+                      //       ),
+                      //       onPressed: () {
+                      //         ScaffoldMessenger.of(context).showSnackBar(
+                      //           const SnackBar(
+                      //             content: Text(
+                      //               'Fitur download akan segera hadir',
+                      //             ),
+                      //             duration: Duration(seconds: 2),
+                      //           ),
+                      //         );
+                      //       },
+                      //     ),
+                      //   ),
                     ],
                   ),
                 ),

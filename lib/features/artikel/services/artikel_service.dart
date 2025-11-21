@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:test_flutter/core/utils/api_client.dart';
-import 'package:test_flutter/data/models/artikel/kategori_artikel.dart';
+import 'package:test_flutter/features/artikel/models/kategori/kategori_artikel.dart';
 
 class ArtikelService {
   /// Mengambil semua kategori artikel

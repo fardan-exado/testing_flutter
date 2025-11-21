@@ -1,10 +1,10 @@
-import 'package:test_flutter/data/models/artikel/kategori_artikel.dart';
+import 'package:test_flutter/features/artikel/models/kategori/kategori_artikel.dart';
 
 class Artikel {
   final int id;
   final int kategoriId;
   final String judul;
-  final String cover;
+  final String coverPath;
   final String tipe;
   final String? konten;
   final String? videoUrl;
@@ -19,7 +19,7 @@ class Artikel {
     required this.id,
     required this.kategoriId,
     required this.judul,
-    required this.cover,
+    required this.coverPath,
     required this.tipe,
     this.videoUrl,
     this.konten,
@@ -35,7 +35,7 @@ class Artikel {
     : id = 0,
       kategoriId = 0,
       judul = '',
-      cover = '',
+      coverPath = '',
       tipe = '',
       videoUrl = null,
       konten = null,
@@ -51,7 +51,7 @@ class Artikel {
       id: json['id'] as int,
       kategoriId: json['kategori_id'] as int,
       judul: json['judul'] as String,
-      cover: json['cover'] as String,
+      coverPath: json['cover_path'] as String,
       tipe: json['tipe'] as String,
       videoUrl: json['video_url'] as String?,
       konten: json['konten'] as String?,
@@ -75,7 +75,7 @@ class Artikel {
       'id': id,
       'kategori_id': kategoriId,
       'judul': judul,
-      'cover': cover,
+      'cover_path': coverPath,
       'tipe': tipe,
       'video_url': videoUrl,
       'konten': konten,

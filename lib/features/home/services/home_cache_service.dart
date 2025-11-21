@@ -1,5 +1,5 @@
 import 'package:test_flutter/core/constants/cache_keys.dart';
-import 'package:test_flutter/data/models/artikel/artikel.dart';
+import 'package:test_flutter/features/artikel/models/artikel/artikel.dart';
 import 'package:test_flutter/features/sholat/models/sholat/sholat.dart';
 import 'package:test_flutter/data/services/cache/cache_service.dart';
 

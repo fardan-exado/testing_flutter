@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:test_flutter/core/utils/logger.dart';
-import 'package:test_flutter/data/models/artikel/artikel.dart';
+import 'package:test_flutter/features/artikel/models/artikel/artikel.dart';
 import 'package:test_flutter/data/models/paginated.dart';
-import 'package:test_flutter/features/artikel/artikel_state.dart';
+import 'package:test_flutter/features/artikel/states/artikel_state.dart';
 import 'package:test_flutter/features/artikel/services/artikel_cache_service.dart';
 import 'package:test_flutter/features/artikel/services/artikel_service.dart';
 

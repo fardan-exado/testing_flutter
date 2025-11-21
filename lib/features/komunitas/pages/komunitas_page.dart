@@ -193,7 +193,7 @@ class _KomunitasPageState extends ConsumerState<KomunitasPage>
         'penulis': item.penulis,
         'kategoriId': (item.kategoriId),
         'kategoriNama': item.kategori.nama,
-        'kategoriIcon': iconPath.isNotEmpty && storage.isNotEmpty
+        'kategoriIcon': iconPath!.isNotEmpty && storage.isNotEmpty
             ? '$storage/$iconPath'
             : null,
         'date': FormatHelper.formatTimeAgo(item.createdAt),

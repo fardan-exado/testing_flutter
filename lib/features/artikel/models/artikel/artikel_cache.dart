@@ -1,7 +1,7 @@
 import 'package:hive/hive.dart';
 import 'package:test_flutter/core/constants/hive_type_id.dart';
-import 'package:test_flutter/data/models/artikel/artikel.dart';
-import 'package:test_flutter/data/models/artikel/kategori_artikel_cache.dart';
+import 'package:test_flutter/features/artikel/models/artikel/artikel.dart';
+import 'package:test_flutter/features/artikel/models/kategori/kategori_artikel_cache.dart';
 
 part 'artikel_cache.g.dart';
 
@@ -17,7 +17,7 @@ class ArtikelCache extends HiveObject {
   String judul;
 
   @HiveField(3)
-  String cover;
+  String coverPath;
 
   @HiveField(4)
   String tipe;
@@ -53,7 +53,7 @@ class ArtikelCache extends HiveObject {
     required this.id,
     required this.kategoriId,
     required this.judul,
-    required this.cover,
+    required this.coverPath,
     required this.tipe,
     this.videoUrl,
     this.konten,
@@ -71,7 +71,7 @@ class ArtikelCache extends HiveObject {
       id: a.id,
       kategoriId: a.kategoriId,
       judul: a.judul,
-      cover: a.cover,
+      coverPath: a.coverPath,
       tipe: a.tipe,
       videoUrl: a.videoUrl,
       konten: a.konten,
@@ -90,7 +90,7 @@ class ArtikelCache extends HiveObject {
       id: id,
       kategoriId: kategoriId,
       judul: judul,
-      cover: cover,
+      coverPath: coverPath,
       tipe: tipe,
       konten: konten,
       videoUrl: videoUrl,

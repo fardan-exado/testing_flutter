@@ -5,9 +5,11 @@ import 'package:test_flutter/app/theme.dart';
 import 'package:test_flutter/app/router.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
-import 'package:test_flutter/data/models/artikel/artikel.dart';
-import 'package:test_flutter/features/artikel/artikel_provider.dart';
-import 'package:test_flutter/features/artikel/artikel_state.dart';
+import 'package:test_flutter/features/artikel/models/artikel/artikel.dart';
+import 'package:test_flutter/features/artikel/models/kategori/kategori_artikel.dart';
+import 'package:test_flutter/features/artikel/providers/artikel_provider.dart';
+import 'package:test_flutter/features/artikel/states/artikel_state.dart';
+import 'dart:async';
 
 class ArtikelPage extends ConsumerStatefulWidget {
   const ArtikelPage({super.key});
@@ -24,6 +26,10 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
   int? _selectedCategoryId;
   String? _selectedType; // Add this: 'artikel', 'video', or null for all
   bool _isSearching = false;
+
+  // Debounce timer untuk search
+  Timer? _debounceTimer;
+  static const Duration _debounceDuration = Duration(milliseconds: 500);
 
   // Responsive helpers
   double _scale(BuildContext c) {
@@ -80,34 +86,72 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
       _selectedCategoryId = categoryId;
     });
 
-    // Fetch with new filter
+    // Always fetch from database when category changes (forceRefresh: true)
     ref
         .read(artikelProvider.notifier)
-        .fetchArtikel(kategoriId: categoryId, keyword: _searchQuery);
+        .fetchArtikel(
+          kategoriId: categoryId,
+          keyword: _searchQuery,
+          isRefresh: true,
+        );
+  }
+
+  void _onSearchChanged(String query) {
+    // Cancel previous debounce timer
+    _debounceTimer?.cancel();
+
+    setState(() {
+      _isSearching = query.isNotEmpty;
+    });
+
+    // Set new debounce timer
+    _debounceTimer = Timer(_debounceDuration, () {
+      _performSearch(query.trim());
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    setState(() {
+      _searchQuery = query;
+    });
+
+    // Fetch with search query from database
+    await ref
+        .read(artikelProvider.notifier)
+        .fetchArtikel(
+          kategoriId: _selectedCategoryId,
+          keyword: query,
+          isRefresh: true,
+        );
   }
 
   void _onSearchSubmitted(String query) {
+    // Cancel debounce timer and perform search immediately
+    _debounceTimer?.cancel();
+    _performSearch(query.trim());
+
     setState(() {
-      _searchQuery = query.trim();
       _isSearching = false;
     });
-
-    // Fetch with search query
-    ref
-        .read(artikelProvider.notifier)
-        .fetchArtikel(kategoriId: _selectedCategoryId, keyword: _searchQuery);
   }
 
   void _clearSearch() {
     _searchController.clear();
+    _debounceTimer?.cancel();
+
     setState(() {
       _searchQuery = '';
+      _isSearching = false;
     });
 
     // Fetch without search query
     ref
         .read(artikelProvider.notifier)
-        .fetchArtikel(kategoriId: _selectedCategoryId, keyword: '');
+        .fetchArtikel(
+          kategoriId: _selectedCategoryId,
+          keyword: '',
+          isRefresh: true,
+        );
   }
 
   @override
@@ -298,11 +342,7 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
                       ),
                       child: TextField(
                         controller: _searchController,
-                        onChanged: (value) {
-                          setState(() {
-                            _isSearching = value.isNotEmpty;
-                          });
-                        },
+                        onChanged: _onSearchChanged,
                         onSubmitted: _onSearchSubmitted,
                         decoration: InputDecoration(
                           hintText: _selectedType == 'video'
@@ -322,19 +362,6 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
                               ? Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    if (_isSearching)
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.search_rounded,
-                                          color: AppTheme.accentGreen,
-                                        ),
-                                        onPressed: () {
-                                          _onSearchSubmitted(
-                                            _searchController.text,
-                                          );
-                                        },
-                                        tooltip: 'Cari',
-                                      ),
                                     if (_searchQuery.isNotEmpty)
                                       IconButton(
                                         icon: Icon(
@@ -377,6 +404,7 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
                                   context,
                                   label: 'Semua Kategori',
                                   isSelected: isSelected,
+                                  kategori: null,
                                   onTap: () => _onCategorySelected(null),
                                 ),
                               );
@@ -396,6 +424,7 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
                                 context,
                                 label: category.nama,
                                 isSelected: isSelected,
+                                kategori: category,
                                 onTap: () => _onCategorySelected(category.id),
                               ),
                             );
@@ -420,13 +449,22 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
+    required KategoriArtikel? kategori,
   }) {
+    // Build icon URL from storage + icon_path
+    final storage = dotenv.env['STORAGE_URL'] ?? '';
+    final iconPath = kategori?.iconPath;
+    final iconUrl =
+        (iconPath != null && iconPath.isNotEmpty && storage.isNotEmpty)
+        ? '$storage/$iconPath'
+        : '';
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: _px(context, 18),
-          vertical: _px(context, 10),
+          horizontal: _px(context, 16),
+          vertical: _px(context, 8),
         ),
         decoration: BoxDecoration(
           gradient: isSelected
@@ -455,14 +493,70 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
                 ]
               : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.onSurface,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: _ts(context, 14),
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Category Icon
+            if (kategori != null)
+              Padding(
+                padding: EdgeInsets.only(right: _px(context, 6)),
+                child: SizedBox(
+                  width: _px(context, 28),
+                  height: _px(context, 21), // 4:3 ratio (landscape)
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: iconUrl.isNotEmpty
+                        ? Image.network(
+                            iconUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildDefaultCategoryIcon(isSelected);
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return _buildDefaultCategoryIcon(isSelected);
+                            },
+                          )
+                        : _buildDefaultCategoryIcon(isSelected),
+                  ),
+                ),
+              )
+            else
+              Padding(
+                padding: EdgeInsets.only(right: _px(context, 6)),
+                child: Icon(
+                  Icons.grid_view_rounded,
+                  color: isSelected ? Colors.white : AppTheme.accentGreen,
+                  size: _px(context, 18),
+                ),
+              ),
+            // Label
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : AppTheme.onSurface,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                fontSize: _ts(context, 13),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  /// Helper method untuk build default category icon
+  Widget _buildDefaultCategoryIcon(bool isSelected) {
+    return Container(
+      color: isSelected
+          ? Colors.white.withValues(alpha: 0.3)
+          : AppTheme.accentGreen.withValues(alpha: 0.1),
+      child: Icon(
+        Icons.category_rounded,
+        color: isSelected
+            ? Colors.white.withValues(alpha: 0.7)
+            : AppTheme.accentGreen.withValues(alpha: 0.5),
+        size: _px(context, 14),
       ),
     );
   }
@@ -705,12 +799,180 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
     return const SizedBox(height: 20);
   }
 
+  /// Build type badge with category icon for artikel card
+  Widget _buildTypeBadge(BuildContext context, Artikel artikel, bool isVideo) {
+    final storage = dotenv.env['STORAGE_URL'] ?? '';
+    final iconPath = artikel.kategori.iconPath;
+    final iconUrl =
+        (iconPath != null && iconPath.isNotEmpty && storage.isNotEmpty)
+        ? '$storage/$iconPath'
+        : '';
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: _px(context, 12),
+        vertical: _px(context, 6),
+      ),
+      decoration: BoxDecoration(
+        color: isVideo ? Colors.red : AppTheme.primaryBlue,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: (isVideo ? Colors.red : AppTheme.primaryBlue).withValues(
+              alpha: 0.4,
+            ),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Category Icon
+          if (!isVideo && iconUrl.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(right: _px(context, 6)),
+              child: SizedBox(
+                width: _px(context, 16),
+                height: _px(context, 12), // 4:3 ratio
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: Image.network(
+                    iconUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.category_rounded,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        size: _px(context, 12),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Icon(
+                        Icons.category_rounded,
+                        color: Colors.white.withValues(alpha: 0.5),
+                        size: _px(context, 12),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            )
+          else if (!isVideo)
+            Padding(
+              padding: EdgeInsets.only(right: _px(context, 6)),
+              child: Icon(
+                Icons.article_rounded,
+                color: Colors.white,
+                size: _px(context, 16),
+              ),
+            )
+          else
+            Padding(
+              padding: EdgeInsets.only(right: _px(context, 6)),
+              child: Icon(
+                Icons.play_circle_outline_rounded,
+                color: Colors.white,
+                size: _px(context, 16),
+              ),
+            ),
+          // Label
+          Text(
+            isVideo ? 'Video' : artikel.kategori.nama,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: _ts(context, 12),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build category badge with icon for video at bottom left
+  Widget _buildCategoryBadgeForVideo(BuildContext context, Artikel artikel) {
+    final storage = dotenv.env['STORAGE_URL'] ?? '';
+    final iconPath = artikel.kategori.iconPath;
+    final iconUrl =
+        (iconPath != null && iconPath.isNotEmpty && storage.isNotEmpty)
+        ? '$storage/$iconPath'
+        : '';
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: _px(context, 10),
+        vertical: _px(context, 5),
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Category Icon
+          if (iconUrl.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(right: _px(context, 4)),
+              child: SizedBox(
+                width: _px(context, 14),
+                height: _px(context, 10.5), // 4:3 ratio
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: Image.network(
+                    iconUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.category_rounded,
+                        color: AppTheme.onSurface.withValues(alpha: 0.5),
+                        size: _px(context, 10),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Icon(
+                        Icons.category_rounded,
+                        color: AppTheme.onSurface.withValues(alpha: 0.3),
+                        size: _px(context, 10),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: EdgeInsets.only(right: _px(context, 4)),
+              child: Icon(
+                Icons.category_rounded,
+                color: AppTheme.onSurface.withValues(alpha: 0.5),
+                size: _px(context, 12),
+              ),
+            ),
+          // Label
+          Text(
+            artikel.kategori.nama,
+            style: TextStyle(
+              color: AppTheme.onSurface,
+              fontSize: _ts(context, 11),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildArtikelCard(BuildContext context, Artikel artikel) {
     final isVideo = artikel.tipe == 'video';
 
     // Fix: Build proper image URL
     final storage = dotenv.env['STORAGE_URL'] ?? '';
-    final coverPath = artikel.cover;
+    final coverPath = artikel.coverPath;
     final coverUrl = coverPath.isNotEmpty && storage.isNotEmpty
         ? '$storage/$coverPath'
         : '';
@@ -930,45 +1192,7 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
                 Positioned(
                   top: _px(context, 16),
                   left: _px(context, 16),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: _px(context, 12),
-                      vertical: _px(context, 6),
-                    ),
-                    decoration: BoxDecoration(
-                      color: isVideo ? Colors.red : AppTheme.primaryBlue,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isVideo ? Colors.red : AppTheme.primaryBlue)
-                              .withValues(alpha: 0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isVideo
-                              ? Icons.play_circle_outline_rounded
-                              : Icons.article_rounded,
-                          color: Colors.white,
-                          size: _px(context, 16),
-                        ),
-                        SizedBox(width: _px(context, 6)),
-                        Text(
-                          isVideo ? 'Video' : artikel.kategori.nama,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: _ts(context, 12),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: _buildTypeBadge(context, artikel, isVideo),
                 ),
 
                 // Category Badge for Video
@@ -976,24 +1200,7 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
                   Positioned(
                     bottom: _px(context, 16),
                     left: _px(context, 16),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: _px(context, 10),
-                        vertical: _px(context, 5),
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        artikel.kategori.nama,
-                        style: TextStyle(
-                          color: AppTheme.onSurface,
-                          fontSize: _ts(context, 11),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+                    child: _buildCategoryBadgeForVideo(context, artikel),
                   ),
 
                 // Bookmark Icon
@@ -1134,6 +1341,7 @@ class _ArtikelPageState extends ConsumerState<ArtikelPage> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 }

@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:test_flutter/core/constants/hive_type_id.dart';
-import 'package:test_flutter/data/models/artikel/kategori_artikel_cache.dart';
+import 'package:test_flutter/features/artikel/models/kategori/kategori_artikel_cache.dart';
 import 'package:test_flutter/data/models/komunitas/komunitas.dart';
 
 part 'komunitas_cache.g.dart';

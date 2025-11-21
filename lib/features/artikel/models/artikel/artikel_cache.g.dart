@@ -20,7 +20,7 @@ class ArtikelCacheAdapter extends TypeAdapter<ArtikelCache> {
       id: fields[0] as int,
       kategoriId: fields[1] as int,
       judul: fields[2] as String,
-      cover: fields[3] as String,
+      coverPath: fields[3] as String,
       tipe: fields[4] as String,
       videoUrl: fields[5] as String?,
       konten: fields[12] as String?,
@@ -45,7 +45,7 @@ class ArtikelCacheAdapter extends TypeAdapter<ArtikelCache> {
       ..writeByte(2)
       ..write(obj.judul)
       ..writeByte(3)
-      ..write(obj.cover)
+      ..write(obj.coverPath)
       ..writeByte(4)
       ..write(obj.tipe)
       ..writeByte(5)

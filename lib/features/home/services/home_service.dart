@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:test_flutter/core/utils/api_client.dart';
-import 'package:test_flutter/data/models/artikel/artikel.dart';
+import 'package:test_flutter/features/artikel/models/artikel/artikel.dart';
 
 class HomeService {
   static Future<Map<String, dynamic>> getLatestArticle() async {

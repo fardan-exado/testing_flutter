@@ -1,5 +1,5 @@
-import 'package:test_flutter/data/models/artikel/artikel.dart';
-import 'package:test_flutter/data/models/artikel/kategori_artikel.dart';
+import 'package:test_flutter/features/artikel/models/artikel/artikel.dart';
+import 'package:test_flutter/features/artikel/models/kategori/kategori_artikel.dart';
 
 enum ArtikelStatus {
   initial,
