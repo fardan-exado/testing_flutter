@@ -9,7 +9,7 @@ class SholatCacheService {
   static const Duration _progressCacheDuration = Duration(hours: 12);
 
   // CACHE JADWAL SHOLAT
-  static Future<void> cacheJadwalSholat(List<Sholat> jadwal) async {
+  static Future<void> cacheJadwalSholat(List<JadwalSholat> jadwal) async {
     await CacheService.cacheData(
       key: CacheKeys.jadwalSholat,
       data: jadwal,
@@ -67,13 +67,13 @@ class SholatCacheService {
   }
 
   // GET JADWAL SHOLAT DARI CACHE
-  static List<Sholat> getCachedJadwalSholat() {
-    return CacheService.getCachedData<List<Sholat>>(
+  static List<JadwalSholat> getCachedJadwalSholat() {
+    return CacheService.getCachedData<List<JadwalSholat>>(
           key: CacheKeys.jadwalSholat,
           fromJson: (jsonData) {
             if (jsonData is List) {
               return jsonData
-                  .map((item) => Sholat.fromJson(item as Map<String, dynamic>))
+                  .map((item) => JadwalSholat.fromJson(item as Map<String, dynamic>))
                   .toList();
             }
             return [];

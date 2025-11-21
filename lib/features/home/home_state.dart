@@ -5,7 +5,7 @@ enum HomeStatus { initial, loading, loaded, error, refreshing, offline }
 
 class HomeState {
   final HomeStatus status;
-  final Sholat? jadwalSholat;
+  final JadwalSholat? jadwalSholat;
   final List<Artikel> articles;
   final Artikel? selectedArticle;
   final String? message;
@@ -48,7 +48,7 @@ class HomeState {
 
   HomeState copyWith({
     HomeStatus? status,
-    Sholat? jadwalSholat,
+    JadwalSholat? jadwalSholat,
     List<Artikel>? articles,
     Artikel? selectedArticle,
     String? message,

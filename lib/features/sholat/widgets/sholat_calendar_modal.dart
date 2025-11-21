@@ -24,6 +24,7 @@ class _SholatCalendarModalState extends ConsumerState<SholatCalendarModal> {
   late DateTime _selectedMonth;
   late DateTime _selectedDate;
   bool _isLoadingRiwayat = false;
+  final Map<String, Map<String, dynamic>> _progressCache = {};
 
   @override
   void initState() {
@@ -34,22 +35,61 @@ class _SholatCalendarModalState extends ConsumerState<SholatCalendarModal> {
       1,
     );
     _selectedDate = widget.initialDate;
-    _loadRiwayat();
+    _loadRiwayatForMonth();
   }
 
-  Future<void> _loadRiwayat() async {
+  Future<void> _loadRiwayatForMonth() async {
     setState(() => _isLoadingRiwayat = true);
     try {
-      await Future.wait([
-        ref
-            .read(sholatProvider.notifier)
-            .fetchProgressSholatWajibRiwayat(forceRefresh: true),
-        ref
-            .read(sholatProvider.notifier)
-            .fetchProgressSholatSunnahRiwayat(forceRefresh: true),
-      ]);
+      // Load progress untuk semua hari di bulan yang dipilih
+      final firstDay = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+      final lastDay = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month + 1,
+        0,
+      );
+
+      final tasksWajib = <Future>[];
+      final tasksSunnah = <Future>[];
+
+      // Loop dari hari pertama sampai hari terakhir
+      for (int day = firstDay.day; day <= lastDay.day; day++) {
+        final date = DateTime(_selectedMonth.year, _selectedMonth.month, day);
+        final formatter = DateFormat('yyyy-MM-dd');
+        final dateKey = formatter.format(date);
+
+        // Fetch wajib progress
+        tasksWajib.add(
+          ref
+              .read(sholatProvider.notifier)
+              .fetchProgressSholatByDate(jenis: 'wajib', tanggal: date)
+              .then((data) {
+                _progressCache['${dateKey}_wajib'] = data;
+              })
+              .catchError((e) {
+                logger.warning('Error loading wajib progress for $dateKey: $e');
+              }),
+        );
+
+        // Fetch sunnah progress
+        tasksSunnah.add(
+          ref
+              .read(sholatProvider.notifier)
+              .fetchProgressSholatByDate(jenis: 'sunnah', tanggal: date)
+              .then((data) {
+                _progressCache['${dateKey}_sunnah'] = data;
+              })
+              .catchError((e) {
+                logger.warning(
+                  'Error loading sunnah progress for $dateKey: $e',
+                );
+              }),
+        );
+      }
+
+      await Future.wait([...tasksWajib, ...tasksSunnah]);
     } catch (e) {
-      logger.warning('Error loading riwayat: $e');
+      logger.warning('Error loading riwayat for month: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoadingRiwayat = false);
@@ -64,7 +104,9 @@ class _SholatCalendarModalState extends ConsumerState<SholatCalendarModal> {
         _selectedMonth.month - 1,
         1,
       );
+      _progressCache.clear();
     });
+    _loadRiwayatForMonth();
   }
 
   void _nextMonth() {
@@ -74,7 +116,9 @@ class _SholatCalendarModalState extends ConsumerState<SholatCalendarModal> {
         _selectedMonth.month + 1,
         1,
       );
+      _progressCache.clear();
     });
+    _loadRiwayatForMonth();
   }
 
   void _selectDate(DateTime date) {
@@ -99,34 +143,41 @@ class _SholatCalendarModalState extends ConsumerState<SholatCalendarModal> {
   }
 
   Map<String, int> _getProgressForDate(DateTime date) {
-    final state = ref.watch(sholatProvider);
     final formatter = DateFormat('yyyy-MM-dd');
     final dateKey = formatter.format(date);
 
     int wajibCompleted = 0;
     int sunnahCompleted = 0;
 
-    // Get wajib progress
-    final wajibRiwayat = state.progressWajibRiwayat;
-    if (wajibRiwayat.containsKey(dateKey)) {
-      final dayData = wajibRiwayat[dateKey];
-      if (dayData is Map) {
-        final total = dayData['total'] as int? ?? 0;
-        wajibCompleted = total;
-      } else if (dayData is List) {
-        wajibCompleted = dayData.length;
+    // Get wajib progress from cache
+    final wajibData = _progressCache['${dateKey}_wajib'];
+    if (wajibData != null) {
+      if (wajibData.containsKey('total')) {
+        wajibCompleted = wajibData['total'] as int? ?? 0;
+      } else if (wajibData.containsKey('data')) {
+        final data = wajibData['data'];
+        if (data is List) {
+          wajibCompleted = data.length;
+        } else if (data is Map) {
+          // Jika data adalah map dengan struktur { 'sholat_name': {...} }
+          wajibCompleted = data.length;
+        }
       }
     }
 
-    // Get sunnah progress
-    final sunnahRiwayat = state.progressSunnahRiwayat;
-    if (sunnahRiwayat.containsKey(dateKey)) {
-      final dayData = sunnahRiwayat[dateKey];
-      if (dayData is Map) {
-        final total = dayData['total'] as int? ?? 0;
-        sunnahCompleted = total;
-      } else if (dayData is List) {
-        sunnahCompleted = dayData.length;
+    // Get sunnah progress from cache
+    final sunnahData = _progressCache['${dateKey}_sunnah'];
+    if (sunnahData != null) {
+      if (sunnahData.containsKey('total')) {
+        sunnahCompleted = sunnahData['total'] as int? ?? 0;
+      } else if (sunnahData.containsKey('data')) {
+        final data = sunnahData['data'];
+        if (data is List) {
+          sunnahCompleted = data.length;
+        } else if (data is Map) {
+          // Jika data adalah map
+          sunnahCompleted = data.length;
+        }
       }
     }
 

@@ -159,10 +159,25 @@ class _SholatPageState extends ConsumerState<SholatPage>
   }
 
   Future<void> _fetchProgressData() async {
-    await Future.wait([
-      ref.read(sholatProvider.notifier).fetchProgressSholatWajibHariIni(),
-      ref.read(sholatProvider.notifier).fetchProgressSholatSunnahHariIni(),
-    ]);
+    try {
+      final formatter = DateFormat('yyyy-MM-dd');
+      final dateStr = formatter.format(_selectedDate);
+
+      logger.info('Fetching progress for date: $dateStr');
+
+      await Future.wait([
+        ref
+            .read(sholatProvider.notifier)
+            .fetchProgressSholatByDate(jenis: 'wajib', tanggal: _selectedDate),
+        ref
+            .read(sholatProvider.notifier)
+            .fetchProgressSholatByDate(jenis: 'sunnah', tanggal: _selectedDate),
+      ]);
+
+      logger.info('✓ Progress data fetched successfully');
+    } catch (e) {
+      logger.warning('Error fetching progress data: $e');
+    }
   }
 
   Future<void> _loadAlarmStates() async {
@@ -613,9 +628,6 @@ class _SholatPageState extends ConsumerState<SholatPage>
                                           keterangan: jenis == 'wajib'
                                               ? keterangan
                                               : null,
-                                          sunnahId: jenis == 'sunnah'
-                                              ? jadwalData['sunnahId'] as int?
-                                              : null,
                                         );
 
                                     if (response != null && mounted) {
@@ -995,38 +1007,44 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
     final state = ref.watch(sholatProvider);
     final jenis = _isWajibTab ? 'wajib' : 'sunnah';
+    final formatter = DateFormat('yyyy-MM-dd');
+    final dateKey = formatter.format(_selectedDate);
 
-    if (_isToday) {
-      logger.info('Getting progress for today: $_selectedDate');
-      logger.info('Progress Wajib Hari Ini: ${state.progressWajibHariIni}');
-      logger.info('Progress Sunnah Hari Ini: ${state.progressSunnahHariIni}');
+    logger.info('Getting progress for date: $dateKey, jenis: $jenis');
 
-      if (jenis == 'wajib') {
-        final progressToday = state.progressWajibHariIni;
-        final Map<String, dynamic> formattedProgress = {};
+    // Get riwayat data
+    final riwayat = jenis == 'wajib'
+        ? state.progressWajibRiwayat
+        : state.progressSunnahRiwayat;
 
-        final statistik =
-            progressToday['statistik'] as Map<String, dynamic>? ?? {};
-        final detail = progressToday['detail'] as List<dynamic>? ?? [];
+    final riwayatData = riwayat[dateKey];
 
-        final Map<int, String> wajibIdToKey = {
-          1: 'shubuh',
-          2: 'dzuhur',
-          3: 'ashar',
-          4: 'maghrib',
-          5: 'isya',
-        };
+    logger.info('Riwayat data type: ${riwayatData.runtimeType}');
+    logger.info('Riwayat data: $riwayatData');
 
-        logger.info('=== PARSING PROGRESS WAJIB ===');
-        logger.info('Statistik: $statistik');
-        logger.info('Detail count: ${detail.length}');
+    if (jenis == 'wajib') {
+      final Map<String, dynamic> formattedProgress = {};
 
-        for (var item in detail) {
-          final sholatWajibId = item['sholat_wajib_id'] as int;
-          final sholatKey = wajibIdToKey[sholatWajibId];
+      final Map<int, String> wajibIdToKey = {
+        1: 'shubuh',
+        2: 'dzuhur',
+        3: 'ashar',
+        4: 'maghrib',
+        5: 'isya',
+      };
+
+      if (riwayatData is List) {
+        logger.info('=== PARSING WAJIB RIWAYAT (LIST) ===');
+        logger.info('Progress count: ${riwayatData.length}');
+
+        for (var item in riwayatData) {
+          final sholatWajibId = item['sholat_wajib_id'] as int?;
+          final sholatKey = sholatWajibId != null
+              ? wajibIdToKey[sholatWajibId]
+              : null;
 
           if (sholatKey != null) {
-            final progressItem = {
+            formattedProgress[sholatKey] = {
               'id': item['id'],
               'completed': true,
               'status': item['status'] as String? ?? 'tepat_waktu',
@@ -1034,13 +1052,11 @@ class _SholatPageState extends ConsumerState<SholatPage>
               'lokasi': item['lokasi'] as String? ?? '',
               'keterangan': item['keterangan'] as String? ?? '',
             };
-
-            formattedProgress[sholatKey] = progressItem;
-            logger.info('$sholatKey: $progressItem');
+            logger.info('$sholatKey: ${formattedProgress[sholatKey]}');
           }
         }
 
-        statistik.forEach((key, value) {
+        wajibIdToKey.forEach((id, key) {
           if (!formattedProgress.containsKey(key)) {
             formattedProgress[key] = {
               'completed': false,
@@ -1049,82 +1065,24 @@ class _SholatPageState extends ConsumerState<SholatPage>
               'lokasi': '',
               'keterangan': '',
             };
-            logger.info('$key: no progress yet');
+            logger.info('$key: no progress');
           }
         });
 
-        logger.info('=== FORMATTED PROGRESS: $formattedProgress ===');
+        logger.info('=== FORMATTED WAJIB RIWAYAT: $formattedProgress ===');
         return formattedProgress;
-      } else {
-        final progressToday =
-            state.progressSunnahHariIni as List<dynamic>? ?? [];
-        final Map<String, dynamic> formattedProgress = {};
+      } else if (riwayatData is Map<String, dynamic>) {
+        logger.info('=== PARSING WAJIB RIWAYAT (MAP) ===');
 
-        logger.info('=== PARSING PROGRESS SUNNAH ===');
-        logger.info('Progress data type: ${progressToday.runtimeType}');
-        logger.info('Progress count: ${progressToday.length}');
-        logger.info('Full progress data: $progressToday');
+        if (riwayatData.containsKey('statistik')) {
+          final statistik =
+              riwayatData['statistik'] as Map<String, dynamic>? ?? {};
+          final detail = riwayatData['detail'] as List<dynamic>? ?? [];
 
-        for (var item in progressToday) {
-          final sholatSunnah = item['sholat_sunnah'] as Map<String, dynamic>?;
-          final progres = item['progres'] as bool? ?? false;
+          logger.info('Statistik: $statistik');
+          logger.info('Detail count: ${detail.length}');
 
-          logger.info('=== Processing item ===');
-          logger.info('Item keys: ${item.keys.toList()}');
-          logger.info('Item full data: $item');
-
-          if (sholatSunnah != null) {
-            final slug = sholatSunnah['slug'] as String;
-            final dbKey = slug.replaceAll('-', '-');
-
-            final progressId = item['id'] as int?;
-            final progressStatus = item['status'] as String? ?? '';
-
-            formattedProgress[dbKey] = {
-              'id': progressId,
-              'completed': progres,
-              'status': progressStatus.isNotEmpty
-                  ? progressStatus
-                  : (progres ? 'tepat_waktu' : ''),
-            };
-            logger.info(
-              '$dbKey: progres=$progres, id=$progressId, status=$progressStatus',
-            );
-          }
-        }
-
-        logger.info('=== FORMATTED SUNNAH PROGRESS: $formattedProgress ===');
-        return formattedProgress;
-      }
-    } else {
-      final formatter = DateFormat('yyyy-MM-dd');
-      final dateKey = formatter.format(_selectedDate);
-
-      logger.info('=== GETTING RIWAYAT DATA ===');
-      logger.info('Date: $dateKey, Jenis: $jenis');
-
-      if (jenis == 'wajib') {
-        final riwayat = state.progressWajibRiwayat;
-        final riwayatData = riwayat[dateKey];
-
-        logger.info('Wajib riwayat data type: ${riwayatData.runtimeType}');
-        logger.info('Wajib riwayat data: $riwayatData');
-
-        final Map<String, dynamic> formattedProgress = {};
-
-        final Map<int, String> wajibIdToKey = {
-          1: 'shubuh',
-          2: 'dzuhur',
-          3: 'ashar',
-          4: 'maghrib',
-          5: 'isya',
-        };
-
-        if (riwayatData is List) {
-          logger.info('=== PARSING WAJIB RIWAYAT (LIST) ===');
-          logger.info('Progress count: ${riwayatData.length}');
-
-          for (var item in riwayatData) {
+          for (var item in detail) {
             final sholatWajibId = item['sholat_wajib_id'] as int?;
             final sholatKey = sholatWajibId != null
                 ? wajibIdToKey[sholatWajibId]
@@ -1143,7 +1101,7 @@ class _SholatPageState extends ConsumerState<SholatPage>
             }
           }
 
-          wajibIdToKey.forEach((id, key) {
+          statistik.forEach((key, value) {
             if (!formattedProgress.containsKey(key)) {
               formattedProgress[key] = {
                 'completed': false,
@@ -1155,133 +1113,87 @@ class _SholatPageState extends ConsumerState<SholatPage>
               logger.info('$key: no progress');
             }
           });
-
-          logger.info('=== FORMATTED WAJIB RIWAYAT: $formattedProgress ===');
-          return formattedProgress;
-        } else if (riwayatData is Map<String, dynamic>) {
-          logger.info('=== PARSING WAJIB RIWAYAT (MAP) ===');
-
-          if (riwayatData.containsKey('statistik')) {
-            final statistik =
-                riwayatData['statistik'] as Map<String, dynamic>? ?? {};
-            final detail = riwayatData['detail'] as List<dynamic>? ?? [];
-
-            logger.info('Statistik: $statistik');
-            logger.info('Detail count: ${detail.length}');
-
-            for (var item in detail) {
-              final sholatWajibId = item['sholat_wajib_id'] as int?;
-              final sholatKey = sholatWajibId != null
-                  ? wajibIdToKey[sholatWajibId]
-                  : null;
-
-              if (sholatKey != null) {
-                formattedProgress[sholatKey] = {
-                  'id': item['id'],
-                  'completed': true,
-                  'status': item['status'] as String? ?? 'tepat_waktu',
-                  'is_jamaah': item['is_jamaah'] == 1,
-                  'lokasi': item['lokasi'] as String? ?? '',
-                  'keterangan': item['keterangan'] as String? ?? '',
-                };
-                logger.info('$sholatKey: ${formattedProgress[sholatKey]}');
-              }
+        } else {
+          riwayatData.forEach((key, value) {
+            if (value is bool) {
+              formattedProgress[key] = {
+                'completed': value,
+                'status': 'tepat_waktu',
+                'is_jamaah': false,
+                'lokasi': '',
+                'keterangan': '',
+              };
+            } else if (value is Map) {
+              formattedProgress[key] = value;
             }
-
-            statistik.forEach((key, value) {
-              if (!formattedProgress.containsKey(key)) {
-                formattedProgress[key] = {
-                  'completed': false,
-                  'status': 'tepat_waktu',
-                  'is_jamaah': false,
-                  'lokasi': '',
-                  'keterangan': '',
-                };
-                logger.info('$key: no progress');
-              }
-            });
-          } else {
-            riwayatData.forEach((key, value) {
-              if (value is bool) {
-                formattedProgress[key] = {
-                  'completed': value,
-                  'status': 'tepat_waktu',
-                  'is_jamaah': false,
-                  'lokasi': '',
-                  'keterangan': '',
-                };
-              } else if (value is Map) {
-                formattedProgress[key] = value;
-              }
-            });
-          }
-
-          logger.info('=== FORMATTED WAJIB RIWAYAT: $formattedProgress ===');
-          return formattedProgress;
+          });
         }
 
-        wajibIdToKey.forEach((id, key) {
-          formattedProgress[key] = {
-            'completed': false,
-            'status': 'tepat_waktu',
-            'is_jamaah': false,
-            'lokasi': '',
-            'keterangan': '',
-          };
-        });
-
-        return formattedProgress;
-      } else {
-        final riwayat = state.progressSunnahRiwayat;
-        final riwayatData = riwayat[dateKey];
-
-        logger.info('Sunnah riwayat data type: ${riwayatData.runtimeType}');
-        logger.info('Sunnah riwayat data: $riwayatData');
-
-        final Map<String, dynamic> formattedProgress = {};
-
-        if (riwayatData is List) {
-          logger.info('=== PARSING SUNNAH RIWAYAT (LIST) ===');
-          logger.info('Progress count: ${riwayatData.length}');
-
-          for (var item in riwayatData) {
-            final sholatSunnahId = item['sholat_sunnah_id'] as int?;
-
-            if (sholatSunnahId != null) {
-              final jadwal = ref
-                  .read(sholatProvider.notifier)
-                  .getJadwalByDate(_selectedDate);
-              final sunnahList = jadwal?.sunnah ?? [];
-
-              final sunnahItem = sunnahList.firstWhere(
-                (s) => s.id == sholatSunnahId,
-                orElse: () =>
-                    SholatSunnah(id: 0, nama: '', slug: '', deskripsi: ''),
-              );
-
-              if (sunnahItem.id != 0) {
-                final dbKey = sunnahItem.slug.replaceAll('-', '-');
-
-                formattedProgress[dbKey] = {
-                  'id': item['id'],
-                  'sholat_sunnah_id': sholatSunnahId,
-                  'completed': true,
-                  'status': item['status'] as String? ?? 'tepat_waktu',
-                };
-                logger.info(
-                  '$dbKey: completed=true, id=${item['id']}, sholat_sunnah_id=$sholatSunnahId, status=${item['status']}',
-                );
-              }
-            }
-          }
-        } else if (riwayatData is Map<String, dynamic>) {
-          logger.info('=== PARSING SUNNAH RIWAYAT (MAP) ===');
-          return riwayatData;
-        }
-
-        logger.info('=== FORMATTED SUNNAH RIWAYAT: $formattedProgress ===');
+        logger.info('=== FORMATTED WAJIB RIWAYAT: $formattedProgress ===');
         return formattedProgress;
       }
+
+      wajibIdToKey.forEach((id, key) {
+        formattedProgress[key] = {
+          'completed': false,
+          'status': 'tepat_waktu',
+          'is_jamaah': false,
+          'lokasi': '',
+          'keterangan': '',
+        };
+      });
+
+      return formattedProgress;
+    } else {
+      // SUNNAH
+      final Map<String, dynamic> formattedProgress = {};
+
+      if (riwayatData is List) {
+        logger.info('=== PARSING SUNNAH RIWAYAT (LIST) ===');
+        logger.info('Progress count: ${riwayatData.length}');
+
+        for (var item in riwayatData) {
+          final sholatSunnahId = item['sholat_sunnah_id'] as int?;
+
+          if (sholatSunnahId != null) {
+            final jadwal = ref
+                .read(sholatProvider.notifier)
+                .getJadwalByDate(_selectedDate);
+            final sunnahList = jadwal?.sunnah ?? [];
+
+            final sunnahItem = sunnahList.firstWhere(
+              (s) => s.id == sholatSunnahId,
+              orElse: () => Sunnah(
+                id: 0,
+                nama: '',
+                slug: '',
+                deskripsi: '',
+                createdAt: DateTime.now(),
+              ),
+            );
+
+            if (sunnahItem.id != 0) {
+              final dbKey = sunnahItem.slug.replaceAll('-', '-');
+
+              formattedProgress[dbKey] = {
+                'id': item['id'],
+                'sholat_sunnah_id': sholatSunnahId,
+                'completed': true,
+                'status': item['status'] as String? ?? 'tepat_waktu',
+              };
+              logger.info(
+                '$dbKey: completed=true, id=${item['id']}, sholat_sunnah_id=$sholatSunnahId, status=${item['status']}',
+              );
+            }
+          }
+        }
+      } else if (riwayatData is Map<String, dynamic>) {
+        logger.info('=== PARSING SUNNAH RIWAYAT (MAP) ===');
+        return riwayatData;
+      }
+
+      logger.info('=== FORMATTED SUNNAH RIWAYAT: $formattedProgress ===');
+      return formattedProgress;
     }
   }
 
@@ -1295,56 +1207,44 @@ class _SholatPageState extends ConsumerState<SholatPage>
 
     final state = ref.watch(sholatProvider);
     final jenis = _isWajibTab ? 'wajib' : 'sunnah';
+    final formatter = DateFormat('yyyy-MM-dd');
+    final dateKey = formatter.format(_selectedDate);
 
-    if (_isToday) {
-      if (jenis == 'wajib') {
-        final progressToday = state.progressWajibHariIni;
-        final total = progressToday['total'] as int? ?? 0;
-        return total;
+    // Get riwayat data
+    final riwayat = jenis == 'wajib'
+        ? state.progressWajibRiwayat
+        : state.progressSunnahRiwayat;
+    final riwayatData = riwayat[dateKey];
+
+    if (jenis == 'wajib') {
+      if (riwayatData is List) {
+        return riwayatData.length;
+      } else if (riwayatData is Map<String, dynamic>) {
+        if (riwayatData.containsKey('total')) {
+          return riwayatData['total'] as int? ?? 0;
+        }
+
+        if (riwayatData.containsKey('detail')) {
+          final detail = riwayatData['detail'] as List<dynamic>? ?? [];
+          return detail.length;
+        }
+
+        return _currentProgressData.values
+            .where((v) => v is Map && (v['completed'] == true))
+            .length;
       } else {
-        final progressToday =
-            state.progressSunnahHariIni as List<dynamic>? ?? [];
-        return progressToday.where((item) => item['progres'] == true).length;
+        return _currentProgressData.values
+            .where((v) => v is Map && (v['completed'] == true))
+            .length;
       }
     } else {
-      final formatter = DateFormat('yyyy-MM-dd');
-      final dateKey = formatter.format(_selectedDate);
-
-      if (jenis == 'wajib') {
-        final riwayat = state.progressWajibRiwayat;
-        final riwayatData = riwayat[dateKey];
-
-        if (riwayatData is List) {
-          return riwayatData.length;
-        } else if (riwayatData is Map<String, dynamic>) {
-          if (riwayatData.containsKey('total')) {
-            return riwayatData['total'] as int? ?? 0;
-          }
-
-          if (riwayatData.containsKey('detail')) {
-            final detail = riwayatData['detail'] as List<dynamic>? ?? [];
-            return detail.length;
-          }
-
-          return _currentProgressData.values
-              .where((v) => v is Map && (v['completed'] == true))
-              .length;
-        } else {
-          return _currentProgressData.values
-              .where((v) => v is Map && (v['completed'] == true))
-              .length;
-        }
+      // SUNNAH
+      if (riwayatData is List) {
+        return riwayatData.where((item) => item['progres'] == true).length;
       } else {
-        final riwayat = state.progressSunnahRiwayat;
-        final riwayatData = riwayat[dateKey];
-
-        if (riwayatData is List) {
-          return riwayatData.where((item) => item['progres'] == true).length;
-        } else {
-          return _currentProgressData.values
-              .where((v) => v is Map && (v['completed'] == true))
-              .length;
-        }
+        return _currentProgressData.values
+            .where((v) => v is Map && (v['completed'] == true))
+            .length;
       }
     }
   }

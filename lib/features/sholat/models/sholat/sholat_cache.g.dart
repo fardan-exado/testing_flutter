@@ -6,26 +6,26 @@ part of 'sholat_cache.dart';
 // TypeAdapterGenerator
 // **************************************************************************
 
-class SholatCacheAdapter extends TypeAdapter<SholatCache> {
+class JadwalSholatCacheAdapter extends TypeAdapter<JadwalSholatCache> {
   @override
   final int typeId = 7;
 
   @override
-  SholatCache read(BinaryReader reader) {
+  JadwalSholatCache read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return SholatCache(
+    return JadwalSholatCache(
       tanggal: fields[0] as String,
-      wajib: fields[1] as SholatWajib,
-      sunnah: (fields[2] as List).cast<SholatSunnah>(),
+      wajib: fields[1] as Wajib,
+      sunnah: (fields[2] as List).cast<Sunnah>(),
       cachedAt: fields[3] as DateTime,
     );
   }
 
   @override
-  void write(BinaryWriter writer, SholatCache obj) {
+  void write(BinaryWriter writer, JadwalSholatCache obj) {
     writer
       ..writeByte(4)
       ..writeByte(0)
@@ -44,7 +44,7 @@ class SholatCacheAdapter extends TypeAdapter<SholatCache> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is SholatCacheAdapter &&
+      other is JadwalSholatCacheAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

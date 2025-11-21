@@ -13,6 +13,50 @@ bool _parseBool(dynamic value) {
 // =====================================================
 // PROGRES SHOLAT WAJIB HARI INI
 // =====================================================
+class SholatWajib {
+  final int id;
+  final String? iconPath;
+  final String nama;
+  final String slug;
+  final String deskripsi;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  SholatWajib({
+    required this.id,
+    this.iconPath,
+    required this.nama,
+    required this.slug,
+    required this.deskripsi,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory SholatWajib.fromJson(Map<String, dynamic> json) {
+    return SholatWajib(
+      id: json['id'] ?? 0,
+      iconPath: json['iconPath'] ?? '',
+      nama: json['nama'] ?? '',
+      slug: json['slug'] ?? '',
+      deskripsi: json['deskripsi'] ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'iconPath': iconPath,
+      'nama': nama,
+      'slug': slug,
+      'deskripsi': deskripsi,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+}
+
 class RiwayatProgresWajib {
   final SholatWajib sholatWajib;
   final bool status;
@@ -96,25 +140,6 @@ class ProgresWajibDetail {
 // =====================================================
 // PROGRES SHOLAT SUNNAH HARI INI
 // =====================================================
-class ProgresSunnahItem {
-  final SholatSunnah sholatSunnah;
-  final bool progres;
-
-  ProgresSunnahItem({required this.sholatSunnah, required this.progres});
-
-  factory ProgresSunnahItem.fromJson(Map<String, dynamic> json) {
-    return ProgresSunnahItem(
-      sholatSunnah: SholatSunnah.fromJson(json['sholat_sunnah']),
-      progres: _parseBool(json['progres']),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'sholat_sunnah': sholatSunnah.toJson(),
-    'progres': progres,
-  };
-}
-
 class ProgresSunnahDetail {
   final int id;
   final int userId;
@@ -163,23 +188,33 @@ class ProgresSunnahDetail {
 // RIWAYAT PROGRES SUNNAH
 // =====================================================
 class RiwayatProgresSunnah {
-  final Map<String, List<ProgresSunnahDetail>> data;
+  final Sunnah sholatSunnah;
+  final bool status;
+  final ProgresSunnahDetail? progress;
 
-  RiwayatProgresSunnah({required this.data});
+  RiwayatProgresSunnah({
+    required this.sholatSunnah,
+    required this.status,
+    this.progress,
+  });
 
   factory RiwayatProgresSunnah.fromJson(Map<String, dynamic> json) {
-    final Map<String, List<ProgresSunnahDetail>> riwayat = {};
-    json.forEach((tanggal, list) {
-      if (list is List) {
-        riwayat[tanggal] = list
-            .map((item) => ProgresSunnahDetail.fromJson(item))
-            .toList();
-      }
-    });
-    return RiwayatProgresSunnah(data: riwayat);
+    return RiwayatProgresSunnah(
+      sholatSunnah: Sunnah.fromJson(
+        json['sholat_sunnah'] as Map<String, dynamic>? ?? {},
+      ),
+      status: _parseBool(json['status']),
+      progress: json['progress'] != null
+          ? ProgresSunnahDetail.fromJson(
+              json['progress'] as Map<String, dynamic>,
+            )
+          : null,
+    );
   }
 
-  Map<String, dynamic> toJson() => data.map(
-    (tgl, list) => MapEntry(tgl, list.map((e) => e.toJson()).toList()),
-  );
+  Map<String, dynamic> toJson() => {
+    'sholat_sunnah': sholatSunnah.toJson(),
+    'status': status,
+    'progress': progress?.toJson(),
+  };
 }

@@ -161,7 +161,7 @@ class _PrayerTimeDisplayState extends ConsumerState<PrayerTimeDisplay> {
   Widget _buildPrayerTimeContent(
     BuildContext context,
     WidgetRef ref,
-    Sholat sholat,
+    JadwalSholat sholat,
   ) {
     final now = DateTime.now();
     final currentTime =

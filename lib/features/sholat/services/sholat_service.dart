@@ -45,7 +45,7 @@ class SholatService {
       final responseData = response.data as Map<String, dynamic>;
       final kategoriPostingan = responseData['data'] as List<dynamic>? ?? [];
       final sholatList = kategoriPostingan
-          .map((e) => Sholat.fromJson(e as Map<String, dynamic>))
+          .map((e) => JadwalSholat.fromJson(e as Map<String, dynamic>))
           .toList();
 
       return {
@@ -67,7 +67,7 @@ class SholatService {
     bool? isJamaah,
     String? lokasi,
     String? keterangan,
-    int? sunnahId,
+    int? rakaat,
   }) async {
     try {
       final endpoint = jenis.toLowerCase() == 'wajib'
@@ -85,7 +85,9 @@ class SholatService {
           : {
               'sholat': sholat,
               'status': status, // tepat_waktu, terlambat, tidak_sholat
-              if (sunnahId != null) 'sholat_sunnah_id': sunnahId,
+              'rakaat': rakaat ?? 0,
+              'lokasi': lokasi ?? '',
+              'keterangan': keterangan ?? '',
             };
 
       final response = await ApiClient.dio.post(endpoint, data: data);
@@ -103,8 +105,8 @@ class SholatService {
     }
   }
 
-  // Get Progress Sholat by Tanggal
-  static Future<Map<String, dynamic>> getProgressSholatByTanggal({
+  // Get Riwayat Progress Sholat by Tanggal
+  static Future<Map<String, dynamic>> getRiwayatProgressSholatByTanggal({
     required String jenis,
     required String tanggal, // Format: YYYY-MM-DD
   }) async {
@@ -119,11 +121,12 @@ class SholatService {
       );
 
       final responseData = response.data as Map<String, dynamic>;
+      final data = responseData['data'] as List<dynamic>;
 
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-        'data': responseData['data'],
+        'data': data,
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);
@@ -148,78 +151,6 @@ class SholatService {
       return {
         'status': responseData['status'],
         'message': responseData['message'],
-      };
-    } on DioException catch (e) {
-      final error = ApiClient.parseDioError(e);
-      throw Exception(error);
-    }
-  }
-
-  // Get Progress Sholat Wajib Hari Ini
-  static Future<Map<String, dynamic>> getProgressSholatWajibHariIni() async {
-    try {
-      final response = await ApiClient.dio.get('/sholat/wajib/hari-ini');
-
-      final responseData = response.data as Map<String, dynamic>;
-
-      return {
-        'status': responseData['status'],
-        'message': responseData['message'],
-        'data': responseData['data'],
-      };
-    } on DioException catch (e) {
-      final error = ApiClient.parseDioError(e);
-      throw Exception(error);
-    }
-  }
-
-  // Get Progress Sholat Sunnah Hari Ini
-  static Future<Map<String, dynamic>> getProgressSholatSunnahHariIni() async {
-    try {
-      final response = await ApiClient.dio.get('/sholat/sunnah/hari-ini');
-
-      final responseData = response.data as Map<String, dynamic>;
-
-      return {
-        'status': responseData['status'],
-        'message': responseData['message'],
-        'data': responseData['data'],
-      };
-    } on DioException catch (e) {
-      final error = ApiClient.parseDioError(e);
-      throw Exception(error);
-    }
-  }
-
-  // Get Progress Wajib Riwayat
-  static Future<Map<String, dynamic>> getProgressSholatWajibRiwayat() async {
-    try {
-      final response = await ApiClient.dio.get('/sholat/wajib/riwayat');
-
-      final responseData = response.data as Map<String, dynamic>;
-
-      return {
-        'status': responseData['status'],
-        'message': responseData['message'],
-        'data': responseData['data'],
-      };
-    } on DioException catch (e) {
-      final error = ApiClient.parseDioError(e);
-      throw Exception(error);
-    }
-  }
-
-  // Get Progress Sunnah Riwayat
-  static Future<Map<String, dynamic>> getProgressSholatSunnahRiwayat() async {
-    try {
-      final response = await ApiClient.dio.get('/sholat/sunnah/riwayat');
-
-      final responseData = response.data as Map<String, dynamic>;
-
-      return {
-        'status': responseData['status'],
-        'message': responseData['message'],
-        'data': responseData['data'],
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);

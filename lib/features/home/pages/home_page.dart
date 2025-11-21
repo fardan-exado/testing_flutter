@@ -119,7 +119,7 @@ class _HomeTabContentState extends ConsumerState<HomeTabContent> {
 
       // Fetch jadwal sholat if not available
       if (currentState.jadwalSholat == null ||
-          currentState.jadwalSholat == Sholat.empty()) {
+          currentState.jadwalSholat == JadwalSholat.empty()) {
         notifier.fetchJadwalSholat(useCurrentLocation: true);
       }
 

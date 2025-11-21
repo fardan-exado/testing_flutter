@@ -42,7 +42,7 @@ class HomeProvider extends StateNotifier<HomeState> {
       final cachedArtikelTerbaru = HomeCacheService.getCachedArtikelTerbaru();
 
       logger.info('Loading cached data...');
-      logger.info('cachedJadwal: ${cachedJadwal != Sholat.empty()}');
+      logger.info('cachedJadwal: ${cachedJadwal != JadwalSholat.empty()}');
       logger.info('cachedLocation: ${cachedLocation != null}');
       logger.info('cachedArtikelTerbaru: ${cachedArtikelTerbaru.length}');
 
@@ -53,7 +53,7 @@ class HomeProvider extends StateNotifier<HomeState> {
         );
       }
 
-      if (cachedJadwal != Sholat.empty() &&
+      if (cachedJadwal != JadwalSholat.empty() &&
           cachedLocation != null &&
           cachedLocation.isNotEmpty) {
         // Update state dengan semua data dari cache
@@ -102,7 +102,7 @@ class HomeProvider extends StateNotifier<HomeState> {
   Future<void> checkIsJadwalSholatCacheExist() async {
     final cachedJadwal = HomeCacheService.getCachedJadwalSholat();
 
-    final isCacheExist = cachedJadwal != Sholat.empty();
+    final isCacheExist = cachedJadwal != JadwalSholat.empty();
 
     state = state.copyWith(jadwalSholat: isCacheExist ? cachedJadwal : null);
   }
@@ -199,7 +199,7 @@ class HomeProvider extends StateNotifier<HomeState> {
             logger.severe('Failed to get any location: $e');
             // Jika gagal total, gunakan data cache yang ada di state
             final cachedJadwal = HomeCacheService.getCachedJadwalSholat();
-            if (cachedJadwal != Sholat.empty()) {
+            if (cachedJadwal != JadwalSholat.empty()) {
               state = state.copyWith(
                 status: HomeStatus.offline,
                 jadwalSholat: cachedJadwal,
@@ -222,7 +222,7 @@ class HomeProvider extends StateNotifier<HomeState> {
       final cachedJadwal = HomeCacheService.getCachedJadwalSholat();
 
       // Jika ada cache dan bukan force refresh, gunakan cache
-      if (cachedJadwal != Sholat.empty() && !forceRefresh) {
+      if (cachedJadwal != JadwalSholat.empty() && !forceRefresh) {
         logger.info('Using cached jadwal sholat data');
         state = state.copyWith(
           status: HomeStatus.loaded,
@@ -256,7 +256,7 @@ class HomeProvider extends StateNotifier<HomeState> {
         throw Exception('No jadwal sholat data available');
       }
 
-      final sholatList = Sholat.fromJson(sholatData);
+      final sholatList = JadwalSholat.fromJson(sholatData);
 
       logger.fine('Jadwal sholat fetched from network: $sholatList');
 
@@ -284,13 +284,13 @@ class HomeProvider extends StateNotifier<HomeState> {
       final cachedJadwal = HomeCacheService.getCachedJadwalSholat();
       final cachedLocation = await LocationService.getLocation();
 
-      if (cachedJadwal != Sholat.empty() ||
+      if (cachedJadwal != JadwalSholat.empty() ||
           (cachedLocation != null && cachedLocation.isNotEmpty)) {
         logger.info('Using cached data due to network error');
 
         state = state.copyWith(
           status: HomeStatus.offline,
-          jadwalSholat: cachedJadwal != Sholat.empty()
+          jadwalSholat: cachedJadwal != JadwalSholat.empty()
               ? cachedJadwal
               : state.jadwalSholat,
           latitude: cachedLocation != null
@@ -461,7 +461,7 @@ class HomeProvider extends StateNotifier<HomeState> {
   /// Dapatkan waktu sholat yang akan datang (next prayer)
   String? getCurrentPrayerTime() {
     final sholat = state.jadwalSholat;
-    if (sholat == null || sholat == Sholat.empty()) return null;
+    if (sholat == null || sholat == JadwalSholat.empty()) return null;
 
     final now = DateTime.now();
     final currentTime = TimeOfDay(hour: now.hour, minute: now.minute);
@@ -502,7 +502,7 @@ class HomeProvider extends StateNotifier<HomeState> {
   /// Dapatkan nama sholat yang akan datang (next prayer)
   String? getCurrentPrayerName() {
     final sholat = state.jadwalSholat;
-    if (sholat == null || sholat == Sholat.empty()) return null;
+    if (sholat == null || sholat == JadwalSholat.empty()) return null;
 
     final now = DateTime.now();
     final currentTime = TimeOfDay(hour: now.hour, minute: now.minute);
@@ -545,7 +545,7 @@ class HomeProvider extends StateNotifier<HomeState> {
   /// Mengembalikan nama sholat yang waktunya sudah lewat (sedang berjalan)
   String? getActivePrayerName() {
     final sholat = state.jadwalSholat;
-    if (sholat == null || sholat == Sholat.empty()) return null;
+    if (sholat == null || sholat == JadwalSholat.empty()) return null;
 
     final now = DateTime.now();
     final currentTime = TimeOfDay(hour: now.hour, minute: now.minute);
@@ -612,7 +612,7 @@ class HomeProvider extends StateNotifier<HomeState> {
   /// Cek apakah sudah lewat semua waktu sholat hari ini (setelah Isya)
   bool isAfterAllPrayers() {
     final sholat = state.jadwalSholat;
-    if (sholat == null || sholat == Sholat.empty()) return false;
+    if (sholat == null || sholat == JadwalSholat.empty()) return false;
 
     final now = DateTime.now();
     final currentTime = TimeOfDay(hour: now.hour, minute: now.minute);
@@ -630,7 +630,7 @@ class HomeProvider extends StateNotifier<HomeState> {
   /// Dapatkan sisa waktu hingga sholat berikutnya
   String? getTimeUntilNextPrayer() {
     final sholat = state.jadwalSholat;
-    if (sholat == null || sholat == Sholat.empty()) return null;
+    if (sholat == null || sholat == JadwalSholat.empty()) return null;
 
     final now = DateTime.now();
     final currentTime = TimeOfDay(hour: now.hour, minute: now.minute);

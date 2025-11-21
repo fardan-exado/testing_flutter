@@ -91,8 +91,8 @@ class Wajib {
 
 class Sunnah {
   final int id;
-  final String iconPath;
-  final String iconUrl;
+  final String? iconPath;
+  final String? iconUrl;
   final String nama;
   final String slug;
   final String deskripsi;
@@ -100,8 +100,8 @@ class Sunnah {
 
   Sunnah({
     required this.id,
-    required this.iconPath,
-    required this.iconUrl,
+    this.iconPath,
+    this.iconUrl,
     required this.nama,
     required this.slug,
     required this.deskripsi,

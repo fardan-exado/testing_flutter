@@ -8,7 +8,7 @@ class HomeCacheService {
   static const Duration _articleCacheDuration = Duration(hours: 24);
 
   // CACHE JADWAL SHOLAT
-  static Future<void> cacheJadwalSholat(Sholat jadwal) async {
+  static Future<void> cacheJadwalSholat(JadwalSholat jadwal) async {
     await CacheService.cacheData(
       key: CacheKeys.homeJadwalSholat,
       data: jadwal,
@@ -39,17 +39,17 @@ class HomeCacheService {
   }
 
   // GET JADWAL SHOLAT DARI CACHE
-  static Sholat getCachedJadwalSholat() {
-    return CacheService.getCachedData<Sholat>(
+  static JadwalSholat getCachedJadwalSholat() {
+    return CacheService.getCachedData<JadwalSholat>(
           key: CacheKeys.homeJadwalSholat, // -> 3. Gunakan key dari CacheKeys
           fromJson: (jsonData) {
             if (jsonData is Map<String, dynamic>) {
-              return Sholat.fromJson(jsonData);
+              return JadwalSholat.fromJson(jsonData);
             }
-            return Sholat.empty();
+            return JadwalSholat.empty();
           },
         ) ??
-        Sholat.empty();
+        JadwalSholat.empty();
   }
 
   // GET ARTIKEL TERBARU DARI CACHE
