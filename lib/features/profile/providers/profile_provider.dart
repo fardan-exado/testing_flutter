@@ -2,8 +2,8 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/utils/storage_helper.dart';
-import 'package:test_flutter/features/profile/profile_service.dart';
-import 'package:test_flutter/features/profile/profile_state.dart';
+import 'package:test_flutter/features/profile/services/profile_service.dart';
+import 'package:test_flutter/features/profile/states/profile_state.dart';
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
   ProfileNotifier() : super(ProfileState.initial());
@@ -86,6 +86,30 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     state = state.copyWith(status: ProfileStatus.loading);
     try {
       final response = await ProfileService.updateAvatar(avatar: avatar);
+      final data = response['data'];
+      final updatedUser = data['user'];
+
+      // Simpan user yang sudah diperbarui ke local storage
+      await StorageHelper.saveUser(updatedUser as Map<String, dynamic>);
+
+      state = state.copyWith(
+        status: ProfileStatus.success,
+        profile: updatedUser,
+        message: response['message'],
+      );
+    } catch (e) {
+      state = state.copyWith(
+        status: ProfileStatus.error,
+        message: e.toString(),
+      );
+    }
+  }
+
+  // Delete avatar pengguna.
+  Future<void> deleteAvatar() async {
+    state = state.copyWith(status: ProfileStatus.loading);
+    try {
+      final response = await ProfileService.deleteAvatar();
       final data = response['data'];
       final updatedUser = data['user'];
 

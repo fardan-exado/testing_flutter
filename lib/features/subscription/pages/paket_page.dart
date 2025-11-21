@@ -3,8 +3,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:midtrans_sdk/midtrans_sdk.dart';
+import 'package:test_flutter/app/router.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
+import 'package:test_flutter/features/profile/helpers/profile_responsive_helper.dart';
 import 'package:test_flutter/features/subscription/providers/paket_provider.dart';
 import 'package:test_flutter/features/subscription/providers/pesanan_provider.dart';
 import 'package:test_flutter/app/theme.dart';
@@ -103,27 +105,6 @@ class _PaketPageState extends ConsumerState<PaketPage> {
     super.dispose();
   }
 
-  // Helper methods
-  double _px(BuildContext c, double base) {
-    if (ResponsiveHelper.isSmallScreen(c)) return base * 0.9;
-    if (ResponsiveHelper.isMediumScreen(c)) return base;
-    if (ResponsiveHelper.isLargeScreen(c)) return base * 1.1;
-    return base * 1.2;
-  }
-
-  double _ts(BuildContext c, double base) =>
-      ResponsiveHelper.adaptiveTextSize(c, base);
-
-  EdgeInsets _pageHPad(BuildContext c) => EdgeInsets.symmetric(
-    horizontal: ResponsiveHelper.getResponsivePadding(c).left,
-  );
-
-  double _contentMaxWidth(BuildContext c) {
-    if (ResponsiveHelper.isExtraLargeScreen(c)) return 1200;
-    if (ResponsiveHelper.isLargeScreen(c)) return 1000;
-    return double.infinity;
-  }
-
   @override
   Widget build(BuildContext context) {
     final subscriptionState = ref.watch(paketProvider);
@@ -137,88 +118,83 @@ class _PaketPageState extends ConsumerState<PaketPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppTheme.primaryBlue.withValues(alpha: 0.03),
-              Colors.white,
-            ],
-            stops: const [0.0, 0.3],
+            colors: [Colors.white, Colors.grey.shade200],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // Header
+              // ===== Header dengan Gradient =====
               Container(
-                padding: EdgeInsets.all(_px(context, 24)),
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 20),
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
+                    colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(_px(context, 12)),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Icon(
-                              Icons.arrow_back_rounded,
-                              color: Colors.white,
-                              size: _px(context, 20),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: _px(context, 16)),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Paket Premium',
-                                style: TextStyle(
-                                  fontSize: _ts(context, 20),
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              SizedBox(height: _px(context, 4)),
-                              Text(
-                                'Upgrade untuk akses fitur premium',
-                                style: TextStyle(
-                                  fontSize: _ts(context, 12),
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/transaction-history',
-                            );
-                          },
-                          icon: const Icon(Icons.history_rounded),
+                    Container(
+                      padding: EdgeInsets.all(
+                        ProfileResponsiveHelper.px(context, 12),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                        child: Icon(
+                          Icons.arrow_back_rounded,
                           color: Colors.white,
-                          tooltip: 'Riwayat Transaksi',
+                          size: ProfileResponsiveHelper.px(context, 20),
                         ),
-                      ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Paket Premium',
+                          style: TextStyle(
+                            fontSize: ProfileResponsiveHelper.ts(context, 20),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.all(
+                        ProfileResponsiveHelper.px(context, 12),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.transactionHistory,
+                          );
+                        },
+                        child: Icon(
+                          Icons.history_rounded,
+                          color: Colors.white,
+                          size: ProfileResponsiveHelper.px(context, 20),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-
               // Content
               Expanded(
                 child: subscriptionState.isLoading && pakets.isEmpty
@@ -228,14 +204,14 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                         ),
                       )
                     : SingleChildScrollView(
-                        padding: _pageHPad(
+                        padding: ProfileResponsiveHelper.pageHPad(
                           context,
-                        ).add(EdgeInsets.symmetric(vertical: _px(context, 24))),
+                        ).add(EdgeInsets.symmetric(vertical: ProfileResponsiveHelper.px(context, 24))),
                         physics: const BouncingScrollPhysics(),
                         child: Center(
                           child: ConstrainedBox(
                             constraints: BoxConstraints(
-                              maxWidth: _contentMaxWidth(context),
+                              maxWidth: ProfileResponsiveHelper.contentMaxWidth(context),
                             ),
                             child: Column(
                               children: [
@@ -245,7 +221,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                                 else
                                   _buildFreePlanCard(context),
 
-                                SizedBox(height: _px(context, 32)),
+                                SizedBox(height: ProfileResponsiveHelper.px(context, 32)),
 
                                 // Plans Grid
                                 if (pakets.isEmpty)
@@ -253,7 +229,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                                 else
                                   _buildPlansGrid(context, pakets, isPremium),
 
-                                SizedBox(height: _px(context, 24)),
+                                SizedBox(height: ProfileResponsiveHelper.px(context, 24)),
                               ],
                             ),
                           ),
@@ -292,7 +268,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(_px(context, 20)),
+      padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 20)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
@@ -313,7 +289,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(_px(context, 10)),
+                padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 10)),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(12),
@@ -321,10 +297,10 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                 child: Icon(
                   Icons.workspace_premium_rounded,
                   color: Colors.white,
-                  size: _px(context, 28),
+                  size: ProfileResponsiveHelper.px(context, 28),
                 ),
               ),
-              SizedBox(width: _px(context, 12)),
+              SizedBox(width: ProfileResponsiveHelper.px(context, 12)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,16 +308,16 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                     Text(
                       'Status Premium Aktif',
                       style: TextStyle(
-                        fontSize: _ts(context, 16),
+                        fontSize: ProfileResponsiveHelper.ts(context, 16),
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
                     ),
-                    SizedBox(height: _px(context, 2)),
+                    SizedBox(height: ProfileResponsiveHelper.px(context, 2)),
                     Text(
                       activeSubscription.premiumPaket.nama,
                       style: TextStyle(
-                        fontSize: _ts(context, 13),
+                        fontSize: ProfileResponsiveHelper.ts(context, 13),
                         color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
@@ -350,9 +326,9 @@ class _PaketPageState extends ConsumerState<PaketPage> {
               ),
             ],
           ),
-          SizedBox(height: _px(context, 16)),
+          SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
           Container(
-            padding: EdgeInsets.all(_px(context, 12)),
+            padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 12)),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
@@ -366,17 +342,17 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                     Text(
                       'Dibeli Pada',
                       style: TextStyle(
-                        fontSize: _ts(context, 11),
+                        fontSize: ProfileResponsiveHelper.ts(context, 11),
                         color: Colors.white.withValues(alpha: 0.8),
                       ),
                     ),
-                    SizedBox(height: _px(context, 4)),
+                    SizedBox(height: ProfileResponsiveHelper.px(context, 4)),
                     Text(
                       dibayarDate != null
                           ? dibayarFormat.format(dibayarDate)
                           : activeSubscription.dibayarPada!,
                       style: TextStyle(
-                        fontSize: _ts(context, 13),
+                        fontSize: ProfileResponsiveHelper.ts(context, 13),
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -385,7 +361,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                 ),
                 Container(
                   width: 1,
-                  height: _px(context, 35),
+                  height: ProfileResponsiveHelper.px(context, 35),
                   color: Colors.white.withValues(alpha: 0.2),
                 ),
                 Column(
@@ -394,17 +370,17 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                     Text(
                       'Kadaluarsa',
                       style: TextStyle(
-                        fontSize: _ts(context, 11),
+                        fontSize: ProfileResponsiveHelper.ts(context, 11),
                         color: Colors.white.withValues(alpha: 0.8),
                       ),
                     ),
-                    SizedBox(height: _px(context, 4)),
+                    SizedBox(height: ProfileResponsiveHelper.px(context, 4)),
                     Text(
                       kadaluarsaDate != null
                           ? kadaluarsaFormat.format(kadaluarsaDate)
                           : activeSubscription.kadaluarsaPada!,
                       style: TextStyle(
-                        fontSize: _ts(context, 13),
+                        fontSize: ProfileResponsiveHelper.ts(context, 13),
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
@@ -422,7 +398,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
   Widget _buildFreePlanCard(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(_px(context, 24)),
+      padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 24)),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -441,31 +417,31 @@ class _PaketPageState extends ConsumerState<PaketPage> {
       child: Column(
         children: [
           Container(
-            padding: EdgeInsets.all(_px(context, 12)),
+            padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 12)),
             decoration: BoxDecoration(
               color: AppTheme.primaryBlue.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.lock_outline_rounded,
-              size: _px(context, 40),
+              size: ProfileResponsiveHelper.px(context, 40),
               color: AppTheme.primaryBlue,
             ),
           ),
-          SizedBox(height: _px(context, 16)),
+          SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
           Text(
             'Paket Gratis',
             style: TextStyle(
-              fontSize: _ts(context, 20),
+              fontSize: ProfileResponsiveHelper.ts(context, 20),
               fontWeight: FontWeight.bold,
               color: AppTheme.onSurface,
             ),
           ),
-          SizedBox(height: _px(context, 8)),
+          SizedBox(height: ProfileResponsiveHelper.px(context, 8)),
           Text(
             'Upgrade ke Premium untuk akses fitur Tahajud dan Monitoring',
             style: TextStyle(
-              fontSize: _ts(context, 14),
+              fontSize: ProfileResponsiveHelper.ts(context, 14),
               color: AppTheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
@@ -486,8 +462,8 @@ class _PaketPageState extends ConsumerState<PaketPage> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: isDesktop ? 3 : (isTablet ? 2 : 1),
-        crossAxisSpacing: _px(context, 16),
-        mainAxisSpacing: _px(context, 16),
+        crossAxisSpacing: ProfileResponsiveHelper.px(context, 16),
+        mainAxisSpacing: ProfileResponsiveHelper.px(context, 16),
       ),
       itemCount: plans.length,
       itemBuilder: (context, index) {
@@ -519,7 +495,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
         children: [
           // Header dengan gradient
           Container(
-            padding: EdgeInsets.all(_px(context, 16)),
+            padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 16)),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -537,8 +513,8 @@ class _PaketPageState extends ConsumerState<PaketPage> {
               children: [
                 if (cover != null)
                   SizedBox(
-                    width: _px(context, 80),
-                    height: _px(context, 60),
+                    width: ProfileResponsiveHelper.px(context, 80),
+                    height: ProfileResponsiveHelper.px(context, 60),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
@@ -557,7 +533,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                           child: Icon(
                             Icons.workspace_premium_rounded,
                             color: Colors.white,
-                            size: _px(context, 20),
+                            size: ProfileResponsiveHelper.px(context, 20),
                           ),
                         ),
                       ),
@@ -565,7 +541,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                   )
                 else
                   Container(
-                    padding: EdgeInsets.all(_px(context, 10)),
+                    padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 10)),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
@@ -575,15 +551,15 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                     child: Icon(
                       Icons.workspace_premium_rounded,
                       color: Colors.white,
-                      size: _px(context, 24),
+                      size: ProfileResponsiveHelper.px(context, 24),
                     ),
                   ),
-                SizedBox(width: _px(context, 10)),
+                SizedBox(width: ProfileResponsiveHelper.px(context, 10)),
                 Flexible(
                   child: Text(
                     plan.nama,
                     style: TextStyle(
-                      fontSize: _ts(context, 18),
+                      fontSize: ProfileResponsiveHelper.ts(context, 18),
                       fontWeight: FontWeight.bold,
                       color: AppTheme.onSurface,
                       letterSpacing: -0.5,
@@ -599,18 +575,18 @@ class _PaketPageState extends ConsumerState<PaketPage> {
           // Price Section
           Padding(
             padding: EdgeInsets.fromLTRB(
-              _px(context, 20),
-              _px(context, 20),
-              _px(context, 20),
-              _px(context, 16),
+              ProfileResponsiveHelper.px(context, 20),
+              ProfileResponsiveHelper.px(context, 20),
+              ProfileResponsiveHelper.px(context, 20),
+              ProfileResponsiveHelper.px(context, 16),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: _px(context, 12),
-                    vertical: _px(context, 8),
+                    horizontal: ProfileResponsiveHelper.px(context, 12),
+                    vertical: ProfileResponsiveHelper.px(context, 8),
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -624,28 +600,28 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                   child: Text(
                     'Durasi ${plan.durasi} Bulan',
                     style: TextStyle(
-                      fontSize: _ts(context, 12),
+                      fontSize: ProfileResponsiveHelper.ts(context, 12),
                       fontWeight: FontWeight.w600,
                       color: AppTheme.primaryBlue,
                       letterSpacing: 0.5,
                     ),
                   ),
                 ),
-                SizedBox(height: _px(context, 16)),
+                SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
                 Text(
                   currencyFormat.format(plan.harga),
                   style: TextStyle(
-                    fontSize: _ts(context, 32),
+                    fontSize: ProfileResponsiveHelper.ts(context, 32),
                     fontWeight: FontWeight.bold,
                     color: AppTheme.primaryBlue,
                     letterSpacing: -0.5,
                   ),
                 ),
-                SizedBox(height: _px(context, 12)),
+                SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
                 Text(
                   plan.deskripsi,
                   style: TextStyle(
-                    fontSize: _ts(context, 13),
+                    fontSize: ProfileResponsiveHelper.ts(context, 13),
                     color: AppTheme.onSurfaceVariant,
                     height: 1.5,
                   ),
@@ -659,10 +635,10 @@ class _PaketPageState extends ConsumerState<PaketPage> {
           // Buy Button
           Padding(
             padding: EdgeInsets.fromLTRB(
-              _px(context, 20),
-              _px(context, 8),
-              _px(context, 20),
-              _px(context, 20),
+              ProfileResponsiveHelper.px(context, 20),
+              ProfileResponsiveHelper.px(context, 8),
+              ProfileResponsiveHelper.px(context, 20),
+              ProfileResponsiveHelper.px(context, 20),
             ),
             child: SizedBox(
               width: double.infinity,
@@ -671,7 +647,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                     ? null
                     : () => _handleBuyPlan(context, plan.id),
                 style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: _px(context, 16)),
+                  padding: EdgeInsets.symmetric(vertical: ProfileResponsiveHelper.px(context, 16)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -685,7 +661,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                 child: Text(
                   isPremium ? 'Sudah Aktif' : 'Beli Sekarang',
                   style: TextStyle(
-                    fontSize: _ts(context, 16),
+                    fontSize: ProfileResponsiveHelper.ts(context, 16),
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
                   ),
@@ -703,22 +679,22 @@ class _PaketPageState extends ConsumerState<PaketPage> {
       child: Column(
         children: [
           Container(
-            padding: EdgeInsets.all(_px(context, 16)),
+            padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 16)),
             decoration: BoxDecoration(
               color: Colors.grey.shade100,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.inbox_rounded,
-              size: _px(context, 56),
+              size: ProfileResponsiveHelper.px(context, 56),
               color: Colors.grey.shade400,
             ),
           ),
-          SizedBox(height: _px(context, 16)),
+          SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
           Text(
             'Paket tidak tersedia',
             style: TextStyle(
-              fontSize: _ts(context, 16),
+              fontSize: ProfileResponsiveHelper.ts(context, 16),
               color: AppTheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
@@ -792,7 +768,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
         // Navigate to detail page with the order data
         Navigator.pushNamed(
           context,
-          '/pesanan-detail',
+          AppRoutes.pesananDetail,
           arguments: {'pesanan': latestPendingOrder, 'snapToken': snapToken},
         );
       } else {

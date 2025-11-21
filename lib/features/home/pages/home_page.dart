@@ -23,7 +23,7 @@ import 'package:test_flutter/core/utils/responsive_helper.dart';
 import '../../../app/theme.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();

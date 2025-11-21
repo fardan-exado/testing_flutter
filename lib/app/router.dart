@@ -23,7 +23,7 @@ import 'package:test_flutter/features/quran/pages/surah_detail_page.dart';
 import 'package:test_flutter/features/sedekah/pages/sedekah_page.dart';
 import 'package:test_flutter/features/sholat/pages/sholat_page.dart';
 import 'package:test_flutter/features/subscription/models/pesanan.dart';
-import 'package:test_flutter/features/subscription/pages/pesanan_detail_page.dart';
+import 'package:test_flutter/features/subscription/pages/detail_pesanan_page.dart';
 import 'package:test_flutter/features/syahadat/pages/syahadat_page.dart';
 import 'package:test_flutter/features/tahajud/pages/tahajud_page.dart';
 import 'package:test_flutter/features/subscription/pages/paket_page.dart';
@@ -49,17 +49,21 @@ class AppRoutes {
   static const String tahajud = '/tahajud';
   static const String articleDetail = '/article-detail';
   static const String alarmSettings = '/alarm-settings';
+
+  /// Profile and related pages
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
   static const String changePassword = '/change-password';
   static const String manageFamily = '/manage-family';
+  static const String plan = '/plan';
+  static const String transactionHistory = '/transaction-history';
+  static const String pesananDetail = '/pesanan-detail';
+  ///
+
   static const String article = '/article';
   static const String syahadat = '/syahadat';
   static const String komunitas = '/komunitas';
   static const String haji = '/haji';
-  static const String plan = '/plan';
-  static const String transactionHistory = '/transaction-history';
-  static const String pesananDetail = '/pesanan-detail';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -158,7 +162,7 @@ class AppRoutes {
       case pesananDetail:
         final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
-          builder: (_) => PesananDetailPage(
+          builder: (_) => DetailPesananPage(
             pesanan: args['pesanan'] as Pesanan,
             snapToken: args['snapToken'] as String?,
           ),

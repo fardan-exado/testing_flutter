@@ -1,772 +1,826 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_flutter/app/theme.dart';
+import 'package:test_flutter/core/widgets/toast.dart';
+import 'package:test_flutter/features/profile/helpers/profile_responsive_helper.dart';
+import 'package:test_flutter/features/profile/models/anak.dart';
+import 'package:test_flutter/features/profile/models/relasi_orang_tua_anak.dart';
+import 'package:test_flutter/features/profile/providers/family_provider.dart';
+import 'package:test_flutter/features/profile/states/family_state.dart';
 
-class FamilyMember {
-  final String id;
-  final String name;
-  final int age;
-  final String role;
-  final String avatar;
-  final bool isActive;
-
-  const FamilyMember({
-    required this.id,
-    required this.name,
-    required this.age,
-    required this.role,
-    required this.avatar,
-    this.isActive = true,
-  });
-}
-
-class ManageFamilyPage extends StatefulWidget {
+class ManageFamilyPage extends ConsumerStatefulWidget {
   const ManageFamilyPage({super.key});
 
   @override
-  State<ManageFamilyPage> createState() => _ManageFamilyPageState();
+  ConsumerState<ManageFamilyPage> createState() => _ManageFamilyPageState();
 }
 
-class _ManageFamilyPageState extends State<ManageFamilyPage> {
-  List<FamilyMember> familyMembers = [
-    const FamilyMember(
-      id: '1',
-      name: 'Ahmad Fauzan',
-      age: 35,
-      role: 'Ayah',
-      avatar: '👨‍💼',
-    ),
-    const FamilyMember(
-      id: '2',
-      name: 'Siti Aminah',
-      age: 32,
-      role: 'Ibu',
-      avatar: '👩‍💼',
-    ),
-    const FamilyMember(
-      id: '3',
-      name: 'Ahmad',
-      age: 15,
-      role: 'Anak',
-      avatar: '👦',
-    ),
-    const FamilyMember(
-      id: '4',
-      name: 'Fatimah',
-      age: 12,
-      role: 'Anak',
-      avatar: '👧',
-    ),
-    const FamilyMember(
-      id: '5',
-      name: 'Ali',
-      age: 8,
-      role: 'Anak',
-      avatar: '👶',
-    ),
-  ];
+class _ManageFamilyPageState extends ConsumerState<ManageFamilyPage>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+  ProviderSubscription? _familySub;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+
+    // Load family data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(familyProvider.notifier).loadFamilyData();
+    });
+
+    // Setup manual listener for family state changes
+    _familySub = ref.listenManual(familyProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      if (next.status == FamilyStatus.success && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.success,
+          duration: const Duration(seconds: 3),
+        );
+        ref.read(familyProvider.notifier).clearMessage();
+        ref.read(familyProvider.notifier).resetStatus();
+      } else if (next.status == FamilyStatus.error && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.error,
+          duration: const Duration(seconds: 4),
+        );
+        ref.read(familyProvider.notifier).clearMessage();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _familySub?.close();
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-    final isLargeScreen = screenWidth > 800;
-
-    // Responsive values
-    final horizontalPadding = isLargeScreen ? 32.0 : (isTablet ? 24.0 : 20.0);
-    final cardPadding = isTablet ? 20.0 : 16.0;
+    final familyState = ref.watch(familyProvider);
+    final isLoading = familyState.status == FamilyStatus.loading;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(
-          'Kelola Keluarga',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: isTablet ? 22 : 20,
+      backgroundColor: const Color(0xFF1E88E5),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, Colors.grey.shade200],
           ),
         ),
-        backgroundColor: AppTheme.primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add, size: isTablet ? 28 : 24),
-            onPressed: () => _showAddMemberDialog(context),
-            tooltip: 'Tambah Anggota',
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header Info
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.all(horizontalPadding),
-              padding: EdgeInsets.all(cardPadding),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E88E5), Color(0xFF26A69A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ===== Header dengan Gradient =====
+              Container(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 20),
                 ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.family_restroom,
-                        color: Colors.white,
-                        size: isTablet ? 32 : 28,
-                      ),
-                      SizedBox(width: isTablet ? 16 : 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Total Anggota Keluarga',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              '${familyMembers.length} Orang',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isTablet ? 24 : 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
                   ),
-                  SizedBox(height: isTablet ? 16 : 12),
-                  Text(
-                    'Kelola anggota keluarga untuk monitoring ibadah yang lebih baik',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: isTablet ? 15 : 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Family Members List
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      'Anggota Keluarga',
-                      style: TextStyle(
-                        fontSize: isTablet ? 20 : 18,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF2D3748),
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 16 : 12),
-
-                    // Family Members Cards
-                    ...familyMembers.map(
-                      (member) => Container(
-                        constraints: BoxConstraints(
-                          maxWidth: isLargeScreen ? 600 : double.infinity,
-                        ),
-                        margin: EdgeInsets.only(bottom: isTablet ? 16 : 12),
-                        child: _buildMemberCard(
-                          member,
-                          isTablet,
-                          isLargeScreen,
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: isTablet ? 24 : 20),
-
-                    // Add Member Button
                     Container(
-                      constraints: BoxConstraints(
-                        maxWidth: isLargeScreen ? 600 : double.infinity,
+                      padding: EdgeInsets.all(
+                        ProfileResponsiveHelper.px(context, 12),
                       ),
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showAddMemberDialog(context),
-                        icon: Icon(Icons.person_add, size: isTablet ? 24 : 20),
-                        label: Text(
-                          'Tambah Anggota Keluarga',
-                          style: TextStyle(
-                            fontSize: isTablet ? 18 : 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                        child: Icon(
+                          Icons.arrow_back_rounded,
+                          color: Colors.white,
+                          size: ProfileResponsiveHelper.px(context, 20),
                         ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF1E88E5),
-                          side: const BorderSide(
-                            color: Color(0xFF1E88E5),
-                            width: 2,
-                          ),
-                          padding: EdgeInsets.symmetric(
-                            vertical: isTablet ? 16 : 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Kelola Keluarga',
+                          style: TextStyle(
+                            fontSize: ProfileResponsiveHelper.ts(context, 20),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
                           ),
                         ),
                       ),
                     ),
-
-                    SizedBox(height: isTablet ? 32 : 24),
+                    Container(
+                      padding: EdgeInsets.all(
+                        ProfileResponsiveHelper.px(context, 12),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                          ref.read(familyProvider.notifier).loadFamilyData();
+                        },
+                        child: Icon(
+                          Icons.refresh_rounded,
+                          color: Colors.white,
+                          size: ProfileResponsiveHelper.px(context, 20),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-          ],
+
+              // ===== TabBar =====
+              SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
+
+              Container(
+                margin: EdgeInsets.symmetric(
+                  horizontal: ProfileResponsiveHelper.px(context, 24),
+                ),
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicator: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelColor: AppTheme.primaryBlue,
+                  unselectedLabelColor: AppTheme.onSurfaceVariant,
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: ProfileResponsiveHelper.textSize(context, 13),
+                  ),
+                  unselectedLabelStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: ProfileResponsiveHelper.textSize(context, 13),
+                  ),
+                  dividerColor: Colors.transparent,
+                  tabs: const [
+                    Tab(text: 'Anak Aktif'),
+                    Tab(text: 'Pengajuan Anak'),
+                  ],
+                ),
+              ),
+
+              // ===== TabBarView Content =====
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Tab 1: Anak Aktif
+                    _buildAnakAktifTab(context, familyState, isLoading),
+                    // Tab 2: Pengajuan Anak
+                    _buildPengajuanAnakTab(context, familyState, isLoading),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildMemberCard(
-    FamilyMember member,
-    bool isTablet,
-    bool isLargeScreen,
+  // Tab 1: Anak Aktif
+  Widget _buildAnakAktifTab(
+    BuildContext context,
+    FamilyState familyState,
+    bool isLoading,
   ) {
-    final cardPadding = isTablet ? 20.0 : 16.0;
-    final avatarSize = isTablet ? 60.0 : 50.0;
+    return SingleChildScrollView(
+      padding: ProfileResponsiveHelper.getPageHorizontalPadding(context),
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ProfileResponsiveHelper.verticalGap(context, medium: 24),
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: EdgeInsets.all(cardPadding),
-        child: Row(
-          children: [
-            // Avatar
-            Container(
-              width: avatarSize,
-              height: avatarSize,
-              decoration: BoxDecoration(
-                color: _getRoleColor(member.role).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  member.avatar,
-                  style: TextStyle(fontSize: isTablet ? 28 : 24),
+          if (isLoading)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 32),
                 ),
+                child: const CircularProgressIndicator(
+                  color: Color(0xFF1E88E5),
+                ),
+              ),
+            )
+          else if (familyState.anakAktif.isEmpty)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 32),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      size: ProfileResponsiveHelper.px(context, 64),
+                      color: Colors.grey[300],
+                    ),
+                    SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
+                    Text(
+                      'Belum ada anak aktif',
+                      style: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 16),
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ...familyState.anakAktif.map(
+              (anak) => Container(
+                margin: EdgeInsets.only(
+                  bottom: ProfileResponsiveHelper.px(context, 12),
+                ),
+                child: _buildAnakCard(context, anak),
               ),
             ),
 
-            SizedBox(width: isTablet ? 16 : 12),
+          ProfileResponsiveHelper.verticalGap(context, medium: 24),
+        ],
+      ),
+    );
+  }
 
-            // Member Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    member.name,
-                    style: TextStyle(
-                      fontSize: isTablet ? 18 : 16,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF2D3748),
+  // Tab 2: Pengajuan Anak
+  Widget _buildPengajuanAnakTab(
+    BuildContext context,
+    FamilyState familyState,
+    bool isLoading,
+  ) {
+    return SingleChildScrollView(
+      padding: ProfileResponsiveHelper.getPageHorizontalPadding(context),
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ProfileResponsiveHelper.verticalGap(context, medium: 24),
+
+          // Tambah Pengajuan Button
+          SizedBox(
+            width: double.infinity,
+            height: ProfileResponsiveHelper.px(context, 60),
+            child: ElevatedButton.icon(
+              onPressed: isLoading ? null : () => _showPengajuanDialog(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: Icon(
+                Icons.add,
+                size: ProfileResponsiveHelper.getIconSize(context),
+              ),
+              label: Text(
+                'Tambah Pengajuan',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 16),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+
+          ProfileResponsiveHelper.verticalGap(context, medium: 20),
+
+          if (isLoading)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 32),
+                ),
+                child: const CircularProgressIndicator(
+                  color: Color(0xFF1E88E5),
+                ),
+              ),
+            )
+          else if (familyState.pengajuanAnak.isEmpty)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 32),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.inbox_outlined,
+                      size: ProfileResponsiveHelper.px(context, 64),
+                      color: Colors.grey[300],
                     ),
+                    SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
+                    Text(
+                      'Tidak ada pengajuan',
+                      style: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 16),
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ...familyState.pengajuanAnak.map(
+              (pengajuan) => Container(
+                margin: EdgeInsets.only(
+                  bottom: ProfileResponsiveHelper.px(context, 12),
+                ),
+                child: _buildPengajuanCard(context, pengajuan),
+              ),
+            ),
+
+          ProfileResponsiveHelper.verticalGap(context, medium: 24),
+        ],
+      ),
+    );
+  }
+
+  // ===== Build Anak Card =====
+  Widget _buildAnakCard(BuildContext context, Anak anak) {
+    return Builder(
+      builder: (context) {
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: ProfileResponsiveHelper.getCardPadding(context),
+            child: Row(
+              children: [
+                // Avatar
+                Container(
+                  width: ProfileResponsiveHelper.px(context, 50),
+                  height: ProfileResponsiveHelper.px(context, 50),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF1E88E5).withValues(alpha: 0.1),
                   ),
-                  SizedBox(height: isTablet ? 6 : 4),
-                  Row(
+                  child: Center(
+                    child: anak.avatar != null
+                        ? Image.network(
+                            anak.avatar!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.person,
+                              size: ProfileResponsiveHelper.px(context, 28),
+                              color: const Color(0xFF1E88E5),
+                            ),
+                          )
+                        : Icon(
+                            Icons.person,
+                            size: ProfileResponsiveHelper.px(context, 28),
+                            color: const Color(0xFF1E88E5),
+                          ),
+                  ),
+                ),
+                ProfileResponsiveHelper.horizontalGap(context),
+                // Anak Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        anak.name,
+                        style: TextStyle(
+                          fontSize: ProfileResponsiveHelper.textSize(
+                            context,
+                            16,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2D3748),
+                        ),
+                      ),
+                      SizedBox(height: ProfileResponsiveHelper.px(context, 4)),
+                      Text(
+                        anak.email,
+                        style: TextStyle(
+                          fontSize: ProfileResponsiveHelper.textSize(
+                            context,
+                            12,
+                          ),
+                          color: const Color(0xFF4A5568),
+                        ),
+                      ),
+                      SizedBox(height: ProfileResponsiveHelper.px(context, 6)),
                       Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: isTablet ? 10 : 8,
-                          vertical: isTablet ? 6 : 4,
+                          horizontal: ProfileResponsiveHelper.px(context, 8),
+                          vertical: ProfileResponsiveHelper.px(context, 4),
                         ),
                         decoration: BoxDecoration(
-                          color: _getRoleColor(member.role),
-                          borderRadius: BorderRadius.circular(12),
+                          color: const Color(0xFF1E88E5).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          member.role,
+                          'Status: Aktif',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isTablet ? 12 : 10,
+                            fontSize: ProfileResponsiveHelper.textSize(
+                              context,
+                              10,
+                            ),
+                            color: const Color(0xFF1E88E5),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      SizedBox(width: isTablet ? 12 : 8),
+                    ],
+                  ),
+                ),
+                // Actions
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    size: ProfileResponsiveHelper.getIconSize(context),
+                    color: const Color(0xFF4A5568),
+                  ),
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      _showDeleteAnakConfirmation(context, anak);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete, size: 18, color: Colors.red),
+                          SizedBox(
+                            width: ProfileResponsiveHelper.px(context, 8),
+                          ),
+                          const Text(
+                            'Hapus',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ===== Build Pengajuan Card =====
+  Widget _buildPengajuanCard(
+    BuildContext context,
+    RelasiOrangTuaAnak pengajuan,
+  ) {
+    return Builder(
+      builder: (context) {
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: ProfileResponsiveHelper.getCardPadding(context),
+            child: Row(
+              children: [
+                // Status Icon
+                Container(
+                  width: ProfileResponsiveHelper.px(context, 50),
+                  height: ProfileResponsiveHelper.px(context, 50),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.hourglass_bottom,
+                      size: ProfileResponsiveHelper.px(context, 28),
+                      color: const Color(0xFFFF9800),
+                    ),
+                  ),
+                ),
+                ProfileResponsiveHelper.horizontalGap(context),
+                // Pengajuan Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        '${member.age} tahun',
+                        pengajuan.anak?.email ?? '',
                         style: TextStyle(
-                          fontSize: isTablet ? 14 : 12,
+                          fontSize: ProfileResponsiveHelper.textSize(
+                            context,
+                            16,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2D3748),
+                        ),
+                      ),
+                      SizedBox(height: ProfileResponsiveHelper.px(context, 4)),
+                      Text(
+                        'Menunggu penerimaan',
+                        style: TextStyle(
+                          fontSize: ProfileResponsiveHelper.textSize(
+                            context,
+                            12,
+                          ),
                           color: const Color(0xFF4A5568),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Actions
-            PopupMenuButton<String>(
-              icon: Icon(
-                Icons.more_vert,
-                size: isTablet ? 24 : 20,
-                color: const Color(0xFF4A5568),
-              ),
-              onSelected: (value) {
-                switch (value) {
-                  case 'edit':
-                    _showEditMemberDialog(context, member);
-                    break;
-                  case 'delete':
-                    _showDeleteConfirmation(context, member);
-                    break;
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 18),
-                      SizedBox(width: 8),
-                      Text('Edit'),
+                      SizedBox(height: ProfileResponsiveHelper.px(context, 6)),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: ProfileResponsiveHelper.px(context, 8),
+                          vertical: ProfileResponsiveHelper.px(context, 4),
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Status: ${pengajuan.status}',
+                          style: TextStyle(
+                            fontSize: ProfileResponsiveHelper.textSize(
+                              context,
+                              10,
+                            ),
+                            color: const Color(0xFFFF9800),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                if (member.role != 'Ayah' && member.role != 'Ibu')
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Hapus', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
+                // Actions
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    size: ProfileResponsiveHelper.getIconSize(context),
+                    color: const Color(0xFF4A5568),
                   ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color _getRoleColor(String role) {
-    switch (role) {
-      case 'Ayah':
-        return const Color(0xFF1E88E5);
-      case 'Ibu':
-        return const Color(0xFF26A69A);
-      case 'Anak':
-        return const Color(0xFFFF9800);
-      default:
-        return const Color(0xFF9E9E9E);
-    }
-  }
-
-  void _showAddMemberDialog(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-
-    final nameController = TextEditingController();
-    final ageController = TextEditingController();
-    String selectedRole = 'Anak';
-    String selectedAvatar = '👶';
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text(
-            'Tambah Anggota Keluarga',
-            style: TextStyle(
-              fontSize: isTablet ? 20 : 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: SizedBox(
-            width: isTablet ? 400 : 300,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Avatar Selection
-                Text(
-                  'Pilih Avatar:',
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: isTablet ? 12 : 8),
-                Wrap(
-                  spacing: isTablet ? 12 : 8,
-                  children: ['👦', '👧', '👶', '🧒', '👨', '👩'].map((avatar) {
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedAvatar = avatar;
-                        });
-                      },
-                      child: Container(
-                        width: isTablet ? 50 : 40,
-                        height: isTablet ? 50 : 40,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: selectedAvatar == avatar
-                                ? const Color(0xFF1E88E5)
-                                : Colors.grey[300]!,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            avatar,
-                            style: TextStyle(fontSize: isTablet ? 24 : 20),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-
-                SizedBox(height: isTablet ? 20 : 16),
-
-                // Name Field
-                TextField(
-                  controller: nameController,
-                  style: TextStyle(fontSize: isTablet ? 16 : 14),
-                  decoration: InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.person_outline),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
-                  ),
-                ),
-
-                SizedBox(height: isTablet ? 16 : 12),
-
-                // Age Field
-                TextField(
-                  controller: ageController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(fontSize: isTablet ? 16 : 14),
-                  decoration: InputDecoration(
-                    labelText: 'Usia',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.cake_outlined),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
-                  ),
-                ),
-
-                SizedBox(height: isTablet ? 16 : 12),
-
-                // Role Dropdown
-                DropdownButtonFormField<String>(
-                  initialValue: selectedRole,
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    color: const Color(0xFF2D3748),
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Peran',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.family_restroom),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
-                  ),
-                  items: ['Anak', 'Ayah', 'Ibu', 'Kakek', 'Nenek'].map((role) {
-                    return DropdownMenuItem(value: role, child: Text(role));
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedRole = value!;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Batal',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.isNotEmpty &&
-                    ageController.text.isNotEmpty) {
-                  final newMember = FamilyMember(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    name: nameController.text,
-                    age: int.parse(ageController.text),
-                    role: selectedRole,
-                    avatar: selectedAvatar,
-                  );
-
-                  this.setState(() {
-                    familyMembers.add(newMember);
-                  });
-
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${nameController.text} berhasil ditambahkan!',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              },
-              child: Text(
-                'Tambah',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showEditMemberDialog(BuildContext context, FamilyMember member) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
-
-    final nameController = TextEditingController(text: member.name);
-    final ageController = TextEditingController(text: member.age.toString());
-    String selectedRole = member.role;
-    String selectedAvatar = member.avatar;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text(
-            'Edit Anggota Keluarga',
-            style: TextStyle(
-              fontSize: isTablet ? 20 : 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: SizedBox(
-            width: isTablet ? 400 : 300,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Avatar Selection
-                Text(
-                  'Pilih Avatar:',
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: isTablet ? 12 : 8),
-                Wrap(
-                  spacing: isTablet ? 12 : 8,
-                  children: ['👦', '👧', '👶', '🧒', '👨', '👩'].map((avatar) {
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedAvatar = avatar;
-                        });
-                      },
-                      child: Container(
-                        width: isTablet ? 50 : 40,
-                        height: isTablet ? 50 : 40,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: selectedAvatar == avatar
-                                ? const Color(0xFF1E88E5)
-                                : Colors.grey[300]!,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            avatar,
-                            style: TextStyle(fontSize: isTablet ? 24 : 20),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-
-                SizedBox(height: isTablet ? 20 : 16),
-
-                // Name Field
-                TextField(
-                  controller: nameController,
-                  style: TextStyle(fontSize: isTablet ? 16 : 14),
-                  decoration: InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.person_outline),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
-                  ),
-                ),
-
-                SizedBox(height: isTablet ? 16 : 12),
-
-                // Age Field
-                TextField(
-                  controller: ageController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(fontSize: isTablet ? 16 : 14),
-                  decoration: InputDecoration(
-                    labelText: 'Usia',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.cake_outlined),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
-                  ),
-                ),
-
-                SizedBox(height: isTablet ? 16 : 12),
-
-                // Role Dropdown
-                DropdownButtonFormField<String>(
-                  initialValue: selectedRole,
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    color: const Color(0xFF2D3748),
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Peran',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.family_restroom),
-                    labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
-                  ),
-                  items: ['Anak', 'Ayah', 'Ibu', 'Kakek', 'Nenek'].map((role) {
-                    return DropdownMenuItem(value: role, child: Text(role));
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedRole = value!;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Batal',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.isNotEmpty &&
-                    ageController.text.isNotEmpty) {
-                  final updatedMember = FamilyMember(
-                    id: member.id,
-                    name: nameController.text,
-                    age: int.parse(ageController.text),
-                    role: selectedRole,
-                    avatar: selectedAvatar,
-                  );
-
-                  this.setState(() {
-                    final index = familyMembers.indexWhere(
-                      (m) => m.id == member.id,
-                    );
-                    if (index != -1) {
-                      familyMembers[index] = updatedMember;
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      _showDeletePengajuanConfirmation(context, pengajuan.id);
                     }
-                  });
-
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Data anggota berhasil diperbarui!'),
-                      backgroundColor: Colors.green,
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete, size: 18, color: Colors.red),
+                          SizedBox(
+                            width: ProfileResponsiveHelper.px(context, 8),
+                          ),
+                          const Text(
+                            'Batalkan',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                }
-              },
-              child: Text(
-                'Simpan',
-                style: TextStyle(fontSize: isTablet ? 16 : 14),
-              ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context, FamilyMember member) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth > 600;
+  // ===== Show Pengajuan Dialog =====
+  void _showPengajuanDialog(BuildContext context) {
+    final emailController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Hapus Anggota',
-          style: TextStyle(
-            fontSize: isTablet ? 20 : 18,
-            fontWeight: FontWeight.bold,
+        title: Builder(
+          builder: (context) => Text(
+            'Ajukan Anak',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 18),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-        content: Text(
-          'Apakah Anda yakin ingin menghapus ${member.name} dari keluarga?',
-          style: TextStyle(fontSize: isTablet ? 16 : 14),
+        content: Builder(
+          builder: (context) => SizedBox(
+            width: ProfileResponsiveHelper.getContentMaxWidth(context),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Masukkan email anak yang ingin diajukan',
+                  style: TextStyle(
+                    fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: TextStyle(
+                    fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Email Anak',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelStyle: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Batal',
-              style: TextStyle(fontSize: isTablet ? 16 : 14),
+            child: Builder(
+              builder: (context) => Text(
+                'Batal',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
             ),
           ),
           ElevatedButton(
             onPressed: () {
-              setState(() {
-                familyMembers.removeWhere((m) => m.id == member.id);
-              });
-
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${member.name} berhasil dihapus dari keluarga',
-                  ),
-                  backgroundColor: Colors.orange,
+              if (emailController.text.isNotEmpty) {
+                ref
+                    .read(familyProvider.notifier)
+                    .pengajuanAnak(emailAnak: emailController.text.trim());
+                Navigator.pop(context);
+              }
+            },
+            child: Builder(
+              builder: (context) => Text(
+                'Ajukan',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
                 ),
-              );
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===== Delete Anak Confirmation =====
+  void _showDeleteAnakConfirmation(BuildContext context, Anak anak) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Builder(
+          builder: (context) => Text(
+            'Hapus Anak',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 18),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        content: Builder(
+          builder: (context) => Text(
+            'Apakah Anda yakin ingin menghapus ${anak.name}?',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 14),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Builder(
+              builder: (context) => Text(
+                'Batal',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ref.read(familyProvider.notifier).deleteAnak(relasiId: anak.id);
+              Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: Text(
-              'Hapus',
-              style: TextStyle(fontSize: isTablet ? 16 : 14),
+            child: Builder(
+              builder: (context) => Text(
+                'Hapus',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===== Delete Pengajuan Confirmation =====
+  void _showDeletePengajuanConfirmation(BuildContext context, int pengajuanId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Builder(
+          builder: (context) => Text(
+            'Batalkan Pengajuan',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 18),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        content: Builder(
+          builder: (context) => Text(
+            'Apakah Anda yakin ingin membatalkan pengajuan ini?',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 14),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Builder(
+              builder: (context) => Text(
+                'Batal',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ref
+                  .read(familyProvider.notifier)
+                  .deletePengajuanAnak(pengajuanId: pengajuanId);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Builder(
+              builder: (context) => Text(
+                'Batalkan',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
             ),
           ),
         ],

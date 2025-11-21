@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:test_flutter/app/router.dart';
 import 'package:test_flutter/app/theme.dart';
-import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
-import 'package:test_flutter/features/subscription/pages/detail_pesanan_page.dart';
+import 'package:test_flutter/features/profile/helpers/profile_responsive_helper.dart';
 import 'package:test_flutter/features/subscription/providers/pesanan_provider.dart';
 import 'package:test_flutter/features/subscription/states/pesanan_state.dart';
 
@@ -13,12 +13,10 @@ class RiwayatPage extends ConsumerStatefulWidget {
   const RiwayatPage({super.key});
 
   @override
-  ConsumerState<RiwayatPage> createState() =>
-      _RiwayatPageState();
+  ConsumerState<RiwayatPage> createState() => _RiwayatPageState();
 }
 
-class _RiwayatPageState
-    extends ConsumerState<RiwayatPage> {
+class _RiwayatPageState extends ConsumerState<RiwayatPage> {
   final currencyFormat = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp ',
@@ -31,27 +29,6 @@ class _RiwayatPageState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(pesananProvider.notifier).getRiwayatPesanan();
     });
-  }
-
-  // Helper methods
-  double _px(BuildContext c, double base) {
-    if (ResponsiveHelper.isSmallScreen(c)) return base * 0.9;
-    if (ResponsiveHelper.isMediumScreen(c)) return base;
-    if (ResponsiveHelper.isLargeScreen(c)) return base * 1.1;
-    return base * 1.2;
-  }
-
-  double _ts(BuildContext c, double base) =>
-      ResponsiveHelper.adaptiveTextSize(c, base);
-
-  EdgeInsets _pageHPad(BuildContext c) => EdgeInsets.symmetric(
-    horizontal: ResponsiveHelper.getResponsivePadding(c).left,
-  );
-
-  double _contentMaxWidth(BuildContext c) {
-    if (ResponsiveHelper.isExtraLargeScreen(c)) return 900;
-    if (ResponsiveHelper.isLargeScreen(c)) return 800;
-    return double.infinity;
   }
 
   @override
@@ -78,90 +55,80 @@ class _RiwayatPageState
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              AppTheme.primaryBlue.withValues(alpha: 0.12),
-              AppTheme.accentGreen.withValues(alpha: 0.1),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, Colors.grey.shade200],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // Header - Matching Plan Page Style
+             // ===== Header dengan Gradient =====
               Container(
-                padding: EdgeInsets.all(_px(context, 24)),
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 20),
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
+                    colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryBlue.withValues(alpha: 0.2),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(_px(context, 12)),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Icon(
-                              Icons.arrow_back_rounded,
-                              color: Colors.white,
-                              size: _px(context, 20),
-                            ),
+                    Container(
+                      padding: EdgeInsets.all(
+                        ProfileResponsiveHelper.px(context, 12),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                        child: Icon(
+                          Icons.arrow_back_rounded,
+                          color: Colors.white,
+                          size: ProfileResponsiveHelper.px(context, 20),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Riwayat Transaksi',
+                          style: TextStyle(
+                            fontSize: ProfileResponsiveHelper.ts(context, 20),
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        SizedBox(width: _px(context, 16)),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Riwayat Transaksi',
-                                style: TextStyle(
-                                  fontSize: _ts(context, 20),
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              SizedBox(height: _px(context, 4)),
-                              Text(
-                                'Kelola pembelian paket premium Anda',
-                                style: TextStyle(
-                                  fontSize: _ts(context, 12),
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            ref
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.all(
+                        ProfileResponsiveHelper.px(context, 12),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                                                      ref
                                 .read(pesananProvider.notifier)
                                 .getRiwayatPesanan();
-                          },
-                          icon: const Icon(Icons.refresh_rounded),
+                        },
+                        child: Icon(
+                          Icons.refresh_rounded,
                           color: Colors.white,
-                          tooltip: 'Refresh',
+                          size: ProfileResponsiveHelper.px(context, 20),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -185,21 +152,21 @@ class _RiwayatPageState
                         },
                         color: const Color(0xFF1E88E5),
                         child: SingleChildScrollView(
-                          padding: _pageHPad(context).add(
-                            EdgeInsets.symmetric(vertical: _px(context, 24)),
+                          padding: ProfileResponsiveHelper.pageHPad(context).add(
+                            EdgeInsets.symmetric(vertical: ProfileResponsiveHelper.px(context, 24)),
                           ),
                           physics: const AlwaysScrollableScrollPhysics(),
                           child: Center(
                             child: ConstrainedBox(
                               constraints: BoxConstraints(
-                                maxWidth: _contentMaxWidth(context),
+                                maxWidth: ProfileResponsiveHelper.contentMaxWidth(context),
                               ),
                               child: Column(
                                 children: [
                                   if (pesananState.isLoading)
                                     Padding(
                                       padding: EdgeInsets.symmetric(
-                                        vertical: _px(context, 32),
+                                        vertical: ProfileResponsiveHelper.px(context, 32),
                                       ),
                                       child: const SizedBox(
                                         width: 40,
@@ -214,7 +181,7 @@ class _RiwayatPageState
                                     ...transactions.map((transaction) {
                                       return Padding(
                                         padding: EdgeInsets.only(
-                                          bottom: _px(context, 16),
+                                          bottom: ProfileResponsiveHelper.px(context, 16),
                                         ),
                                         child: _buildTransactionCard(
                                           context,
@@ -222,7 +189,7 @@ class _RiwayatPageState
                                         ),
                                       );
                                     }).toList(),
-                                  SizedBox(height: _px(context, 8)),
+                                  SizedBox(height: ProfileResponsiveHelper.px(context, 8)),
                                 ],
                               ),
                             ),
@@ -299,7 +266,7 @@ class _RiwayatPageState
           // Header with gradient background matching plan_page style
           Container(
             width: double.infinity,
-            padding: EdgeInsets.all(_px(context, 16)),
+            padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 16)),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -322,8 +289,8 @@ class _RiwayatPageState
             child: Row(
               children: [
                 Container(
-                  width: _px(context, 50),
-                  height: _px(context, 50),
+                  width: ProfileResponsiveHelper.px(context, 50),
+                  height: ProfileResponsiveHelper.px(context, 50),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
@@ -331,10 +298,10 @@ class _RiwayatPageState
                   child: Icon(
                     statusIcon,
                     color: statusColor,
-                    size: _px(context, 24),
+                    size: ProfileResponsiveHelper.px(context, 24),
                   ),
                 ),
-                SizedBox(width: _px(context, 12)),
+                SizedBox(width: ProfileResponsiveHelper.px(context, 12)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,7 +309,7 @@ class _RiwayatPageState
                       Text(
                         statusLabel,
                         style: TextStyle(
-                          fontSize: _ts(context, 15),
+                          fontSize: ProfileResponsiveHelper.ts(context, 15),
                           fontWeight: FontWeight.bold,
                           color: statusColor,
                         ),
@@ -350,7 +317,7 @@ class _RiwayatPageState
                       Text(
                         transaction.orderId,
                         style: TextStyle(
-                          fontSize: _ts(context, 12),
+                          fontSize: ProfileResponsiveHelper.ts(context, 12),
                           color: Colors.grey.shade700,
                         ),
                       ),
@@ -363,7 +330,7 @@ class _RiwayatPageState
                     'id_ID',
                   ).format(DateTime.parse(transaction.createdAt)),
                   style: TextStyle(
-                    fontSize: _ts(context, 12),
+                    fontSize: ProfileResponsiveHelper.ts(context, 12),
                     color: Colors.grey.shade600,
                   ),
                 ),
@@ -373,7 +340,7 @@ class _RiwayatPageState
 
           // Details Section
           Padding(
-            padding: EdgeInsets.all(_px(context, 16)),
+            padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 16)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -384,7 +351,7 @@ class _RiwayatPageState
                   transaction.premiumPaket.nama,
                   Icons.workspace_premium_rounded,
                 ),
-                SizedBox(height: _px(context, 12)),
+                SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
 
                 // Total Amount
                 _buildDetailRow(
@@ -393,7 +360,7 @@ class _RiwayatPageState
                   currencyFormat.format(transaction.hargaTotal),
                   Icons.payments_rounded,
                 ),
-                SizedBox(height: _px(context, 12)),
+                SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
 
                 // Durasi
                 if (transaction.premiumPaket.durasi != null) ...[
@@ -403,7 +370,7 @@ class _RiwayatPageState
                     '${transaction.premiumPaket.durasi} bulan',
                     Icons.calendar_month_rounded,
                   ),
-                  SizedBox(height: _px(context, 12)),
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
                 ],
 
                 // Purchase Date (dibayar_pada)
@@ -414,7 +381,7 @@ class _RiwayatPageState
                     _formatDate(transaction.dibayarPada),
                     Icons.event_rounded,
                   ),
-                  SizedBox(height: _px(context, 12)),
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
                 ],
 
                 // Expiry Date (kadaluarsa_pada)
@@ -425,7 +392,7 @@ class _RiwayatPageState
                     _formatDate(transaction.kadaluarsaPada),
                     Icons.event_busy_rounded,
                   ),
-                  SizedBox(height: _px(context, 12)),
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 12)),
                 ],
 
                 // Midtrans ID
@@ -434,10 +401,10 @@ class _RiwayatPageState
                     children: [
                       Icon(
                         Icons.payment_rounded,
-                        size: _px(context, 18),
+                        size: ProfileResponsiveHelper.px(context, 18),
                         color: Colors.grey.shade600,
                       ),
-                      SizedBox(width: _px(context, 8)),
+                      SizedBox(width: ProfileResponsiveHelper.px(context, 8)),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,7 +412,7 @@ class _RiwayatPageState
                             Text(
                               'ID Transaksi',
                               style: TextStyle(
-                                fontSize: _ts(context, 12),
+                                fontSize: ProfileResponsiveHelper.ts(context, 12),
                                 color: Colors.grey.shade600,
                               ),
                             ),
@@ -455,7 +422,7 @@ class _RiwayatPageState
                                   child: Text(
                                     transaction.midtransId!,
                                     style: TextStyle(
-                                      fontSize: _ts(context, 13),
+                                      fontSize: ProfileResponsiveHelper.ts(context, 13),
                                       fontWeight: FontWeight.w500,
                                       color: const Color(0xFF2D3748),
                                       fontFamily: 'monospace',
@@ -477,7 +444,7 @@ class _RiwayatPageState
                                     );
                                   },
                                   icon: const Icon(Icons.copy_rounded),
-                                  iconSize: _px(context, 16),
+                                  iconSize: ProfileResponsiveHelper.px(context, 16),
                                   color: const Color(0xFF1E88E5),
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
@@ -489,7 +456,7 @@ class _RiwayatPageState
                       ),
                     ],
                   ),
-                  SizedBox(height: _px(context, 16)),
+                  SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
                 ],
 
                 // Detail Button
@@ -502,7 +469,7 @@ class _RiwayatPageState
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryBlue,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: _px(context, 12)),
+                      padding: EdgeInsets.symmetric(vertical: ProfileResponsiveHelper.px(context, 12)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -536,8 +503,8 @@ class _RiwayatPageState
   ) {
     return Row(
       children: [
-        Icon(icon, size: _px(context, 18), color: Colors.grey.shade600),
-        SizedBox(width: _px(context, 8)),
+        Icon(icon, size: ProfileResponsiveHelper.px(context, 18), color: Colors.grey.shade600),
+        SizedBox(width: ProfileResponsiveHelper.px(context, 8)),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,14 +512,14 @@ class _RiwayatPageState
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: _ts(context, 12),
+                  fontSize: ProfileResponsiveHelper.ts(context, 12),
                   color: Colors.grey.shade600,
                 ),
               ),
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: _ts(context, 15),
+                  fontSize: ProfileResponsiveHelper.ts(context, 15),
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF2D3748),
                 ),
@@ -571,23 +538,23 @@ class _RiwayatPageState
         children: [
           Icon(
             Icons.receipt_long_rounded,
-            size: _px(context, 64),
+            size: ProfileResponsiveHelper.px(context, 64),
             color: Colors.grey.shade400,
           ),
-          SizedBox(height: _px(context, 16)),
+          SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
           Text(
             'Belum Ada Transaksi',
             style: TextStyle(
-              fontSize: _ts(context, 18),
+              fontSize: ProfileResponsiveHelper.ts(context, 18),
               fontWeight: FontWeight.w600,
               color: Colors.grey.shade600,
             ),
           ),
-          SizedBox(height: _px(context, 8)),
+          SizedBox(height: ProfileResponsiveHelper.px(context, 8)),
           Text(
             'Riwayat transaksi Anda akan muncul di sini',
             style: TextStyle(
-              fontSize: _ts(context, 14),
+              fontSize: ProfileResponsiveHelper.ts(context, 14),
               color: Colors.grey.shade500,
             ),
           ),
@@ -597,11 +564,10 @@ class _RiwayatPageState
   }
 
   void _handleDetailPesanan(BuildContext context, transaction) {
-    Navigator.push(
+    Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (context) => DetailPesananPage(pesanan: transaction),
-      ),
+      AppRoutes.pesananDetail,
+      arguments: {'pesanan': transaction, 'snapToken': transaction.midtransId},
     );
   }
 }

@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:test_flutter/app/router.dart';
+import 'package:test_flutter/app/theme.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
-import 'package:test_flutter/features/profile/profile_provider.dart';
-import 'package:test_flutter/features/profile/profile_state.dart';
+import 'package:test_flutter/features/profile/helpers/profile_responsive_helper.dart';
+import 'package:test_flutter/features/profile/providers/profile_provider.dart';
+import 'package:test_flutter/features/profile/states/profile_state.dart';
 import 'package:test_flutter/features/subscription/providers/pesanan_provider.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -21,28 +24,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   final ImagePicker _imagePicker = ImagePicker();
 
   ProviderSubscription? _profileSub;
-
-  // --- Helpers berbasis ResponsiveHelper ---
-  double _scale(BuildContext c) {
-    if (ResponsiveHelper.isSmallScreen(c)) return .9;
-    if (ResponsiveHelper.isMediumScreen(c)) return 1.0;
-    if (ResponsiveHelper.isLargeScreen(c)) return 1.1;
-    return 1.2;
-  }
-
-  double _px(BuildContext c, double base) => base * _scale(c);
-  double _ts(BuildContext c, double base) =>
-      ResponsiveHelper.adaptiveTextSize(c, base);
-
-  double _contentMaxWidth(BuildContext c) {
-    if (ResponsiveHelper.isExtraLargeScreen(c)) return 720;
-    if (ResponsiveHelper.isLargeScreen(c)) return 640;
-    return double.infinity;
-  }
-
-  EdgeInsets _pageHPad(BuildContext c) => EdgeInsets.symmetric(
-    horizontal: ResponsiveHelper.getResponsivePadding(c).left,
-  );
 
   // Helper untuk build avatar URL
   String _buildAvatarUrl(String? avatarPath) {
@@ -119,7 +100,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ? user
         : {
             'user': {
-              'name': 'Guest User',
+              'name': 'Guest',
               'email': 'guest@shollover.com',
               'phone': null,
             },
@@ -127,316 +108,406 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ===== Content =====
-            Expanded(
-              child: SingleChildScrollView(
-                padding: _pageHPad(context),
-                physics: const BouncingScrollPhysics(),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: _contentMaxWidth(context),
-                    ),
-                    child: Column(
-                      children: [
-                        // Header
-                        Container(
-                          width: double.infinity,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, Colors.grey.shade200],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ===== Header dengan Gradient =====
+              Container(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 20),
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppTheme.primaryBlue, AppTheme.accentGreen],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(
+                        ProfileResponsiveHelper.px(context, 12),
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pushReplacementNamed(context, '/home');
+                        },
+                        child: Icon(
+                          Icons.arrow_back_rounded,
                           color: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            vertical: _px(context, 20),
-                          ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Back button (left)
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: IconButton(
-                                  onPressed: () {
-                                    Navigator.pushReplacementNamed(
-                                      context,
-                                      '/home',
-                                    );
-                                  },
-                                  icon: const Icon(Icons.arrow_back_rounded),
-                                  color: const Color(0xFF2D3748),
-                                  tooltip: 'Kembali',
-                                ),
-                              ),
-                              // Title (center)
-                              Text(
-                                'Profile',
-                                style: TextStyle(
-                                  fontSize: _ts(context, 28),
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF2D3748),
-                                ),
-                              ),
-                              // Refresh button (right) - only for authenticated users
-                              if (isAuthenticated &&
-                                  status != ProfileStatus.loading)
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF1E88E5,
-                                      ).withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: IconButton(
-                                      onPressed: () {
-                                        ref
-                                            .read(profileProvider.notifier)
-                                            .loadUser();
-                                      },
-                                      icon: const Icon(Icons.refresh_rounded),
-                                      color: const Color(0xFF1E88E5),
-                                      tooltip: 'Refresh',
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
+                          size: ProfileResponsiveHelper.px(context, 20),
                         ),
-
-                        // Profile Card
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(_px(context, 20)),
-                          decoration: BoxDecoration(
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Profile',
+                          style: TextStyle(
+                            fontSize: ProfileResponsiveHelper.ts(context, 20),
+                            fontWeight: FontWeight.bold,
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withValues(alpha: 0.1),
-                                blurRadius: 10,
-                                spreadRadius: 1,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              // Show loading only if authenticated and loading
-                              if (isAuthenticated &&
-                                  status == ProfileStatus.loading)
-                                _buildLoadingProfile(context)
-                              // Show error only if authenticated and error
-                              else if (isAuthenticated &&
-                                  status == ProfileStatus.error)
-                                _buildErrorProfile(context, message)
-                              // Show profile (real or guest)
-                              else
-                                _buildProfileContent(
-                                  context,
-                                  displayUser,
-                                  isGuest: !isAuthenticated,
-                                ),
-                            ],
+                            letterSpacing: -0.5,
                           ),
                         ),
+                      ),
+                    ),
+                    // Refresh button - only for authenticated users
+                    if (isAuthenticated && status != ProfileStatus.loading)
+                      Container(
+                        padding: EdgeInsets.all(
+                          ProfileResponsiveHelper.px(context, 12),
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: GestureDetector(
+                          onTap: () {
+                            ref.read(profileProvider.notifier).loadUser();
+                          },
+                          child: Icon(
+                            Icons.refresh_rounded,
+                            color: Colors.white,
+                            size: ProfileResponsiveHelper.px(context, 20),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
 
-                        SizedBox(height: _px(context, 28)),
-
-                        // Show login prompt for guest users
-                        if (!isAuthenticated) ...[
+              // ===== Content =====
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: ProfileResponsiveHelper.getPageHorizontalPadding(
+                    context,
+                  ),
+                  physics: const BouncingScrollPhysics(),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: ProfileResponsiveHelper.getContentMaxWidth(
+                          context,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          // Profile Card
                           Container(
                             width: double.infinity,
-                            padding: EdgeInsets.all(_px(context, 20)),
+                            padding: EdgeInsets.all(
+                              ProfileResponsiveHelper.px(context, 20),
+                            ),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF1E88E5), Color(0xFF26A69A)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(
-                                    0xFF1E88E5,
-                                  ).withValues(alpha: 0.3),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
+                                  color: Colors.grey.withValues(alpha: 0.1),
+                                  blurRadius: 10,
+                                  spreadRadius: 1,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
                             child: Column(
                               children: [
-                                Icon(
-                                  Icons.lock_outline_rounded,
-                                  size: _px(context, 48),
-                                  color: Colors.white,
-                                ),
-                                SizedBox(height: _px(context, 12)),
-                                Text(
-                                  'Masuk untuk Mengakses Fitur',
-                                  style: TextStyle(
-                                    fontSize: _ts(context, 18),
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                // Show loading only if authenticated and loading
+                                if (isAuthenticated &&
+                                    status == ProfileStatus.loading)
+                                  _buildLoadingProfile(context)
+                                // Show error only if authenticated and error
+                                else if (isAuthenticated &&
+                                    status == ProfileStatus.error)
+                                  _buildErrorProfile(context, message)
+                                // Show profile (real or guest)
+                                else
+                                  _buildProfileContent(
+                                    context,
+                                    displayUser,
+                                    isGuest: !isAuthenticated,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: _px(context, 8)),
-                                Text(
-                                  'Login untuk mengelola profil, keluarga, dan mengakses fitur lengkap',
-                                  style: TextStyle(
-                                    fontSize: _ts(context, 14),
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: _px(context, 16)),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.pushReplacementNamed(
-                                      context,
-                                      '/welcome',
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: const Color(0xFF1E88E5),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: _px(context, 32),
-                                      vertical: _px(context, 14),
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Masuk Sekarang',
-                                    style: TextStyle(
-                                      fontSize: _ts(context, 16),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
                               ],
                             ),
                           ),
-                          SizedBox(height: _px(context, 28)),
-                        ],
 
-                        // Menu Items (disabled for guest)
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.person_outline,
-                          title: 'Edit Profile',
-                          subtitle: isAuthenticated
-                              ? 'Ubah informasi profil Anda'
-                              : 'Login untuk mengedit profil',
-                          enabled: isAuthenticated && displayUser != null,
-                          onTap: () {
-                            Navigator.pushNamed(context, '/edit-profile');
-                          },
-                        ),
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.security,
-                          title: 'Ubah Password',
-                          subtitle: isAuthenticated
-                              ? 'Ubah password untuk keamanan akun'
-                              : 'Login untuk mengubah password',
-                          enabled: isAuthenticated && displayUser != null,
-                          onTap: () =>
-                              Navigator.pushNamed(context, '/change-password'),
-                        ),
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.family_restroom,
-                          title: 'Kelola Keluarga',
-                          subtitle: isAuthenticated
-                              ? 'Tambah atau edit anggota keluarga'
-                              : 'Login untuk mengelola keluarga',
-                          enabled: isAuthenticated && displayUser != null,
-                          onTap: () =>
-                              Navigator.pushNamed(context, '/manage-family'),
-                        ),
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.workspace_premium_rounded,
-                          title: 'Paket Premium',
-                          subtitle: isAuthenticated
-                              ? 'Upgrade akun dan lihat transaksi'
-                              : 'Login untuk akses premium',
-                          enabled: isAuthenticated && displayUser != null,
-                          onTap: () => Navigator.pushNamed(context, '/plan'),
-                        ),
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.help_outline,
-                          title: 'Bantuan',
-                          subtitle: 'FAQ dan dukungan pelanggan',
-                          enabled: true,
-                          onTap: () => _showHelp(context),
-                        ),
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.info_outline,
-                          title: 'Tentang Aplikasi',
-                          subtitle: 'Versi dan informasi aplikasi',
-                          enabled: true,
-                          onTap: () => _showAbout(context),
-                        ),
+                          SizedBox(
+                            height: ProfileResponsiveHelper.px(context, 28),
+                          ),
 
-                        SizedBox(height: _px(context, 16)),
-
-                        // Logout (only for authenticated users)
-                        if (isAuthenticated)
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(
-                              vertical: _px(context, 16),
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.red[200]!),
-                            ),
-                            child: InkWell(
-                              onTap: () => _showLogoutDialog(context),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                          // Show login prompt for guest users
+                          if (!isAuthenticated) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.all(
+                                ProfileResponsiveHelper.px(context, 20),
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF1E88E5),
+                                    Color(0xFF26A69A),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF1E88E5,
+                                    ).withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
                                 children: [
                                   Icon(
-                                    Icons.logout,
-                                    color: Colors.red,
-                                    size: _px(context, 22),
+                                    Icons.lock_outline_rounded,
+                                    size: ProfileResponsiveHelper.px(
+                                      context,
+                                      48,
+                                    ),
+                                    color: Colors.white,
                                   ),
-                                  SizedBox(width: _px(context, 10)),
+                                  SizedBox(
+                                    height: ProfileResponsiveHelper.px(
+                                      context,
+                                      12,
+                                    ),
+                                  ),
                                   Text(
-                                    'Keluar',
+                                    'Masuk untuk Mengakses Fitur',
                                     style: TextStyle(
-                                      fontSize: _ts(context, 16),
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.red,
+                                      fontSize: ProfileResponsiveHelper.ts(
+                                        context,
+                                        18,
+                                      ),
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(
+                                    height: ProfileResponsiveHelper.px(
+                                      context,
+                                      8,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Login untuk mengelola profil, keluarga, dan mengakses fitur lengkap',
+                                    style: TextStyle(
+                                      fontSize: ProfileResponsiveHelper.ts(
+                                        context,
+                                        14,
+                                      ),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.9,
+                                      ),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(
+                                    height: ProfileResponsiveHelper.px(
+                                      context,
+                                      16,
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        '/welcome',
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: const Color(0xFF1E88E5),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: ProfileResponsiveHelper.px(
+                                          context,
+                                          32,
+                                        ),
+                                        vertical: ProfileResponsiveHelper.px(
+                                          context,
+                                          14,
+                                        ),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Masuk Sekarang',
+                                      style: TextStyle(
+                                        fontSize: ProfileResponsiveHelper.ts(
+                                          context,
+                                          16,
+                                        ),
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
+                            SizedBox(
+                              height: ProfileResponsiveHelper.px(context, 28),
+                            ),
+                          ],
+
+                          // Menu Items (disabled for guest)
+                          _buildMenuItem(
+                            context: context,
+                            icon: Icons.person_outline,
+                            title: 'Edit Profile',
+                            subtitle: isAuthenticated
+                                ? 'Ubah informasi profil Anda'
+                                : 'Login untuk mengedit profil',
+                            enabled: isAuthenticated && displayUser != null,
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.editProfile,
+                              );
+                            },
+                          ),
+                          _buildMenuItem(
+                            context: context,
+                            icon: Icons.security,
+                            title: 'Ubah Password',
+                            subtitle: isAuthenticated
+                                ? 'Ubah password untuk keamanan akun'
+                                : 'Login untuk mengubah password',
+                            enabled: isAuthenticated && displayUser != null,
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.changePassword,
+                            ),
+                          ),
+                          _buildMenuItem(
+                            context: context,
+                            icon: Icons.family_restroom,
+                            title: 'Kelola Keluarga',
+                            subtitle: isAuthenticated
+                                ? 'Tambah atau edit anggota keluarga'
+                                : 'Login untuk mengelola keluarga',
+                            enabled: isAuthenticated && displayUser != null,
+                            onTap: () =>
+                                Navigator.pushNamed(context, '/manage-family'),
+                          ),
+                          _buildMenuItem(
+                            context: context,
+                            icon: Icons.workspace_premium_rounded,
+                            title: 'Paket Premium',
+                            subtitle: isAuthenticated
+                                ? 'Upgrade akun dan lihat transaksi'
+                                : 'Login untuk akses premium',
+                            enabled: isAuthenticated && displayUser != null,
+                            onTap: () =>
+                                Navigator.pushNamed(context, AppRoutes.plan),
+                          ),
+                          _buildMenuItem(
+                            context: context,
+                            icon: Icons.help_outline,
+                            title: 'Bantuan',
+                            subtitle: 'FAQ dan dukungan pelanggan',
+                            enabled: true,
+                            onTap: () => _showHelp(context),
+                          ),
+                          _buildMenuItem(
+                            context: context,
+                            icon: Icons.info_outline,
+                            title: 'Tentang Aplikasi',
+                            subtitle: 'Versi dan informasi aplikasi',
+                            enabled: true,
+                            onTap: () => _showAbout(context),
                           ),
 
-                        SizedBox(
-                          height: ResponsiveHelper.getResponsivePadding(
-                            context,
-                          ).bottom,
-                        ),
-                      ],
+                          SizedBox(
+                            height: ProfileResponsiveHelper.px(context, 16),
+                          ),
+
+                          // Logout (only for authenticated users)
+                          if (isAuthenticated)
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(
+                                vertical: ProfileResponsiveHelper.px(
+                                  context,
+                                  16,
+                                ),
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: InkWell(
+                                onTap: () => _showLogoutDialog(context),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.logout,
+                                      color: Colors.red,
+                                      size: ProfileResponsiveHelper.px(
+                                        context,
+                                        22,
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: ProfileResponsiveHelper.px(
+                                        context,
+                                        10,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Keluar',
+                                      style: TextStyle(
+                                        fontSize: ProfileResponsiveHelper.ts(
+                                          context,
+                                          16,
+                                        ),
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                          SizedBox(
+                            height: ResponsiveHelper.getResponsivePadding(
+                              context,
+                            ).bottom,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -449,8 +520,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       children: [
         // Avatar loading
         Container(
-          width: _px(context, 88),
-          height: _px(context, 88),
+          width: ProfileResponsiveHelper.px(context, 88),
+          height: ProfileResponsiveHelper.px(context, 88),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.grey[300],
@@ -462,7 +533,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
           ),
         ),
-        SizedBox(height: _px(context, 18)),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 18)),
 
         // Name skeleton
         Container(
@@ -473,7 +544,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             borderRadius: BorderRadius.circular(4),
           ),
         ),
-        SizedBox(height: _px(context, 6)),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 6)),
 
         // Email skeleton
         Container(
@@ -484,7 +555,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             borderRadius: BorderRadius.circular(4),
           ),
         ),
-        SizedBox(height: _px(context, 22)),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 22)),
       ],
     );
   }
@@ -492,24 +563,30 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget _buildErrorProfile(BuildContext context, String? errorMessage) {
     return Column(
       children: [
-        Icon(Icons.error_outline, size: _px(context, 64), color: Colors.red),
-        SizedBox(height: _px(context, 16)),
+        Icon(
+          Icons.error_outline,
+          size: ProfileResponsiveHelper.px(context, 64),
+          color: Colors.red,
+        ),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
         Text(
           'Gagal memuat profil',
           style: TextStyle(
-            fontSize: _ts(context, 18),
+            fontSize: ProfileResponsiveHelper.ts(context, 18),
             fontWeight: FontWeight.w600,
             color: Colors.red,
           ),
         ),
-        SizedBox(height: _px(context, 8)),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 8)),
         if (errorMessage != null)
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: _px(context, 20)),
+            padding: EdgeInsets.symmetric(
+              horizontal: ProfileResponsiveHelper.px(context, 20),
+            ),
             child: Text(
               errorMessage,
               style: TextStyle(
-                fontSize: _ts(context, 14),
+                fontSize: ProfileResponsiveHelper.ts(context, 14),
                 color: Colors.grey[600],
               ),
               textAlign: TextAlign.center,
@@ -521,11 +598,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           Text(
             'Silakan coba lagi',
             style: TextStyle(
-              fontSize: _ts(context, 14),
+              fontSize: ProfileResponsiveHelper.ts(context, 14),
               color: Colors.grey[600],
             ),
           ),
-        SizedBox(height: _px(context, 16)),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
         ElevatedButton.icon(
           onPressed: () {
             ref.read(profileProvider.notifier).loadUser();
@@ -536,15 +613,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             backgroundColor: const Color(0xFF1E88E5),
             foregroundColor: Colors.white,
             padding: EdgeInsets.symmetric(
-              horizontal: _px(context, 20),
-              vertical: _px(context, 12),
+              horizontal: ProfileResponsiveHelper.px(context, 16),
+              vertical: ProfileResponsiveHelper.px(context, 8),
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
           ),
         ),
-        SizedBox(height: _px(context, 22)),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 22)),
       ],
     );
   }
@@ -557,7 +634,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     // Handle case when user is null
     final name = user != null ? (user['name'] ?? '-') : '-';
     final email = user != null ? (user['email'] ?? '-') : '-';
-    final avatarPath = user != null ? user['avatar'] as String? : null;
+
+    // Safely handle avatar - check type before casting
+    String? avatarPath;
+    if (user != null && user['avatar'] != null) {
+      final avatar = user['avatar'];
+      if (avatar is String) {
+        avatarPath = avatar;
+      }
+    }
+
     final avatarUrl = _buildAvatarUrl(avatarPath);
     final isDataAvailable = user != null;
 
@@ -575,8 +661,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           child: Stack(
             children: [
               Container(
-                width: _px(context, 88),
-                height: _px(context, 88),
+                width: ProfileResponsiveHelper.px(context, 88),
+                height: ProfileResponsiveHelper.px(context, 88),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: avatarUrl.isEmpty
@@ -607,7 +693,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             : isDataAvailable
                             ? Icons.person
                             : Icons.person_off,
-                        size: _px(context, 44),
+                        size: ProfileResponsiveHelper.px(context, 44),
                         color: Colors.white,
                       )
                     : null,
@@ -619,7 +705,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   bottom: 0,
                   right: 0,
                   child: Container(
-                    padding: EdgeInsets.all(_px(context, 6)),
+                    padding: EdgeInsets.all(
+                      ProfileResponsiveHelper.px(context, 6),
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E88E5),
                       shape: BoxShape.circle,
@@ -634,7 +722,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                     child: Icon(
                       Icons.camera_alt_rounded,
-                      size: _px(context, 14),
+                      size: ProfileResponsiveHelper.px(context, 14),
                       color: Colors.white,
                     ),
                   ),
@@ -642,26 +730,26 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ],
           ),
         ),
-        SizedBox(height: _px(context, 18)),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 18)),
 
         // Name
         Text(
           name,
           style: TextStyle(
-            fontSize: _ts(context, 22),
+            fontSize: ProfileResponsiveHelper.ts(context, 22),
             fontWeight: FontWeight.bold,
             color: isGuest || !isDataAvailable
                 ? Colors.grey.shade600
                 : const Color(0xFF2D3748),
           ),
         ),
-        SizedBox(height: _px(context, 6)),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 6)),
 
         // Email
         Text(
           email,
           style: TextStyle(
-            fontSize: _ts(context, 14),
+            fontSize: ProfileResponsiveHelper.ts(context, 14),
             color: isGuest || !isDataAvailable
                 ? Colors.grey.shade500
                 : const Color(0xFF4A5568),
@@ -670,20 +758,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
         // Phone (if available and not guest)
         // if (!isGuest && phone != null && phone.isNotEmpty) ...[
-        //   SizedBox(height: _px(context, 4)),
+        //   SizedBox(height: ProfileResponsiveHelper.px(context, 4)),
         //   Row(
         //     mainAxisAlignment: MainAxisAlignment.center,
         //     children: [
         //       Icon(
         //         Icons.phone,
-        //         size: _px(context, 14),
+        //         size: ProfileResponsiveHelper.px(context, 14),
         //         color: const Color(0xFF4A5568),
         //       ),
-        //       SizedBox(width: _px(context, 4)),
+        //       SizedBox(width: ProfileResponsiveHelper.px(context, 4)),
         //       Text(
         //         phone,
         //         style: TextStyle(
-        //           fontSize: _ts(context, 13),
+        //           fontSize: ProfileResponsiveHelper.ts(context, 13),
         //           color: const Color(0xFF4A5568),
         //         ),
         //       ),
@@ -693,11 +781,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
         // Guest indicator
         if (isGuest) ...[
-          SizedBox(height: _px(context, 8)),
+          SizedBox(height: ProfileResponsiveHelper.px(context, 8)),
           Container(
             padding: EdgeInsets.symmetric(
-              horizontal: _px(context, 12),
-              vertical: _px(context, 4),
+              horizontal: ProfileResponsiveHelper.px(context, 12),
+              vertical: ProfileResponsiveHelper.px(context, 4),
             ),
             decoration: BoxDecoration(
               color: Colors.grey.withValues(alpha: 0.1),
@@ -709,14 +797,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               children: [
                 Icon(
                   Icons.info_outline_rounded,
-                  size: _px(context, 14),
+                  size: ProfileResponsiveHelper.px(context, 14),
                   color: Colors.grey.shade600,
                 ),
-                SizedBox(width: _px(context, 6)),
+                SizedBox(width: ProfileResponsiveHelper.px(context, 6)),
                 Text(
                   'Mode Guest',
                   style: TextStyle(
-                    fontSize: _ts(context, 12),
+                    fontSize: ProfileResponsiveHelper.ts(context, 12),
                     color: Colors.grey.shade700,
                     fontWeight: FontWeight.w500,
                   ),
@@ -728,11 +816,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
         // Unavailable indicator (only for authenticated users with no data)
         if (!isGuest && !isDataAvailable) ...[
-          SizedBox(height: _px(context, 8)),
+          SizedBox(height: ProfileResponsiveHelper.px(context, 8)),
           Container(
             padding: EdgeInsets.symmetric(
-              horizontal: _px(context, 12),
-              vertical: _px(context, 4),
+              horizontal: ProfileResponsiveHelper.px(context, 12),
+              vertical: ProfileResponsiveHelper.px(context, 4),
             ),
             decoration: BoxDecoration(
               color: Colors.orange.withValues(alpha: 0.1),
@@ -742,7 +830,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             child: Text(
               'Data tidak tersedia',
               style: TextStyle(
-                fontSize: _ts(context, 12),
+                fontSize: ProfileResponsiveHelper.ts(context, 12),
                 color: Colors.orange.shade700,
                 fontWeight: FontWeight.w500,
               ),
@@ -750,7 +838,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
         ],
 
-        SizedBox(height: _px(context, 22)),
+        SizedBox(height: ProfileResponsiveHelper.px(context, 22)),
       ],
     );
   }
@@ -763,14 +851,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     required VoidCallback onTap,
     bool enabled = true,
   }) {
-    final iconSize = _px(context, 26);
-    final titleFontSize = _ts(context, 16);
-    final subtitleFontSize = _ts(context, 13);
-    final vPad = _px(context, 14);
-    final hPad = _px(context, 16);
+    final iconSize = ProfileResponsiveHelper.px(context, 26);
+    final titleFontSize = ProfileResponsiveHelper.ts(context, 16);
+    final subtitleFontSize = ProfileResponsiveHelper.ts(context, 13);
+    final vPad = ProfileResponsiveHelper.px(context, 14);
+    final hPad = ProfileResponsiveHelper.px(context, 16);
 
     return Container(
-      margin: EdgeInsets.only(bottom: _px(context, 14)),
+      margin: EdgeInsets.only(bottom: ProfileResponsiveHelper.px(context, 14)),
       decoration: BoxDecoration(
         color: enabled ? Colors.white : Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
@@ -789,7 +877,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         onTap: enabled ? onTap : null,
         contentPadding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
         leading: Container(
-          padding: EdgeInsets.all(_px(context, 10)),
+          padding: EdgeInsets.all(ProfileResponsiveHelper.px(context, 10)),
           decoration: BoxDecoration(
             color: (enabled ? const Color(0xFF1E88E5) : Colors.grey).withValues(
               alpha: 0.1,
@@ -819,7 +907,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
-          size: _px(context, 16),
+          size: ProfileResponsiveHelper.px(context, 16),
           color: enabled ? const Color(0xFF4A5568) : Colors.grey,
         ),
       ),
@@ -940,6 +1028,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   // ================== Avatar Upload ==================
 
   void _showAvatarSourceDialog(BuildContext context) {
+    // Check if user has avatar
+    final profileState = ref.read(profileProvider);
+    final user = profileState.profile;
+
+    // Safely handle avatar - check type before casting
+    String? avatarPath;
+    if (user != null && user['avatar'] != null) {
+      final avatar = user['avatar'];
+      if (avatar is String) {
+        avatarPath = avatar;
+      }
+    }
+
+    final hasAvatar = avatarPath != null && avatarPath.isNotEmpty;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -968,7 +1071,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               Text(
                 'Pilih Sumber Foto',
                 style: TextStyle(
-                  fontSize: _ts(context, 18),
+                  fontSize: ProfileResponsiveHelper.ts(context, 18),
                   fontWeight: FontWeight.bold,
                   color: const Color(0xFF2D3748),
                 ),
@@ -1017,6 +1120,31 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 },
               ),
 
+              // Delete avatar option (only show if user has avatar)
+              if (hasAvatar)
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.red,
+                    ),
+                  ),
+                  title: const Text(
+                    'Hapus Avatar',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  subtitle: const Text('Hapus foto profil Anda'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showDeleteAvatarDialog(context);
+                  },
+                ),
+
               const SizedBox(height: 20),
             ],
           ),
@@ -1058,7 +1186,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   Text(
                     'Mengupload avatar...',
                     style: TextStyle(
-                      fontSize: _ts(context, 14),
+                      fontSize: ProfileResponsiveHelper.ts(context, 14),
                       color: const Color(0xFF2D3748), // abu gelap
                       fontWeight: FontWeight.w500,
                     ),
@@ -1091,5 +1219,100 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         );
       }
     }
+  }
+
+  void _showDeleteAvatarDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hapus Avatar'),
+        content: const Text(
+          'Apakah Anda yakin ingin menghapus foto profil Anda?',
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Save navigator state before closing dialog
+              final navigator = Navigator.of(dialogContext);
+
+              // Close confirmation dialog first
+              navigator.pop();
+
+              // Use dialogContext to show loading dialog (it's still valid here)
+              if (mounted) {
+                showDialog(
+                  context: dialogContext,
+                  barrierDismissible: false,
+                  builder: (loadingContext) => Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(
+                            color: Color(0xFF1E88E5),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Menghapus avatar...',
+                            style: TextStyle(
+                              fontSize: ProfileResponsiveHelper.ts(context, 14),
+                              color: const Color(0xFF2D3748),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              try {
+                // Delete avatar
+                await ref.read(profileProvider.notifier).deleteAvatar();
+
+                // Close loading dialog
+                if (mounted) {
+                  navigator.pop();
+                }
+              } catch (e) {
+                // Close loading dialog if open
+                if (mounted) {
+                  try {
+                    navigator.pop();
+                  } catch (_) {
+                    // Dialog already closed
+                  }
+                }
+
+                // Show error message using context from the page, not from dialog
+                if (mounted && this.context.mounted) {
+                  showMessageToast(
+                    this.context,
+                    message: 'Gagal menghapus avatar: ${e.toString()}',
+                    type: ToastType.error,
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
   }
 }
