@@ -188,10 +188,15 @@ class _ManageFamilyPageState extends ConsumerState<ManageFamilyPage>
                     fontSize: ProfileResponsiveHelper.textSize(context, 13),
                   ),
                   dividerColor: Colors.transparent,
-                  tabs: const [
-                    Tab(text: 'Anak Aktif'),
-                    Tab(text: 'Pengajuan Anak'),
-                  ],
+                  tabs: familyState.isChild
+                      ? const [
+                          Tab(text: 'Orang Tua'),
+                          Tab(text: 'Pengajuan Orang Tua'),
+                        ]
+                      : const [
+                          Tab(text: 'Anak Aktif'),
+                          Tab(text: 'Pengajuan Anak'),
+                        ],
                 ),
               ),
 
@@ -199,12 +204,27 @@ class _ManageFamilyPageState extends ConsumerState<ManageFamilyPage>
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
-                  children: [
-                    // Tab 1: Anak Aktif
-                    _buildAnakAktifTab(context, familyState, isLoading),
-                    // Tab 2: Pengajuan Anak
-                    _buildPengajuanAnakTab(context, familyState, isLoading),
-                  ],
+                  children: familyState.isChild
+                      ? [
+                          // Tab 1: Orang Tua
+                          _buildOrangTuaTab(context, familyState, isLoading),
+                          // Tab 2: Pengajuan Orang Tua
+                          _buildPengajuanOrangTuaTab(
+                            context,
+                            familyState,
+                            isLoading,
+                          ),
+                        ]
+                      : [
+                          // Tab 1: Anak Aktif
+                          _buildAnakAktifTab(context, familyState, isLoading),
+                          // Tab 2: Pengajuan Anak
+                          _buildPengajuanAnakTab(
+                            context,
+                            familyState,
+                            isLoading,
+                          ),
+                        ],
                 ),
               ),
             ],
@@ -366,6 +386,131 @@ class _ManageFamilyPageState extends ConsumerState<ManageFamilyPage>
                   bottom: ProfileResponsiveHelper.px(context, 12),
                 ),
                 child: _buildPengajuanCard(context, pengajuan),
+              ),
+            ),
+
+          ProfileResponsiveHelper.verticalGap(context, medium: 24),
+        ],
+      ),
+    );
+  }
+
+  // Tab 1: Orang Tua (Child View)
+  Widget _buildOrangTuaTab(
+    BuildContext context,
+    FamilyState familyState,
+    bool isLoading,
+  ) {
+    return SingleChildScrollView(
+      padding: ProfileResponsiveHelper.getPageHorizontalPadding(context),
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ProfileResponsiveHelper.verticalGap(context, medium: 24),
+
+          if (isLoading)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 32),
+                ),
+                child: const CircularProgressIndicator(
+                  color: Color(0xFF1E88E5),
+                ),
+              ),
+            )
+          else if (familyState.orangTua == null)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 32),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.person_off_outlined,
+                      size: ProfileResponsiveHelper.px(context, 64),
+                      color: Colors.grey[300],
+                    ),
+                    SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
+                    Text(
+                      'Belum ada data orang tua',
+                      style: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 16),
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            _buildOrangTuaCard(context, familyState.orangTua!),
+
+          ProfileResponsiveHelper.verticalGap(context, medium: 24),
+        ],
+      ),
+    );
+  }
+
+  // Tab 2: Pengajuan Orang Tua (Child View)
+  Widget _buildPengajuanOrangTuaTab(
+    BuildContext context,
+    FamilyState familyState,
+    bool isLoading,
+  ) {
+    return SingleChildScrollView(
+      padding: ProfileResponsiveHelper.getPageHorizontalPadding(context),
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ProfileResponsiveHelper.verticalGap(context, medium: 24),
+
+          if (isLoading)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 32),
+                ),
+                child: const CircularProgressIndicator(
+                  color: Color(0xFF1E88E5),
+                ),
+              ),
+            )
+          else if (familyState.pengajuanOrangTua.isEmpty)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(
+                  ProfileResponsiveHelper.px(context, 32),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.inbox_outlined,
+                      size: ProfileResponsiveHelper.px(context, 64),
+                      color: Colors.grey[300],
+                    ),
+                    SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
+                    Text(
+                      'Tidak ada pengajuan dari orang tua',
+                      style: TextStyle(
+                        fontSize: ProfileResponsiveHelper.textSize(context, 16),
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ...familyState.pengajuanOrangTua.map(
+              (pengajuan) => Container(
+                margin: EdgeInsets.only(
+                  bottom: ProfileResponsiveHelper.px(context, 12),
+                ),
+                child: _buildPengajuanOrangTuaCard(context, pengajuan),
               ),
             ),
 
@@ -556,7 +701,7 @@ class _ManageFamilyPageState extends ConsumerState<ManageFamilyPage>
                       ),
                       SizedBox(height: ProfileResponsiveHelper.px(context, 4)),
                       Text(
-                        'Menunggu penerimaan',
+                        _getStatusDescription(pengajuan.status),
                         style: TextStyle(
                           fontSize: ProfileResponsiveHelper.textSize(
                             context,
@@ -572,7 +717,9 @@ class _ManageFamilyPageState extends ConsumerState<ManageFamilyPage>
                           vertical: ProfileResponsiveHelper.px(context, 4),
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                          color: _getStatusColor(
+                            pengajuan.status,
+                          ).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -582,7 +729,7 @@ class _ManageFamilyPageState extends ConsumerState<ManageFamilyPage>
                               context,
                               10,
                             ),
-                            color: const Color(0xFFFF9800),
+                            color: _getStatusColor(pengajuan.status),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -620,6 +767,284 @@ class _ManageFamilyPageState extends ConsumerState<ManageFamilyPage>
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Tab 1: Orang Tua (Child View)
+  Widget _buildOrangTuaCard(BuildContext context, RelasiOrangTuaAnak relasi) {
+    final orangTua = relasi.orangTua;
+    if (orangTua == null) return const SizedBox.shrink();
+
+    return Builder(
+      builder: (context) {
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: ProfileResponsiveHelper.getCardPadding(context),
+            child: Row(
+              children: [
+                // Avatar
+                Container(
+                  width: ProfileResponsiveHelper.px(context, 60),
+                  height: ProfileResponsiveHelper.px(context, 60),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF1E88E5).withValues(alpha: 0.1),
+                  ),
+                  child: Center(
+                    child: orangTua.avatar != null
+                        ? Image.network(
+                            orangTua.avatar!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.person,
+                              size: ProfileResponsiveHelper.px(context, 32),
+                              color: const Color(0xFF1E88E5),
+                            ),
+                          )
+                        : Icon(
+                            Icons.person,
+                            size: ProfileResponsiveHelper.px(context, 32),
+                            color: const Color(0xFF1E88E5),
+                          ),
+                  ),
+                ),
+                ProfileResponsiveHelper.horizontalGap(context),
+                // Orang Tua Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        orangTua.name,
+                        style: TextStyle(
+                          fontSize: ProfileResponsiveHelper.textSize(
+                            context,
+                            18,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2D3748),
+                        ),
+                      ),
+                      SizedBox(height: ProfileResponsiveHelper.px(context, 4)),
+                      Text(
+                        orangTua.email,
+                        style: TextStyle(
+                          fontSize: ProfileResponsiveHelper.textSize(
+                            context,
+                            14,
+                          ),
+                          color: const Color(0xFF4A5568),
+                        ),
+                      ),
+                      SizedBox(height: ProfileResponsiveHelper.px(context, 8)),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: ProfileResponsiveHelper.px(context, 10),
+                          vertical: ProfileResponsiveHelper.px(context, 4),
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E88E5).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Status: ${relasi.status}',
+                          style: TextStyle(
+                            fontSize: ProfileResponsiveHelper.textSize(
+                              context,
+                              12,
+                            ),
+                            color: const Color(0xFF1E88E5),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Tab 2: Pengajuan Orang Tua (Child View)
+  Widget _buildPengajuanOrangTuaCard(
+    BuildContext context,
+    RelasiOrangTuaAnak pengajuan,
+  ) {
+    final orangTua = pengajuan.orangTua;
+    if (orangTua == null) return const SizedBox.shrink();
+
+    return Builder(
+      builder: (context) {
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: ProfileResponsiveHelper.getCardPadding(context),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    // Avatar
+                    Container(
+                      width: ProfileResponsiveHelper.px(context, 50),
+                      height: ProfileResponsiveHelper.px(context, 50),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          Icons.family_restroom,
+                          size: ProfileResponsiveHelper.px(context, 28),
+                          color: const Color(0xFFFF9800),
+                        ),
+                      ),
+                    ),
+                    ProfileResponsiveHelper.horizontalGap(context),
+                    // Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            orangTua.name,
+                            style: TextStyle(
+                              fontSize: ProfileResponsiveHelper.textSize(
+                                context,
+                                16,
+                              ),
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF2D3748),
+                            ),
+                          ),
+                          SizedBox(
+                            height: ProfileResponsiveHelper.px(context, 4),
+                          ),
+                          Text(
+                            orangTua.email,
+                            style: TextStyle(
+                              fontSize: ProfileResponsiveHelper.textSize(
+                                context,
+                                12,
+                              ),
+                              color: const Color(0xFF4A5568),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: ProfileResponsiveHelper.px(context, 16)),
+                // Status badge
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ProfileResponsiveHelper.px(context, 12),
+                    vertical: ProfileResponsiveHelper.px(context, 6),
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(
+                      pengajuan.status,
+                    ).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Status: ${pengajuan.status}',
+                    style: TextStyle(
+                      fontSize: ProfileResponsiveHelper.textSize(context, 12),
+                      color: _getStatusColor(pengajuan.status),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (pengajuan.status.toLowerCase() == 'pending')
+                  Padding(
+                    padding: EdgeInsets.only(
+                      top: ProfileResponsiveHelper.px(context, 16),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              _showRejectConfirmation(context, pengajuan);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                vertical: ProfileResponsiveHelper.px(
+                                  context,
+                                  12,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'Tolak',
+                              style: TextStyle(
+                                fontSize: ProfileResponsiveHelper.textSize(
+                                  context,
+                                  14,
+                                ),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: ProfileResponsiveHelper.px(context, 12),
+                        ),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _showApproveConfirmation(context, pengajuan);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryBlue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                vertical: ProfileResponsiveHelper.px(
+                                  context,
+                                  12,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'Setujui',
+                              style: TextStyle(
+                                fontSize: ProfileResponsiveHelper.textSize(
+                                  context,
+                                  14,
+                                ),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -817,6 +1242,164 @@ class _ManageFamilyPageState extends ConsumerState<ManageFamilyPage>
             child: Builder(
               builder: (context) => Text(
                 'Batalkan',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===== Helper method to get status color =====
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return const Color(0xFFFF9800); // Orange
+      case 'aktif':
+      case 'active':
+        return const Color(0xFF4CAF50); // Green
+      case 'ditolak':
+      case 'tidak_aktif':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // ===== Helper method to get status description =====
+  String _getStatusDescription(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Menunggu penerimaan';
+      case 'aktif':
+      case 'active':
+        return 'Sudah disetujui';
+      case 'ditolak':
+      case 'tidak_aktif':
+        return 'Ditolak';
+      default:
+        return 'Status tidak diketahui';
+    }
+  }
+
+  // ===== Approve Confirmation =====
+  void _showApproveConfirmation(
+    BuildContext context,
+    RelasiOrangTuaAnak pengajuan,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Builder(
+          builder: (context) => Text(
+            'Setujui Permintaan',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 18),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        content: Builder(
+          builder: (context) => Text(
+            'Apakah Anda yakin ingin menyetujui permintaan dari ${pengajuan.orangTua?.name}?',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 14),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Builder(
+              builder: (context) => Text(
+                'Batal',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ref
+                  .read(familyProvider.notifier)
+                  .persetujuanAnak(
+                    pengajuanId: pengajuan.id,
+                    persetujuan: true,
+                  );
+              Navigator.pop(context);
+            },
+            child: Builder(
+              builder: (context) => Text(
+                'Setujui',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===== Reject Confirmation =====
+  void _showRejectConfirmation(
+    BuildContext context,
+    RelasiOrangTuaAnak pengajuan,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Builder(
+          builder: (context) => Text(
+            'Tolak Permintaan',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 18),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        content: Builder(
+          builder: (context) => Text(
+            'Apakah Anda yakin ingin menolak permintaan dari ${pengajuan.orangTua?.name}?',
+            style: TextStyle(
+              fontSize: ProfileResponsiveHelper.textSize(context, 14),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Builder(
+              builder: (context) => Text(
+                'Batal',
+                style: TextStyle(
+                  fontSize: ProfileResponsiveHelper.textSize(context, 14),
+                ),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ref
+                  .read(familyProvider.notifier)
+                  .persetujuanAnak(
+                    pengajuanId: pengajuan.id,
+                    persetujuan: false,
+                  );
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Builder(
+              builder: (context) => Text(
+                'Tolak',
                 style: TextStyle(
                   fontSize: ProfileResponsiveHelper.textSize(context, 14),
                 ),

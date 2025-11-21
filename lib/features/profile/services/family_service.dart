@@ -109,4 +109,71 @@ class FamilyService {
       throw Exception(error);
     }
   }
+
+  // Detail Orang Tua
+  static Future<Map<String, dynamic>> getDetailOrangTua() async {
+    try {
+      final response = await ApiClient.dio.get(
+        '/premium/relasi-orang-tua-anak/anak/orang-tua',
+      );
+
+      final responseData = response.data as Map<String, dynamic>;
+      final data = responseData['data'];
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
+        'data': data,
+      };
+    } on DioException catch (e) {
+      final error = ApiClient.parseDioError(e);
+      throw Exception(error);
+    }
+  }
+
+  // Daftar Pengajuan Orang Tua
+  static Future<Map<String, dynamic>> getDaftarPengajuanOrangTua() async {
+    try {
+      final response = await ApiClient.dio.get(
+        '/premium/relasi-orang-tua-anak/anak/pengajuan-orang-tua',
+      );
+
+      final responseData = response.data as Map<String, dynamic>;
+      final data = responseData['data'];
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
+        'data': data,
+      };
+    } on DioException catch (e) {
+      final error = ApiClient.parseDioError(e);
+      throw Exception(error);
+    }
+  }
+
+  // Persetujuan Anak
+  static Future<Map<String, dynamic>> persetujuanAnak({
+    required int pengajuanId,
+    required bool persetujuan,
+  }) async {
+    try {
+      final response = await ApiClient.dio.post(
+        '/premium/relasi-orang-tua-anak/anak/persetujuan-anak/$pengajuanId',
+        data: {'persetujuan': persetujuan},
+      );
+
+      final responseData = response.data as Map<String, dynamic>;
+      final data = responseData['data'];
+
+      return {
+        'status': responseData['status'],
+        'message': responseData['message'],
+        'data': data,
+      };
+    } on DioException catch (e) {
+      final error = ApiClient.parseDioError(e);
+      throw Exception(error);
+    }
+  }
 }

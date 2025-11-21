@@ -1,4 +1,5 @@
 import 'package:test_flutter/features/profile/models/anak.dart';
+import 'package:test_flutter/features/profile/models/orang_tua.dart';
 
 class RelasiOrangTuaAnak {
   final int id;
@@ -8,6 +9,7 @@ class RelasiOrangTuaAnak {
   final DateTime createdAt;
   final DateTime updatedAt;
   final Anak? anak;
+  final OrangTua? orangTua;
 
   RelasiOrangTuaAnak({
     required this.id,
@@ -17,6 +19,7 @@ class RelasiOrangTuaAnak {
     required this.createdAt,
     required this.updatedAt,
     this.anak,
+    this.orangTua,
   });
 
   factory RelasiOrangTuaAnak.fromJson(Map<String, dynamic> json) {
@@ -28,6 +31,9 @@ class RelasiOrangTuaAnak {
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       anak: json['anak'] != null ? Anak.fromJson(json['anak']) : null,
+      orangTua: json['orang_tua'] != null
+          ? OrangTua.fromJson(json['orang_tua'])
+          : null,
     );
   }
 
@@ -40,6 +46,7 @@ class RelasiOrangTuaAnak {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'anak': anak?.toJson(),
+      'orang_tua': orangTua?.toJson(),
     };
   }
 }

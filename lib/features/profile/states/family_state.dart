@@ -7,12 +7,18 @@ class FamilyState {
   final FamilyStatus status;
   final List<Anak> anakAktif;
   final List<RelasiOrangTuaAnak> pengajuanAnak;
+  final bool isChild;
+  final RelasiOrangTuaAnak? orangTua;
+  final List<RelasiOrangTuaAnak> pengajuanOrangTua;
   final String? message;
 
   const FamilyState({
     required this.status,
     required this.anakAktif,
     required this.pengajuanAnak,
+    this.isChild = false,
+    this.orangTua,
+    this.pengajuanOrangTua = const [],
     this.message,
   });
 
@@ -21,6 +27,9 @@ class FamilyState {
       status: FamilyStatus.initial,
       anakAktif: [],
       pengajuanAnak: [],
+      isChild: false,
+      orangTua: null,
+      pengajuanOrangTua: [],
       message: null,
     );
   }
@@ -29,6 +38,9 @@ class FamilyState {
     FamilyStatus? status,
     List<Anak>? anakAktif,
     List<RelasiOrangTuaAnak>? pengajuanAnak,
+    bool? isChild,
+    RelasiOrangTuaAnak? orangTua,
+    List<RelasiOrangTuaAnak>? pengajuanOrangTua,
     String? message,
     bool clearMessage = false,
   }) {
@@ -36,6 +48,9 @@ class FamilyState {
       status: status ?? this.status,
       anakAktif: anakAktif ?? this.anakAktif,
       pengajuanAnak: pengajuanAnak ?? this.pengajuanAnak,
+      isChild: isChild ?? this.isChild,
+      orangTua: orangTua ?? this.orangTua,
+      pengajuanOrangTua: pengajuanOrangTua ?? this.pengajuanOrangTua,
       message: clearMessage ? null : (message ?? this.message),
     );
   }

@@ -1,4 +1,4 @@
-class Anak {
+class OrangTua {
   final int id;
   final String? avatar;
   final String name;
@@ -6,17 +6,17 @@ class Anak {
   final String? role;
   final String? authMethod;
 
-  Anak({
+  OrangTua({
     required this.id,
-    this.avatar,
+    required this.avatar,
     required this.name,
     required this.email,
     this.role,
     this.authMethod,
   });
 
-  factory Anak.fromJson(Map<String, dynamic> json) {
-    return Anak(
+  factory OrangTua.fromJson(Map<String, dynamic> json) {
+    return OrangTua(
       id: json['id'],
       avatar: json['avatar'],
       name: json['name'],

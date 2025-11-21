@@ -317,12 +317,15 @@ class AuthStateNotifier extends StateNotifier<Map<String, dynamic>> {
 
     try {
       // Call API
-      await AuthService.logout();
+      // await AuthService.logout();
 
       // CLEAR STATE
       FamilyState(
         anakAktif: List.empty(),
         pengajuanAnak: List.empty(),
+        isChild: false,
+        orangTua: null,
+        pengajuanOrangTua: List.empty(),
         status: FamilyStatus.initial,
       );
 

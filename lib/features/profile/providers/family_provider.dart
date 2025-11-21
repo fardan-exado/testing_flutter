@@ -4,14 +4,82 @@ import 'package:test_flutter/features/profile/models/anak.dart';
 import 'package:test_flutter/features/profile/models/relasi_orang_tua_anak.dart';
 import 'package:test_flutter/features/profile/services/family_service.dart';
 import 'package:test_flutter/features/profile/states/family_state.dart';
+import 'package:test_flutter/features/subscription/providers/pesanan_provider.dart';
 
 class FamilyNotifier extends StateNotifier<FamilyState> {
-  FamilyNotifier() : super(FamilyState.initial());
+  final PesananNotifier pesananNotifier;
+
+  FamilyNotifier(this.pesananNotifier) : super(FamilyState.initial());
 
   /// Load data anak aktif dan pengajuan anak dari API
   Future<void> loadFamilyData() async {
     state = state.copyWith(status: FamilyStatus.loading);
     try {
+      // Check premium status
+      await pesananNotifier.checkStatusPremium();
+      final isPremium = pesananNotifier.state.isPremium;
+
+      if (!isPremium) {
+        // Check if user is a child
+        try {
+          final detailOrangTuaResponse =
+              await FamilyService.getDetailOrangTua();
+          final detailOrangTuaData = detailOrangTuaResponse['data'];
+
+          if (detailOrangTuaData != null) {
+            final orangTua = RelasiOrangTuaAnak.fromJson(detailOrangTuaData);
+
+            // Load pengajuan orang tua
+            final pengajuanOrangTuaResponse =
+                await FamilyService.getDaftarPengajuanOrangTua();
+            final pengajuanOrangTuaData =
+                pengajuanOrangTuaResponse['data'] as List<dynamic>;
+            final pengajuanOrangTuaList = pengajuanOrangTuaData
+                .map((item) => RelasiOrangTuaAnak.fromJson(item))
+                .toList();
+
+            state = state.copyWith(
+              status: FamilyStatus.loaded,
+              isChild: true,
+              orangTua: orangTua,
+              pengajuanOrangTua: pengajuanOrangTuaList,
+            );
+            logger.fine('Family data (Child) loaded successfully');
+            return;
+          } else {
+            // Detail orang tua is null, check if there are pengajuan orang tua
+            try {
+              final pengajuanOrangTuaResponse =
+                  await FamilyService.getDaftarPengajuanOrangTua();
+              final pengajuanOrangTuaData =
+                  pengajuanOrangTuaResponse['data'] as List<dynamic>;
+              final pengajuanOrangTuaList = pengajuanOrangTuaData
+                  .map((item) => RelasiOrangTuaAnak.fromJson(item))
+                  .toList();
+
+              // If there are pengajuan, mark as child
+              if (pengajuanOrangTuaList.isNotEmpty) {
+                state = state.copyWith(
+                  status: FamilyStatus.loaded,
+                  isChild: true,
+                  orangTua: null,
+                  pengajuanOrangTua: pengajuanOrangTuaList,
+                );
+                logger.fine(
+                  'Family data (Child with pending requests) loaded successfully',
+                );
+                return;
+              }
+            } catch (e) {
+              logger.info('Error checking pengajuan orang tua: $e');
+            }
+          }
+        } catch (e) {
+          // Ignore error, proceed as parent (non-premium)
+          logger.info('User is not a child or error checking child status: $e');
+        }
+      }
+
       // Load anak aktif
       final anakAktifResponse = await FamilyService.getDaftarAnakAktif();
       final anakAktifData = anakAktifResponse['data'] as List<dynamic>;
@@ -28,6 +96,7 @@ class FamilyNotifier extends StateNotifier<FamilyState> {
 
       state = state.copyWith(
         status: FamilyStatus.loaded,
+        isChild: false,
         anakAktif: anakAktifList,
         pengajuanAnak: pengajuanList,
       );
@@ -35,6 +104,33 @@ class FamilyNotifier extends StateNotifier<FamilyState> {
       logger.fine('Family data loaded successfully');
     } catch (e) {
       logger.severe('Error loading family data: $e');
+      state = state.copyWith(status: FamilyStatus.error, message: e.toString());
+    }
+  }
+
+  /// Persetujuan Anak (Approve Parent Request)
+  Future<void> persetujuanAnak({
+    required int pengajuanId,
+    required bool persetujuan,
+  }) async {
+    state = state.copyWith(status: FamilyStatus.loading);
+    try {
+      final response = await FamilyService.persetujuanAnak(
+        pengajuanId: pengajuanId,
+        persetujuan: persetujuan,
+      );
+
+      state = state.copyWith(
+        status: FamilyStatus.success,
+        message: response['message'],
+      );
+
+      logger.fine('Parent request approved successfully');
+
+      // Reload data setelah berhasil
+      await loadFamilyData();
+    } catch (e) {
+      logger.severe('Error approving parent request: $e');
       state = state.copyWith(status: FamilyStatus.error, message: e.toString());
     }
   }
@@ -144,5 +240,5 @@ class FamilyNotifier extends StateNotifier<FamilyState> {
 final familyProvider = StateNotifierProvider<FamilyNotifier, FamilyState>((
   ref,
 ) {
-  return FamilyNotifier();
+  return FamilyNotifier(ref.read(pesananProvider.notifier));
 });
