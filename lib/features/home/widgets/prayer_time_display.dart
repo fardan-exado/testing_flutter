@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:test_flutter/core/utils/responsive_helper.dart';
-import 'package:test_flutter/features/sholat/models/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat/sholat.dart';
 import 'package:test_flutter/features/home/home_provider.dart';
 import 'package:test_flutter/features/home/home_state.dart';
 

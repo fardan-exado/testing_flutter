@@ -1,4 +1,4 @@
-import 'package:test_flutter/features/sholat/models/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat/sholat.dart';
 
 enum SholatStatus { initial, loading, loaded, error, refreshing, offline }
 

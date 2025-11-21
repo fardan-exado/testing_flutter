@@ -6,7 +6,7 @@ abstract class HiveTypeId {
   static const int kategoriKomunitas = 4;
   static const int postingan = 5;
   static const int komentarPostingan = 6;
-  static const int sholat = 7;
+  static const int jadwalSholat = 7;
   static const int sholatWajib = 8;
   static const int sholatSunnah = 9;
   static const int sedekah = 10;

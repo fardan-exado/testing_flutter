@@ -37,7 +37,7 @@ class TahajudState {
     );
   }
 
-  factory TahajudState.initial() {
+  TahajudState.initial() {
     final now = DateTime.now();
     final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
     return TahajudState(

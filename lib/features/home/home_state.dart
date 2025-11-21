@@ -1,5 +1,5 @@
 import 'package:test_flutter/data/models/artikel/artikel.dart';
-import 'package:test_flutter/features/sholat/models/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat/sholat.dart';
 
 enum HomeStatus { initial, loading, loaded, error, refreshing, offline }
 

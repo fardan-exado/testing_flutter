@@ -38,4 +38,15 @@ class PesananState {
       message: message,
     );
   }
+
+  factory PesananState.initial() {
+    return PesananState(
+      status: PesananStatus.initial,
+      isPremium: false,
+      activeSubscription: null,
+      riwayatPesanan: [],
+      error: null,
+      message: null,
+    );
+  }
 }

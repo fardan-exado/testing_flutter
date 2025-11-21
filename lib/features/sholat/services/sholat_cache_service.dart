@@ -1,6 +1,6 @@
 import 'package:test_flutter/core/constants/cache_keys.dart';
 import 'package:test_flutter/data/models/cache/cache.dart';
-import 'package:test_flutter/features/sholat/models/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat/sholat.dart';
 import 'package:test_flutter/data/services/cache/cache_service.dart';
 
 class SholatCacheService {

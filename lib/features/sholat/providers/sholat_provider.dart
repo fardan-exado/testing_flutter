@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:intl/intl.dart';
 import 'package:test_flutter/core/constants/cache_keys.dart';
 import 'package:test_flutter/core/utils/logger.dart';
-import 'package:test_flutter/features/sholat/models/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat/sholat.dart';
 import 'package:test_flutter/data/services/cache/cache_service.dart';
 import 'package:test_flutter/data/services/location/location_service.dart';
 import 'package:test_flutter/features/sholat/services/sholat_cache_service.dart';

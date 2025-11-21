@@ -11,7 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:test_flutter/core/utils/format_helper.dart';
 import 'package:test_flutter/core/utils/logger.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
-import 'package:test_flutter/features/sholat/models/sholat.dart';
+import 'package:test_flutter/features/sholat/models/sholat/sholat.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/sholat/services/alarm_service.dart';
 import 'package:test_flutter/features/sholat/providers/sholat_provider.dart';
