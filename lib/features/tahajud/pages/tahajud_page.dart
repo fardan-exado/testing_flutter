@@ -6,7 +6,9 @@ import 'package:intl/intl.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/core/utils/connection/connection_provider.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
-import 'package:test_flutter/features/subscription/widgets/premium_gate.dart';
+import 'package:test_flutter/features/tahajud/providers/tahajud_provider.dart';
+import 'package:test_flutter/features/tahajud/states/tahajud_state.dart';
+import 'package:test_flutter/features/tahajud/models/tahajud.dart';
 
 class TahajudPage extends ConsumerStatefulWidget {
   const TahajudPage({super.key});
@@ -18,101 +20,8 @@ class TahajudPage extends ConsumerStatefulWidget {
 class _TahajudPageState extends ConsumerState<TahajudPage>
     with TickerProviderStateMixin {
   late AnimationController _progressController;
-
-  // Challenge data
-  int currentStreak = 7;
-  int longestStreak = 15;
-  int totalDays = 45;
-  int currentLevel = 3;
-  int tahajudCount = 45;
-
-  // Monthly tahajud count
-  int monthlyTahajudCount = 12;
-
-  // Calendar data - tahajud completed dates with details
-  final Map<String, Map<String, dynamic>> tahajudData = {
-    '2025-10-24': {
-      'waktu_sholat': '03:30',
-      'rakaat': 8,
-      'makan_terakhir': '20:00',
-      'tidur': '22:00',
-      'keterangan': 'Sendiri',
-    },
-    '2025-10-25': {
-      'waktu_sholat': '03:30',
-      'rakaat': 0,
-      'makan_terakhir': '20:00',
-      'tidur': '01:00',
-      'keterangan': 'Tidak Sholat Tahajud karena Begadang',
-    },
-    '2025-10-27': {
-      'waktu_sholat': '04:00',
-      'rakaat': 6,
-      'makan_terakhir': '19:30',
-      'tidur': '21:30',
-      'keterangan': 'Berjamaah di masjid',
-    },
-  };
-
-  Set<DateTime> get completedDates {
-    return tahajudData.keys.map((dateStr) {
-      final parts = dateStr.split('-');
-      return DateTime(
-        int.parse(parts[0]),
-        int.parse(parts[1]),
-        int.parse(parts[2]),
-      );
-    }).toSet();
-  }
-
-  DateTime selectedMonth = DateTime.now();
-  PageController calendarPageController = PageController();
-
-  // Available badges
-  final List<Map<String, dynamic>> badges = [
-    {
-      'id': 'first_step',
-      'name': 'Langkah Pertama',
-      'description': 'Lakukan tahajud pertama kali',
-      'icon': Icons.star_rounded,
-      'color': Colors.amber,
-      'achieved': true,
-      'date': DateTime(2025, 8, 15),
-    },
-    {
-      'id': 'week_warrior',
-      'name': 'Pejuang Seminggu',
-      'description': 'Tahajud 7 hari berturut-turut',
-      'icon': Icons.military_tech_rounded,
-      'color': Colors.blue,
-      'achieved': true,
-      'date': DateTime(2025, 9, 10),
-    },
-    {
-      'id': 'night_guardian',
-      'name': 'Penjaga Malam',
-      'description': 'Tahajud 30 hari dalam sebulan',
-      'icon': Icons.shield_rounded,
-      'color': Colors.purple,
-      'achieved': false,
-    },
-    {
-      'id': 'consistent_soul',
-      'name': 'Jiwa Istiqomah',
-      'description': 'Tahajud 100 hari total',
-      'icon': Icons.psychology_rounded,
-      'color': Colors.green,
-      'achieved': false,
-    },
-    {
-      'id': 'diamond_devotee',
-      'name': 'Berlian Ibadah',
-      'description': 'Tahajud 365 hari total',
-      'icon': Icons.diamond_rounded,
-      'color': Colors.cyan,
-      'achieved': false,
-    },
-  ];
+  late DateTime selectedMonth;
+  late ProviderSubscription<TahajudState> _tahajudSub;
 
   @override
   void initState() {
@@ -123,30 +32,50 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
     );
 
     _progressController.forward();
-    _calculateMonthlyTahajud();
+    selectedMonth = DateTime.now();
   }
 
-  void _calculateMonthlyTahajud() {
-    final now = DateTime.now();
-    monthlyTahajudCount = completedDates.where((date) {
-      return date.year == now.year && date.month == now.month;
-    }).length;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Setup manual listener for tahajud state changes
+    _tahajudSub = ref.listenManual(tahajudProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      if (next.status == TahajudStatus.success && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.success,
+          duration: const Duration(seconds: 3),
+        );
+        ref.read(tahajudProvider.notifier).clearMessage();
+        ref.read(tahajudProvider.notifier).resetStatus();
+      } else if (next.status == TahajudStatus.error && next.message != null) {
+        showMessageToast(
+          context,
+          message: next.message!,
+          type: ToastType.error,
+          duration: const Duration(seconds: 4),
+        );
+        ref.read(tahajudProvider.notifier).clearMessage();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _tahajudSub.close();
     _progressController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Wrap with Premium Gate
     return _buildContent(context);
-    // return PremiumGate(
-    //   featureName: 'Tahajud Tracker',
-    //   child: _buildContent(context),
-    // );
   }
 
   Widget _buildContent(BuildContext context) {
@@ -159,7 +88,6 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
     final isAuthenticated = authState['status'] == AuthState.authenticated;
 
     if (!isAuthenticated) return _buildLoginRequired();
-    // if (!isPremium) return _buildPremiumRequired();
 
     return Scaffold(
       body: Container(
@@ -205,7 +133,6 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
         children: [
           Row(
             children: [
-              // Back button
               IconButton(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -263,7 +190,6 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
                         color: AppTheme.onSurfaceVariant,
                       ),
                     ),
-
                     if (isOffline)
                       Container(
                         margin: const EdgeInsets.only(top: 8),
@@ -301,69 +227,6 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
               ),
             ],
           ),
-          SizedBox(height: isTablet ? 20 : 16),
-          // Quote Card
-          //   Container(
-          //     padding: EdgeInsets.all(isTablet ? 20 : 16),
-          //     decoration: BoxDecoration(
-          //       gradient: LinearGradient(
-          //         colors: [
-          //           AppTheme.primaryBlue.withValues(alpha: 0.05),
-          //           AppTheme.accentGreen.withValues(alpha: 0.05),
-          //         ],
-          //       ),
-          //       borderRadius: BorderRadius.circular(isTablet ? 18 : 16),
-          //       border: Border.all(
-          //         color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-          //       ),
-          //     ),
-          //     child: Column(
-          //       children: [
-          //         Text(
-          //           'وَمِنَ اللَّيْلِ فَتَهَجَّدْ بِهِ نَافِلَةً لَّكَ',
-          //           style: TextStyle(
-          //             color: AppTheme.primaryBlue,
-          //             fontSize: isDesktop
-          //                 ? 16
-          //                 : isTablet
-          //                 ? 15
-          //                 : 14,
-          //             fontWeight: FontWeight.w600,
-          //             height: 1.8,
-          //           ),
-          //           textAlign: TextAlign.center,
-          //         ),
-          //         SizedBox(height: isTablet ? 12 : 10),
-          //         Text(
-          //           '"Dan pada sebagian malam, maka lakukanlah shalat tahajud sebagai suatu ibadah tambahan bagimu"',
-          //           style: TextStyle(
-          //             color: AppTheme.onSurface.withValues(alpha: 0.8),
-          //             fontSize: isDesktop
-          //                 ? 13
-          //                 : isTablet
-          //                 ? 12
-          //                 : 11,
-          //             fontStyle: FontStyle.italic,
-          //           ),
-          //           textAlign: TextAlign.center,
-          //         ),
-          //         SizedBox(height: isTablet ? 8 : 6),
-          //         Text(
-          //           'QS. Al-Isra: 79',
-          //           style: TextStyle(
-          //             color: AppTheme.onSurfaceVariant,
-          //             fontSize: isDesktop
-          //                 ? 12
-          //                 : isTablet
-          //                 ? 11
-          //                 : 10,
-          //             fontWeight: FontWeight.w500,
-          //           ),
-          //           textAlign: TextAlign.center,
-          //         ),
-          //       ],
-          //     ),
-          //   ),
         ],
       ),
     );
@@ -372,6 +235,10 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
   // ===================== Streak Card =====================
 
   Widget _buildStreakCard(bool isTablet, bool isDesktop) {
+    final tahajudState = ref.watch(tahajudProvider);
+    final statistik = tahajudState.statistikTahajud;
+    final isLoading = tahajudState.status == TahajudStatus.loading;
+
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: isDesktop
@@ -383,8 +250,8 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
       child: Row(
         children: [
           _buildProgressCard(
-            '$currentStreak',
-            '30',
+            isLoading ? '-' : '${statistik?.streakBulanIni ?? 0}',
+            '${statistik?.jumlahHariBulanIni ?? 30}',
             'Streak Saat Ini',
             AppTheme.primaryBlue,
             Icons.local_fire_department_rounded,
@@ -392,7 +259,7 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
           ),
           SizedBox(width: isTablet ? 14 : 12),
           _buildProgressCard(
-            '$tahajudCount',
+            isLoading ? '-' : '${statistik?.totalTahajudKeseluruhan ?? 0}',
             '∞',
             'Total Tahajud',
             AppTheme.accentGreen,
@@ -401,8 +268,8 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
           ),
           SizedBox(width: isTablet ? 14 : 12),
           _buildProgressCard(
-            '$monthlyTahajudCount',
-            '30',
+            isLoading ? '-' : '${statistik?.totalTahajudBulanIni ?? 0}',
+            '${statistik?.jumlahHariBulanIni ?? 30}',
             'Bulan Ini',
             AppTheme.primaryBlueDark,
             Icons.calendar_month_rounded,
@@ -495,6 +362,9 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
   // ===================== Calendar =====================
 
   Widget _buildCalendarSection(bool isTablet, bool isDesktop) {
+    final tahajudState = ref.watch(tahajudProvider);
+    final isLoading = tahajudState.status == TahajudStatus.loading;
+
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: isDesktop
@@ -520,7 +390,6 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Calendar Header
           Container(
             padding: EdgeInsets.all(isTablet ? 14 : 12),
             decoration: BoxDecoration(
@@ -559,13 +428,126 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
             ),
           ),
           SizedBox(height: isTablet ? 20 : 16),
-          Expanded(child: _buildCalendarGrid(isTablet, isDesktop)),
+          Expanded(
+            child: isLoading
+                ? _buildCalendarLoadingAnimation(isTablet, isDesktop)
+                : _buildCalendarGrid(isTablet, isDesktop, tahajudState),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCalendarGrid(bool isTablet, bool isDesktop) {
+  Widget _buildCalendarLoadingAnimation(bool isTablet, bool isDesktop) {
+    final daysOfWeek = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              onPressed: null,
+              icon: const Icon(Icons.chevron_left_rounded),
+            ),
+            Text(
+              DateFormat('MMMM yyyy', 'id_ID').format(selectedMonth),
+              style: TextStyle(
+                fontSize: isDesktop
+                    ? 16
+                    : isTablet
+                    ? 15
+                    : 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.onSurface,
+              ),
+            ),
+            IconButton(
+              onPressed: null,
+              icon: const Icon(Icons.chevron_right_rounded),
+            ),
+          ],
+        ),
+        SizedBox(height: isTablet ? 16 : 12),
+        Row(
+          children: daysOfWeek.map((day) {
+            return Expanded(
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: isTablet ? 8 : 6),
+                child: Text(
+                  day,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: isDesktop
+                        ? 12
+                        : isTablet
+                        ? 11
+                        : 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: isTablet ? 8 : 6),
+        Expanded(
+          child: GridView.count(
+            crossAxisCount: 7,
+            mainAxisSpacing: isTablet ? 6 : 4,
+            crossAxisSpacing: isTablet ? 3 : 2,
+            children: List.generate(35, (index) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Center(
+                  child: SizedBox(
+                    width: isTablet ? 20 : 16,
+                    height: isTablet ? 20 : 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: isTablet ? 2 : 1.5,
+                      valueColor: AlwaysStoppedAnimation(
+                        AppTheme.primaryBlue.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        SizedBox(height: isTablet ? 16 : 12),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: isTablet ? 24 : 20,
+          children: [
+            _buildCalendarLegend(
+              AppTheme.accentGreen,
+              'Tahajud dilakukan',
+              isTablet,
+              isBorder: true,
+            ),
+            _buildCalendarLegend(
+              AppTheme.primaryBlue,
+              'Hari ini',
+              isTablet,
+              isBorder: true,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCalendarGrid(
+    bool isTablet,
+    bool isDesktop,
+    TahajudState tahajudState,
+  ) {
     final firstDayOfMonth = DateTime(
       selectedMonth.year,
       selectedMonth.month,
@@ -582,6 +564,20 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
     final daysOfWeek = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
     final cellSize = isTablet ? 44.0 : 36.0;
 
+    // Create map of completed dates from riwayat
+    final completedDates = <DateTime>{};
+    for (var riwayat in tahajudState.riwayatTahajud) {
+      if (riwayat.status) {
+        completedDates.add(
+          DateTime(
+            riwayat.tanggal.year,
+            riwayat.tanggal.month,
+            riwayat.tanggal.day,
+          ),
+        );
+      }
+    }
+
     return Column(
       children: [
         // Month navigation
@@ -590,13 +586,16 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
           children: [
             IconButton(
               onPressed: () {
+                final prevMonth = DateTime(
+                  selectedMonth.year,
+                  selectedMonth.month - 1,
+                );
                 setState(() {
-                  selectedMonth = DateTime(
-                    selectedMonth.year,
-                    selectedMonth.month - 1,
-                  );
-                  _calculateMonthlyTahajud();
+                  selectedMonth = prevMonth;
                 });
+                final monthFormat =
+                    '${prevMonth.year}-${prevMonth.month.toString().padLeft(2, '0')}';
+                ref.read(tahajudProvider.notifier).changeMonth(monthFormat);
               },
               icon: Icon(
                 Icons.chevron_left_rounded,
@@ -618,13 +617,16 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
             ),
             IconButton(
               onPressed: () {
+                final nextMonth = DateTime(
+                  selectedMonth.year,
+                  selectedMonth.month + 1,
+                );
                 setState(() {
-                  selectedMonth = DateTime(
-                    selectedMonth.year,
-                    selectedMonth.month + 1,
-                  );
-                  _calculateMonthlyTahajud();
+                  selectedMonth = nextMonth;
                 });
+                final monthFormat =
+                    '${nextMonth.year}-${nextMonth.month.toString().padLeft(2, '0')}';
+                ref.read(tahajudProvider.notifier).changeMonth(monthFormat);
               },
               icon: Icon(
                 Icons.chevron_right_rounded,
@@ -701,6 +703,7 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
                               isCompleted,
                               currentDate,
                               isTablet,
+                              tahajudState,
                             ),
                             child: Container(
                               margin: EdgeInsets.all(isTablet ? 3 : 2),
@@ -817,32 +820,59 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
     bool isCompleted,
     DateTime currentDate,
     bool isTablet,
+    TahajudState tahajudState,
   ) {
     final authState = ref.read(authProvider);
     final isAuthenticated = authState['status'] == AuthState.authenticated;
     final connectionState = ref.read(connectionProvider);
     final isOffline = !connectionState.isOnline;
 
-    final dateKey =
-        '${currentDate.year}-${currentDate.month.toString().padLeft(2, '0')}-${currentDate.day.toString().padLeft(2, '0')}';
-    final existingData = tahajudData[dateKey];
+    // Get the tahajud record for this date
+    final existingRiwayat = tahajudState.riwayatTahajud.firstWhere(
+      (r) =>
+          r.tanggal.year == currentDate.year &&
+          r.tanggal.month == currentDate.month &&
+          r.tanggal.day == currentDate.day,
+      orElse: () =>
+          RiwayatTahajud(tanggal: currentDate, status: false, tahajud: null),
+    );
+    final tahajud = existingRiwayat.tahajud;
 
     // Controllers for form
     final waktuSholatController = TextEditingController(
-      text: existingData?['waktu_sholat'] ?? '',
+      text: tahajud?.waktuSholat != null
+          ? DateFormat('HH:mm').format(tahajud!.waktuSholat!)
+          : '',
     );
     final rakaatController = TextEditingController(
-      text: existingData?['rakaat']?.toString() ?? '',
+      text: tahajud?.jumlahRakaat?.toString() ?? '',
     );
     final makanController = TextEditingController(
-      text: existingData?['makan_terakhir'] ?? '',
+      text: tahajud?.waktuMakanTerakhir != null
+          ? DateFormat('HH:mm').format(tahajud!.waktuMakanTerakhir!)
+          : '',
     );
     final tidurController = TextEditingController(
-      text: existingData?['tidur'] ?? '',
+      text: tahajud?.waktuTidur != null
+          ? DateFormat('HH:mm').format(tahajud!.waktuTidur!)
+          : '',
     );
     final keteranganController = TextEditingController(
-      text: existingData?['keterangan'] ?? '',
+      text: tahajud?.keterangan ?? '',
     );
+
+    // State for form validation
+    final formKey = GlobalKey<FormState>();
+    final formState = <String, String?>{
+      'waktuSholat': waktuSholatController.text.isNotEmpty
+          ? waktuSholatController.text
+          : null,
+      'rakaat': rakaatController.text.isNotEmpty ? rakaatController.text : null,
+      'makanTerakhir': makanController.text.isNotEmpty
+          ? makanController.text
+          : null,
+      'tidur': tidurController.text.isNotEmpty ? tidurController.text : null,
+    };
 
     showModalBottomSheet(
       context: context,
@@ -883,7 +913,7 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
               SizedBox(height: isTablet ? 20 : 16),
 
               // Show detail if exists, otherwise show form
-              if (isCompleted && existingData != null) ...[
+              if (isCompleted && tahajud != null) ...[
                 // Detail View
                 Container(
                   padding: EdgeInsets.all(isTablet ? 20 : 16),
@@ -934,9 +964,8 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
                     children: [
                       _buildDetailRow(
                         'Waktu Sholat',
-                        existingData['waktu_sholat'] != null &&
-                                existingData['waktu_sholat'].isNotEmpty
-                            ? '${existingData['waktu_sholat']}'
+                        tahajud?.waktuSholat != null
+                            ? DateFormat('HH:mm').format(tahajud!.waktuSholat!)
                             : '-',
                         Icons.access_time_rounded,
                         isTablet,
@@ -944,9 +973,9 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
                       SizedBox(height: isTablet ? 14 : 12),
                       _buildDetailRow(
                         'Rakaat',
-                        existingData['rakaat'] != null &&
-                                existingData['rakaat'] > 0
-                            ? '${existingData['rakaat']} rakaat'
+                        tahajud?.jumlahRakaat != null &&
+                                tahajud!.jumlahRakaat! > 0
+                            ? '${tahajud?.jumlahRakaat} rakaat'
                             : '-',
                         Icons.format_list_numbered_rounded,
                         isTablet,
@@ -954,9 +983,10 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
                       SizedBox(height: isTablet ? 14 : 12),
                       _buildDetailRow(
                         'Makan Terakhir',
-                        existingData['makan_terakhir'] != null &&
-                                existingData['makan_terakhir'].isNotEmpty
-                            ? '${existingData['makan_terakhir']}'
+                        tahajud?.waktuMakanTerakhir != null
+                            ? DateFormat(
+                                'HH:mm',
+                              ).format(tahajud!.waktuMakanTerakhir!)
                             : '-',
                         Icons.restaurant_rounded,
                         isTablet,
@@ -964,15 +994,14 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
                       SizedBox(height: isTablet ? 14 : 12),
                       _buildDetailRow(
                         'Tidur',
-                        existingData['tidur'] != null &&
-                                existingData['tidur'].isNotEmpty
-                            ? '${existingData['tidur']}'
+                        tahajud?.waktuTidur != null
+                            ? DateFormat('HH:mm').format(tahajud!.waktuTidur!)
                             : '-',
                         Icons.bedtime_rounded,
                         isTablet,
                       ),
-                      if (existingData['keterangan'] != null &&
-                          existingData['keterangan'].isNotEmpty) ...[
+                      if (tahajud?.keterangan != null &&
+                          tahajud!.keterangan!.isNotEmpty) ...[
                         SizedBox(height: isTablet ? 14 : 12),
                         Divider(color: Colors.grey.shade300),
                         SizedBox(height: isTablet ? 14 : 12),
@@ -999,7 +1028,7 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    existingData['keterangan'],
+                                    tahajud?.keterangan ?? '',
                                     style: TextStyle(
                                       fontSize: isTablet ? 15 : 14,
                                       color: AppTheme.onSurface,
@@ -1038,53 +1067,58 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
 
                       // Waktu Sholat
                       _buildTimeField(
-                        'Waktu Sholat (opsional)',
+                        'Waktu Sholat *',
                         waktuSholatController,
                         Icons.access_time_rounded,
                         isTablet,
                         context,
+                        isRequired: true,
                       ),
                       SizedBox(height: isTablet ? 14 : 12),
 
                       // Rakaat
                       _buildFormField(
-                        'Rakaat (opsional)',
+                        'Rakaat *',
                         rakaatController,
                         'Contoh: 8',
                         Icons.format_list_numbered_rounded,
                         isTablet,
                         isNumber: true,
+                        isRequired: true,
                       ),
                       SizedBox(height: isTablet ? 14 : 12),
 
                       // Makan Terakhir
                       _buildTimeField(
-                        'Makan Terakhir (opsional)',
+                        'Makan Terakhir *',
                         makanController,
                         Icons.restaurant_rounded,
                         isTablet,
                         context,
+                        isRequired: true,
                       ),
                       SizedBox(height: isTablet ? 14 : 12),
 
                       // Tidur
                       _buildTimeField(
-                        'Tidur (opsional)',
+                        'Tidur *',
                         tidurController,
                         Icons.bedtime_rounded,
                         isTablet,
                         context,
+                        isRequired: true,
                       ),
                       SizedBox(height: isTablet ? 14 : 12),
 
                       // Keterangan
                       _buildFormField(
-                        'Keterangan (opsional)',
+                        'Keterangan',
                         keteranganController,
                         'Contoh: Sendiri, Berjamaah, dll',
                         Icons.notes_rounded,
                         isTablet,
                         maxLines: 3,
+                        isRequired: false,
                       ),
                     ],
                   ),
@@ -1127,14 +1161,42 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
                       flex: 2,
                       child: ElevatedButton(
                         onPressed: (isAuthenticated && !isOffline)
-                            ? () => _markTahajud(
-                                currentDate,
-                                waktuSholatController.text,
-                                rakaatController.text,
-                                makanController.text,
-                                tidurController.text,
-                                keteranganController.text,
-                              )
+                            ? () {
+                                // Validate required fields
+                                if (waktuSholatController.text.isEmpty ||
+                                    rakaatController.text.isEmpty ||
+                                    makanController.text.isEmpty ||
+                                    tidurController.text.isEmpty) {
+                                  showMessageToast(
+                                    context,
+                                    message:
+                                        'Semua field yang ditandai * harus diisi',
+                                    type: ToastType.error,
+                                  );
+                                  return;
+                                }
+
+                                // Validate rakaat is a number
+                                if (int.tryParse(rakaatController.text) ==
+                                    null) {
+                                  showMessageToast(
+                                    context,
+                                    message: 'Rakaat harus berupa angka',
+                                    type: ToastType.error,
+                                  );
+                                  return;
+                                }
+
+                                _markTahajud(
+                                  currentDate,
+                                  waktuSholatController.text,
+                                  rakaatController.text,
+                                  makanController.text,
+                                  tidurController.text,
+                                  keteranganController.text,
+                                );
+                                Navigator.pop(context);
+                              }
                             : null,
                         style: ElevatedButton.styleFrom(
                           padding: EdgeInsets.symmetric(
@@ -1217,7 +1279,10 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
                       flex: 2,
                       child: ElevatedButton(
                         onPressed: (isAuthenticated && !isOffline)
-                            ? () => _deleteTahajud(currentDate)
+                            ? () {
+                                _deleteTahajud(tahajud?.id ?? 0);
+                                Navigator.pop(context);
+                              }
                             : null,
                         style: ElevatedButton.styleFrom(
                           padding: EdgeInsets.symmetric(
@@ -1282,55 +1347,76 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
     String tidur,
     String keterangan,
   ) {
-    final dateKey =
-        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    try {
+      // Parse time strings and combine with date to create DateTime
+      DateTime waktuSholatDate = date;
+      DateTime waktuMakanDate = date;
+      DateTime waktuTidurDate = date;
 
-    setState(() {
-      tahajudData[dateKey] = {
-        'waktu_sholat': waktuSholat,
-        'rakaat': rakaat.isNotEmpty ? int.tryParse(rakaat) ?? 0 : 0,
-        'makan_terakhir': makanTerakhir,
-        'tidur': tidur,
-        'keterangan': keterangan,
-      };
-
-      currentStreak++;
-      tahajudCount++;
-      if (currentStreak > longestStreak) {
-        longestStreak = currentStreak;
+      if (waktuSholat.isNotEmpty) {
+        final parts = waktuSholat.split(':');
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        waktuSholatDate = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          hour,
+          minute,
+        );
       }
-      _calculateMonthlyTahajud();
-    });
 
-    Navigator.pop(context);
+      if (makanTerakhir.isNotEmpty) {
+        final parts = makanTerakhir.split(':');
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        waktuMakanDate = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          hour,
+          minute,
+        );
+      }
 
-    showMessageToast(
-      context,
-      message: 'Alhamdulillah! Tahajud berhasil ditandai',
-      type: ToastType.success,
-    );
+      if (tidur.isNotEmpty) {
+        final parts = tidur.split(':');
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        waktuTidurDate = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          hour,
+          minute,
+        );
+      }
+
+      final jumlahRakaat = rakaat.isNotEmpty ? int.tryParse(rakaat) ?? 0 : 0;
+
+      // Call provider to add tahajud
+      ref
+          .read(tahajudProvider.notifier)
+          .addTahajud(
+            waktuSholat: waktuSholatDate,
+            jumlahRakaat: jumlahRakaat,
+            waktuMakanTerakhir: waktuMakanDate,
+            waktuTidur: waktuTidurDate,
+            keterangan: keterangan,
+          );
+      // Toast message is handled by the listener in didChangeDependencies
+    } catch (e) {
+      showMessageToast(
+        context,
+        message: 'Gagal memproses data: $e',
+        type: ToastType.error,
+      );
+    }
   }
 
-  void _deleteTahajud(DateTime date) {
-    final dateKey =
-        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-
-    setState(() {
-      tahajudData.remove(dateKey);
-
-      // Update streak and count
-      if (tahajudCount > 0) tahajudCount--;
-      if (currentStreak > 0) currentStreak--;
-      _calculateMonthlyTahajud();
-    });
-
-    Navigator.pop(context);
-
-    showMessageToast(
-      context,
-      message: 'Tandai tahajud berhasil dihapus',
-      type: ToastType.info,
-    );
+  void _deleteTahajud(int tahajudId) {
+    ref.read(tahajudProvider.notifier).deleteTahajud(tahajudId.toString());
+    // Toast message is handled by the listener in didChangeDependencies
   }
 
   // Helper widget for detail row
@@ -1378,8 +1464,9 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
     TextEditingController controller,
     IconData icon,
     bool isTablet,
-    BuildContext context,
-  ) {
+    BuildContext context, {
+    bool isRequired = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1436,7 +1523,12 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
             ),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(
+                color: controller.text.isEmpty && isRequired
+                    ? Colors.red.shade300
+                    : Colors.grey.shade300,
+                width: controller.text.isEmpty && isRequired ? 1.5 : 1,
+              ),
               borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
             ),
             child: Row(
@@ -1467,6 +1559,17 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
             ),
           ),
         ),
+        if (controller.text.isEmpty && isRequired) ...[
+          SizedBox(height: 4),
+          Text(
+            'Field ini harus diisi',
+            style: TextStyle(
+              fontSize: isTablet ? 11 : 10,
+              color: Colors.red.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1480,6 +1583,7 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
     bool isTablet, {
     bool isNumber = false,
     int maxLines = 1,
+    bool isRequired = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1502,11 +1606,20 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
             prefixIcon: Icon(icon, size: isTablet ? 20 : 18),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(
+                color: controller.text.isEmpty && isRequired
+                    ? Colors.red.shade300
+                    : Colors.grey.shade300,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(
+                color: controller.text.isEmpty && isRequired
+                    ? Colors.red.shade300
+                    : Colors.grey.shade300,
+                width: controller.text.isEmpty && isRequired ? 1.5 : 1,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
@@ -1518,6 +1631,9 @@ class _TahajudPageState extends ConsumerState<TahajudPage>
               horizontal: isTablet ? 14 : 12,
               vertical: isTablet ? 14 : 12,
             ),
+            errorText: controller.text.isEmpty && isRequired
+                ? 'Field ini harus diisi'
+                : null,
           ),
           style: TextStyle(fontSize: isTablet ? 14 : 13),
         ),
