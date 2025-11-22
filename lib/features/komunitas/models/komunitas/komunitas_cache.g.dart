@@ -19,7 +19,7 @@ class KomunitasPostinganCacheAdapter
     };
     return KomunitasPostinganCache(
       id: fields[0] as int,
-      userId: fields[1] as int,
+      userId: fields[1] as int?,
       postinganId: fields[2] as int?,
       judul: fields[3] as String,
       konten: fields[4] as String?,

@@ -158,15 +158,17 @@ class _KomunitasPageState extends ConsumerState<KomunitasPage>
     final kategori = ref.watch(komunitasProvider).kategori;
     return [
       {'id': '0', 'nama': 'Semua', 'icon': null},
-      ...kategori.map(
-        (e) => {
+      ...kategori.map((e) {
+        final raw = e.iconPath ?? '';
+        final isValid = raw.trim().isNotEmpty;
+        final base = dotenv.env['STORAGE_URL'] ?? '';
+
+        return {
           'id': e.id.toString(),
           'nama': e.nama,
-          'icon_path': e.iconPath!.isNotEmpty
-              ? '${dotenv.env['STORAGE_URL'] ?? ''}/${e.iconPath}'
-              : null,
-        },
-      ),
+          'icon_path': isValid && base.isNotEmpty ? '$base/$raw' : null,
+        };
+      }),
     ];
   }
 
@@ -178,10 +180,10 @@ class _KomunitasPageState extends ConsumerState<KomunitasPage>
 
     return postingan.map((item) {
       final storage = dotenv.env['STORAGE_URL'] ?? '';
-      final coverPath = item.coverPath;
+      final coverPath = item.coverPath ?? '';
       final iconPath = item.kategori?.iconPath;
       final galeriList = (item.daftarGambar ?? [])
-          .where((e) => (e).isNotEmpty)
+          .where((e) => e.toString().isNotEmpty)
           .map((e) => '$storage/$e')
           .toList();
 
@@ -812,7 +814,8 @@ class _KomunitasPageState extends ConsumerState<KomunitasPage>
                               final kategori = _kategoriList[index];
                               final kategoriId = kategori['id'] as String;
                               final kategoriNama = kategori['nama'] as String;
-                              final kategoriIcon = kategori['icon'] as String?;
+                              final kategoriIcon =
+                                  kategori['icon_path'] as String?;
                               final isSelected =
                                   kategoriNama == _selectedCategory;
                               final categoryColor = _getCategoryColor(

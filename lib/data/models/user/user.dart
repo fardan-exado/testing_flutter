@@ -2,6 +2,7 @@ class User {
   final int id;
   final String name;
   final String email;
+  final String? avatar;
   final String? phone;
   final String role;
   final String? noHp;
@@ -15,6 +16,7 @@ class User {
     required this.id,
     required this.name,
     required this.email,
+    this.avatar,
     this.phone,
     required this.role,
     this.noHp,
@@ -30,6 +32,7 @@ class User {
       id: m['id'] is String ? int.parse(m['id']) : m['id'] as int,
       name: m['name'] ?? '',
       email: m['email'] ?? '',
+      avatar: m['avatar'] ?? '',
       phone: m['phone'] ?? '',
       role: m['role'] ?? '',
       noHp: m['no_hp'] ?? '',
@@ -46,6 +49,7 @@ class User {
       id: m['id'] is String ? int.parse(m['id']) : m['id'] as int,
       name: m['name'] ?? '',
       email: m['email'] ?? '',
+      avatar: m['avatar'] ?? '',
       phone: m['phone'] ?? '',
       role: m['role'] ?? '',
       noHp: m['no_hp'] ?? '',
@@ -62,6 +66,7 @@ class User {
       'id': id,
       'name': name,
       'email': email,
+      'avatar': avatar,
       'phone': phone,
       'role': role,
       'no_hp': noHp,

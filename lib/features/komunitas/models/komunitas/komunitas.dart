@@ -17,10 +17,23 @@ bool _parseBool(dynamic value) {
   return false;
 }
 
+DateTime _parseDateTime(dynamic value) {
+  if (value == null) return DateTime.now();
+  if (value is DateTime) return value;
+  if (value is String) {
+    if (value.isEmpty) return DateTime.now();
+    try {
+      return DateTime.parse(value);
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
+  return DateTime.now();
+}
+
 class KomunitasPostingan {
   final int id;
-  final int userId;
-  final int? postinganId;
+  final int? userId;
   final String? coverPath;
   final List<String>? daftarGambar;
   final String judul;
@@ -40,8 +53,7 @@ class KomunitasPostingan {
 
   KomunitasPostingan({
     required this.id,
-    required this.userId,
-    this.postinganId,
+    this.userId,
     this.coverPath,
     this.daftarGambar,
     required this.judul,
@@ -67,27 +79,29 @@ class KomunitasPostingan {
       return v as int;
     }
 
+    // Safely handle daftar_gambar list
+    List<String>? parseDaftarGambar(dynamic value) {
+      if (value == null) return null;
+      if (value is! List) return null;
+      return value.where((e) => e != null).map((e) => e.toString()).toList();
+    }
+
     return KomunitasPostingan(
       id: parseInt(json['id']),
-      userId: parseInt(json['user_id']),
-      postinganId: json['postingan_id'] != null
-          ? parseInt(json['postingan_id'])
-          : null,
+      userId: json['user_id'] != null ? parseInt(json['user_id']) : null,
 
       coverPath: json['cover_path'] as String?,
-      daftarGambar: (json['daftar_gambar'] as List?)
-          ?.map((e) => e as String)
-          .toList(),
+      daftarGambar: parseDaftarGambar(json['daftar_gambar']),
 
-      judul: json['judul'] as String? ?? '',
-      konten: json['konten'] as String?,
-      excerpt: json['excerpt'] as String? ?? '',
+      judul: (json['judul'] as String? ?? '').trim(),
+      konten: (json['konten'] as String?)?.trim(),
+      excerpt: (json['excerpt'] as String? ?? '').trim(),
 
       isAnonymous: _parseBool(json['is_anonymous']),
       isPublished: _parseBool(json['is_published']),
 
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
+      createdAt: _parseDateTime(json['created_at']),
+      updatedAt: _parseDateTime(json['updated_at']),
 
       user: json['user'] != null ? User.fromJson(json['user']) : null,
 
@@ -101,8 +115,12 @@ class KomunitasPostingan {
 
       likes: (json['likes'] as List?)?.map((e) => Like.fromJson(e)).toList(),
 
-      likesCount: parseInt(json['likes_count']),
-      komentarsCount: parseInt(json['komentars_count']),
+      likesCount: json['likes_count'] != null
+          ? parseInt(json['likes_count'])
+          : null,
+      komentarsCount: json['komentars_count'] != null
+          ? parseInt(json['komentars_count'])
+          : null,
       liked: _parseBoolNullable(json['liked']),
     );
   }
@@ -111,7 +129,6 @@ class KomunitasPostingan {
     return {
       'id': id,
       'user_id': userId,
-      'postingan_id': postinganId,
       'cover_path': coverPath,
       'daftar_gambar': daftarGambar,
       'judul': judul,
@@ -141,7 +158,6 @@ class KomunitasPostingan {
     return KomunitasPostingan(
       id: id,
       userId: userId,
-      postinganId: postinganId,
       judul: judul,
       konten: konten,
       excerpt: excerpt,
@@ -197,8 +213,8 @@ class Komentar {
       komentar: json['komentar'] as String? ?? '',
       isAnonymous: _parseBool(json['is_anonymous']),
       isPublished: _parseBool(json['is_published']),
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
+      createdAt: _parseDateTime(json['created_at']),
+      updatedAt: _parseDateTime(json['updated_at']),
       user: json['user'] != null ? User.fromJson(json['user']) : null,
     );
   }

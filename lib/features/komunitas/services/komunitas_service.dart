@@ -45,12 +45,12 @@ class KomunitasService {
       );
 
       final responseData = response.data as Map<String, dynamic>;
-      final postinganData = responseData['data'] as Map<String, dynamic>;
+      final postinganData = responseData['data'];
 
       return {
-        'status': responseData['status'],
-        'message': responseData['message'],
-        'data': postinganData,
+        'status': responseData['status'] ?? true,
+        'message': responseData['message'] ?? 'Success',
+        'data': postinganData ?? {},
       };
     } on DioException catch (e) {
       final error = ApiClient.parseDioError(e);

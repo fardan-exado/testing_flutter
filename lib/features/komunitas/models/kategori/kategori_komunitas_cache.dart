@@ -19,10 +19,10 @@ class KategoriKomunitasCache extends HiveObject {
   String? icon;
 
   @HiveField(4)
-  DateTime createdAt;
+  DateTime? createdAt;
 
   @HiveField(5)
-  DateTime updatedAt;
+  DateTime? updatedAt;
 
   @HiveField(6)
   DateTime cachedAt;

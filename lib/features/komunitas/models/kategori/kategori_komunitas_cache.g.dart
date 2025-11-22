@@ -22,8 +22,8 @@ class KategoriKomunitasCacheAdapter
       nama: fields[1] as String,
       iconPath: fields[2] as String?,
       icon: fields[3] as String?,
-      createdAt: fields[4] as DateTime,
-      updatedAt: fields[5] as DateTime,
+      createdAt: fields[4] as DateTime?,
+      updatedAt: fields[5] as DateTime?,
       cachedAt: fields[6] as DateTime,
     );
   }

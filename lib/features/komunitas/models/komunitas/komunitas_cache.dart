@@ -6,13 +6,29 @@ import 'package:test_flutter/features/komunitas/models/komunitas/komunitas.dart'
 
 part 'komunitas_cache.g.dart';
 
+String _safeString(dynamic value) {
+  if (value == null) return '';
+  return value.toString();
+}
+
+List<String> _safeListString(dynamic value) {
+  if (value == null) return [];
+  if (value is List) {
+    return value
+        .where((e) => e != null && e.toString().isNotEmpty)
+        .map((e) => e.toString())
+        .toList();
+  }
+  return [];
+}
+
 @HiveType(typeId: HiveTypeId.postingan)
 class KomunitasPostinganCache extends HiveObject {
   @HiveField(0)
   int id;
 
   @HiveField(1)
-  int userId;
+  int? userId;
 
   @HiveField(2)
   int? postinganId;
@@ -54,10 +70,10 @@ class KomunitasPostinganCache extends HiveObject {
   bool? liked;
 
   @HiveField(15)
-  List<String>? daftarGambar;
+  List<String> daftarGambar = [];
 
   @HiveField(16)
-  String? coverPath;
+  String coverPath = '';
 
   KomunitasPostinganCache({
     required this.id,
@@ -75,33 +91,32 @@ class KomunitasPostinganCache extends HiveObject {
     this.likesCount,
     this.komentarsCount,
     this.liked,
-    this.daftarGambar,
-    this.coverPath,
-  });
+    List<String>? daftarGambar,
+    String? coverPath,
+  }) : daftarGambar = _safeListString(daftarGambar),
+       coverPath = _safeString(coverPath);
 
-  factory KomunitasPostinganCache.fromKomunitasPostingan(
-    KomunitasPostingan data,
-  ) {
+  factory KomunitasPostinganCache.fromKomunitasPostingan(KomunitasPostingan d) {
     return KomunitasPostinganCache(
-      id: data.id,
-      userId: data.userId,
-      postinganId: data.postinganId,
-      judul: data.judul,
-      konten: data.konten,
-      excerpt: data.excerpt,
-      isAnonymous: data.isAnonymous,
-      isPublished: data.isPublished,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
+      id: d.id,
+      userId: d.userId,
+      postinganId: null,
+      judul: d.judul,
+      konten: d.konten,
+      excerpt: d.excerpt,
+      isAnonymous: d.isAnonymous,
+      isPublished: d.isPublished,
+      createdAt: d.createdAt,
+      updatedAt: d.updatedAt,
       cachedAt: DateTime.now(),
-      kategori: data.kategori != null
-          ? KategoriArtikelCache.fromKategoriArtikel(data.kategori!)
+      kategori: d.kategori != null
+          ? KategoriArtikelCache.fromKategoriArtikel(d.kategori!)
           : null,
-      likesCount: data.likesCount,
-      komentarsCount: data.komentarsCount,
-      liked: data.liked,
-      daftarGambar: data.daftarGambar,
-      coverPath: data.coverPath,
+      likesCount: d.likesCount,
+      komentarsCount: d.komentarsCount,
+      liked: d.liked,
+      daftarGambar: _safeListString(d.daftarGambar),
+      coverPath: _safeString(d.coverPath),
     );
   }
 
@@ -109,7 +124,6 @@ class KomunitasPostinganCache extends HiveObject {
     return KomunitasPostingan(
       id: id,
       userId: userId,
-      postinganId: postinganId,
       judul: judul,
       konten: konten,
       excerpt: excerpt,
@@ -121,11 +135,11 @@ class KomunitasPostinganCache extends HiveObject {
       liked: liked,
       likesCount: likesCount,
       komentarsCount: komentarsCount,
+      daftarGambar: _safeListString(daftarGambar),
+      coverPath: _safeString(coverPath),
       komentars: null,
       likes: null,
       user: null,
-      daftarGambar: daftarGambar,
-      coverPath: coverPath,
     );
   }
 }
@@ -175,17 +189,17 @@ class KomentarPostinganCache extends HiveObject {
     this.user,
   });
 
-  factory KomentarPostinganCache.fromKomentarPostingan(Komentar data) {
+  factory KomentarPostinganCache.fromKomentarPostingan(Komentar d) {
     return KomentarPostinganCache(
-      id: data.id,
-      postinganId: data.postinganId,
-      userId: data.userId,
-      komentar: data.komentar,
-      isAnonymous: data.isAnonymous,
-      isPublished: data.isPublished,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-      user: data.user,
+      id: d.id,
+      postinganId: d.postinganId,
+      userId: d.userId,
+      komentar: _safeString(d.komentar),
+      isAnonymous: d.isAnonymous,
+      isPublished: d.isPublished,
+      createdAt: d.createdAt,
+      updatedAt: d.updatedAt,
+      user: d.user,
       cachedAt: DateTime.now(),
     );
   }
@@ -195,7 +209,7 @@ class KomentarPostinganCache extends HiveObject {
       id: id,
       postinganId: postinganId,
       userId: userId,
-      komentar: komentar,
+      komentar: _safeString(komentar),
       isAnonymous: isAnonymous,
       isPublished: isPublished,
       createdAt: createdAt,

@@ -3,16 +3,16 @@ class KategoriKomunitas {
   final String nama;
   final String? iconPath;
   final String? icon;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   KategoriKomunitas({
     required this.id,
     required this.nama,
     this.iconPath,
     this.icon,
-    required this.createdAt,
-    required this.updatedAt,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory KategoriKomunitas.fromJson(Map<String, dynamic> json) {
@@ -36,8 +36,8 @@ class KategoriKomunitas {
       'nama': nama,
       'icon_path': iconPath,
       'icon': icon,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
     };
   }
 
