@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:test_flutter/core/utils/api_client.dart';
-import 'package:test_flutter/features/puasa/models/progres_puasa.dart';
 import 'package:test_flutter/features/puasa/models/puasa.dart';
 
 class PuasaService {

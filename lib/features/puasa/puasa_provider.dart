@@ -42,7 +42,10 @@ class PuasaNotifier extends StateNotifier<PuasaState> {
       }
     } catch (e) {
       logger.severe('Error fetching puasa sunnah list: $e');
-      state = state.copyWith(status: PuasaStatus.error, message: e.toString());
+      state = state.copyWith(
+        status: PuasaStatus.error,
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -75,7 +78,10 @@ class PuasaNotifier extends StateNotifier<PuasaState> {
       }
     } catch (e) {
       logger.severe('Error fetching riwayat puasa wajib: $e');
-      state = state.copyWith(status: PuasaStatus.error, message: e.toString());
+      state = state.copyWith(
+        status: PuasaStatus.error,
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -99,7 +105,10 @@ class PuasaNotifier extends StateNotifier<PuasaState> {
       await fetchRiwayatPuasaWajib(tahunHijriah: tahunHijriah);
     } catch (e) {
       logger.severe('Error adding progres puasa wajib: $e');
-      state = state.copyWith(status: PuasaStatus.error, message: e.toString());
+      state = state.copyWith(
+        status: PuasaStatus.error,
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -122,7 +131,10 @@ class PuasaNotifier extends StateNotifier<PuasaState> {
       await fetchRiwayatPuasaWajib(tahunHijriah: tahunHijriah);
     } catch (e) {
       logger.severe('Error deleting progres puasa wajib: $e');
-      state = state.copyWith(status: PuasaStatus.error, message: e.toString());
+      state = state.copyWith(
+        status: PuasaStatus.error,
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -160,7 +172,10 @@ class PuasaNotifier extends StateNotifier<PuasaState> {
       logger.severe('Error: $e');
       logger.severe('StackTrace: $stackTrace');
 
-      state = state.copyWith(status: PuasaStatus.error, message: e.toString());
+      state = state.copyWith(
+        status: PuasaStatus.error,
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -180,7 +195,10 @@ class PuasaNotifier extends StateNotifier<PuasaState> {
       await fetchRiwayatPuasaSunnah(jenis: jenis);
     } catch (e) {
       logger.severe('Error adding progres puasa sunnah: $e');
-      state = state.copyWith(status: PuasaStatus.error, message: e.toString());
+      state = state.copyWith(
+        status: PuasaStatus.error,
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 
@@ -203,7 +221,10 @@ class PuasaNotifier extends StateNotifier<PuasaState> {
       await fetchRiwayatPuasaSunnah(jenis: jenis);
     } catch (e) {
       logger.severe('Error deleting progres puasa sunnah: $e');
-      state = state.copyWith(status: PuasaStatus.error, message: e.toString());
+      state = state.copyWith(
+        status: PuasaStatus.error,
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
 }

@@ -1165,11 +1165,22 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
 
   void _markRamadhanFasting(int day) async {
     final authState = ref.read(authProvider);
+    final currentHijriYear = HijriCalendar.now().hYear;
 
     if (authState['status'] != AuthState.authenticated) {
       showMessageToast(
         context,
         message: 'Anda harus login terlebih dahulu',
+        type: ToastType.error,
+      );
+      return;
+    }
+
+    // Check if selected year is not the current year
+    if (_currentHijriYear != currentHijriYear) {
+      showMessageToast(
+        context,
+        message: 'Puasa hanya bisa ditambahkan pada tahun sekarang ($currentHijriYear H)',
         type: ToastType.error,
       );
       return;
