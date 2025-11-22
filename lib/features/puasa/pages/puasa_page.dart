@@ -1,13 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hijri/hijri_calendar.dart';
 import 'package:test_flutter/app/theme.dart';
-import 'package:test_flutter/core/utils/connection/connection_provider.dart';
+import 'package:test_flutter/core/widgets/toast.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/puasa/widgets/sunnah_tab.dart';
 import 'package:test_flutter/features/puasa/pages/ramadhan_detail_page.dart';
 import 'package:test_flutter/features/puasa/pages/sunnah_detail_page.dart';
 import 'package:test_flutter/features/puasa/puasa_provider.dart';
+import 'package:test_flutter/features/puasa/puasa_state.dart';
 
 class PuasaPage extends ConsumerStatefulWidget {
   const PuasaPage({super.key});
@@ -21,63 +23,8 @@ class _PuasaPageState extends ConsumerState<PuasaPage>
   late TabController _tabController;
   bool _hasInitializedWajib = false;
   bool _hasInitializedSunnah = false;
-
-  final List<Map<String, dynamic>> _puasaSunnah = [
-    {
-      'name': 'Puasa Senin Kamis',
-      'description': 'Puasa sunnah setiap hari Senin dan Kamis',
-      'duration': 'Mingguan',
-      'period': 'Setiap minggu',
-      'color': AppTheme.primaryBlue,
-      'icon': Icons.calendar_today,
-      'type': 'senin_kamis',
-    },
-    {
-      'name': 'Puasa Ayyamul Bidh',
-      'description': 'Puasa tanggal 13, 14, 15 setiap bulan Hijriah',
-      'duration': '3 hari',
-      'period': 'Setiap bulan',
-      'color': AppTheme.primaryBlueDark,
-      'icon': Icons.brightness_3,
-      'type': 'ayyamul_bidh',
-    },
-    {
-      'name': 'Puasa Daud',
-      'description': 'Puasa sehari berbuka sehari',
-      'duration': 'Bergantian',
-      'period': 'Kontinyu',
-      'color': AppTheme.primaryBlueLight,
-      'icon': Icons.swap_horiz,
-      'type': 'daud',
-    },
-    {
-      'name': 'Puasa 6 Syawal',
-      'description': 'Puasa 6 hari di bulan Syawal',
-      'duration': '6 hari',
-      'period': 'Syawal',
-      'color': AppTheme.accentGreenDark,
-      'icon': Icons.star,
-      'type': 'syawal',
-    },
-    {
-      'name': 'Puasa Muharram',
-      'description': 'Puasa tanggal 9 dan 10 Muharram (Asyura)',
-      'duration': '1-2 hari',
-      'period': 'Muharram',
-      'color': AppTheme.errorColor,
-      'icon': Icons.event_note,
-      'type': 'muharram',
-    },
-    {
-      'name': 'Puasa Syaban',
-      'description': 'Puasa sunnah di bulan Syaban',
-      'duration': 'Fleksibel',
-      'period': 'Syaban',
-      'color': AppTheme.accentGreen,
-      'icon': Icons.nightlight_round,
-      'type': 'syaban',
-    },
-  ];
+  late ProviderSubscription _puasaSub;
+  late ProviderSubscription _authSub;
 
   @override
   void initState() {
@@ -89,6 +36,50 @@ class _PuasaPageState extends ConsumerState<PuasaPage>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initPuasaWajib();
+      _setupListeners();
+    });
+  }
+
+  void _setupListeners() {
+    // Setup manual listener for auth state
+    _authSub = ref.listenManual(authProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      if (previous?['status'] != next['status']) {
+        if (next['status'] != AuthState.authenticated) {
+          showMessageToast(
+            context,
+            message: 'Sesi berakhir. Silakan login kembali.',
+            type: ToastType.warning,
+          );
+        }
+      }
+    });
+
+    // Setup manual listener for puasa state
+    _puasaSub = ref.listenManual(puasaProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      // Handle messages
+      if (next.message != null && next.message!.isNotEmpty) {
+        if (next.status == PuasaStatus.error) {
+          showMessageToast(
+            context,
+            message: next.message!,
+            type: ToastType.error,
+          );
+        } else if (next.status == PuasaStatus.success) {
+          showMessageToast(
+            context,
+            message: next.message!,
+            type: ToastType.success,
+          );
+        }
+      }
     });
   }
 
@@ -109,13 +100,6 @@ class _PuasaPageState extends ConsumerState<PuasaPage>
   Future<void> _initPuasaWajib() async {
     if (_hasInitializedWajib) return;
 
-    final connectionState = ref.read(connectionProvider);
-    final isOffline = !connectionState.isOnline;
-
-    if (isOffline) {
-      return;
-    }
-
     final authState = ref.read(authProvider);
     final isLoggedIn = authState['status'] == AuthState.authenticated;
 
@@ -124,7 +108,11 @@ class _PuasaPageState extends ConsumerState<PuasaPage>
     }
 
     try {
-      await ref.read(puasaProvider.notifier).fetchRiwayatPuasaWajib();
+      final hijriYear = HijriCalendar.now().hYear;
+      final tahunHijriah = hijriYear.toString();
+      await ref
+          .read(puasaProvider.notifier)
+          .fetchRiwayatPuasaWajib(tahunHijriah: tahunHijriah);
       _hasInitializedWajib = true;
     } catch (e) {
       if (kDebugMode) {
@@ -136,17 +124,20 @@ class _PuasaPageState extends ConsumerState<PuasaPage>
   Future<void> _initPuasaSunnah() async {
     if (_hasInitializedSunnah) return;
 
-    final connectionState = ref.read(connectionProvider);
-    final isOffline = !connectionState.isOnline;
-
-    if (isOffline) {
-      return;
-    }
-
     try {
-      await ref
-          .read(puasaProvider.notifier)
-          .fetchRiwayatPuasaSunnah(jenis: 'senin_kamis');
+      // First, fetch the list of puasa sunnah types from database
+      await ref.read(puasaProvider.notifier).fetchPuasaSunnahList();
+
+      // Get the list from provider state
+      final puasaState = ref.read(puasaProvider);
+      final puasaSunnahList = puasaState.puasaSunnahList ?? [];
+
+      // Then fetch riwayat for each puasa sunnah type using their slugs
+      for (final puasaSunnah in puasaSunnahList) {
+        await ref
+            .read(puasaProvider.notifier)
+            .fetchRiwayatPuasaSunnah(jenis: puasaSunnah.slug);
+      }
 
       _hasInitializedSunnah = true;
     } catch (e) {
@@ -160,24 +151,18 @@ class _PuasaPageState extends ConsumerState<PuasaPage>
   void dispose() {
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
+    _puasaSub.close();
+    _authSub.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Saat online kembali → fetch ulang
-    ref.listen(connectionProvider, (previous, next) {
-      if (previous?.isOnline == false && next.isOnline) {
-        if (!_hasInitializedWajib) _initPuasaWajib();
-        if (!_hasInitializedSunnah) _initPuasaSunnah();
-      }
-    });
-
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     final isDesktop = screenWidth > 1024;
-    final connectionState = ref.watch(connectionProvider);
-    final isOffline = !connectionState.isOnline;
+    final puasaState = ref.watch(puasaProvider);
+    final puasaSunnahList = puasaState.puasaSunnahList ?? [];
 
     return Scaffold(
       body: Container(
@@ -270,40 +255,6 @@ class _PuasaPageState extends ConsumerState<PuasaPage>
                                   color: AppTheme.onSurfaceVariant,
                                 ),
                               ),
-
-                              if (isOffline)
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isTablet ? 12 : 10,
-                                    vertical: isTablet ? 6 : 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.red.shade200,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.wifi_off_rounded,
-                                        color: Colors.red.shade700,
-                                        size: isTablet ? 16 : 14,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Offline',
-                                        style: TextStyle(
-                                          color: Colors.red.shade700,
-                                          fontSize: isTablet ? 12 : 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -370,7 +321,7 @@ class _PuasaPageState extends ConsumerState<PuasaPage>
                   children: [
                     RamadhanDetailPage(isEmbedded: true),
                     SunnahTab(
-                      puasaSunnah: _puasaSunnah,
+                      puasaSunnahList: puasaSunnahList,
                       onPuasaTap: _showPuasaDetail,
                     ),
                   ],

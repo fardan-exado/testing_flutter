@@ -1,21 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:test_flutter/app/theme.dart';
+import 'package:test_flutter/features/puasa/models/puasa.dart';
 
 class SunnahTab extends StatelessWidget {
-  final List<Map<String, dynamic>> puasaSunnah;
+  final List<PuasaSunnah> puasaSunnahList;
   final Function(Map<String, dynamic>) onPuasaTap;
 
   const SunnahTab({
     super.key,
-    required this.puasaSunnah,
+    required this.puasaSunnahList,
     required this.onPuasaTap,
   });
+
+  // Color mapping for different types of sunnah fasting
+  static const Map<String, Color> colorMap = {
+    'puasa-senin-kamis': AppTheme.primaryBlue,
+    'puasa-ayyamul-bidh': AppTheme.primaryBlueDark,
+    'puasa-daud': AppTheme.primaryBlueLight,
+    'puasa-6-syawal': AppTheme.accentGreenDark,
+    'puasa-muharram': AppTheme.errorColor,
+    'puasa-syaban': AppTheme.accentGreen,
+  };
+
+  // Icon mapping for different types of sunnah fasting
+  static const Map<String, IconData> iconMap = {
+    'puasa-senin-kamis': Icons.calendar_today,
+    'puasa-ayyamul-bidh': Icons.brightness_3,
+    'puasa-daud': Icons.swap_horiz,
+    'puasa-6-syawal': Icons.star,
+    'puasa-muharram': Icons.event_note,
+    'puasa-syaban': Icons.nightlight_round,
+  };
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     final isDesktop = screenWidth > 1024;
+
+    if (puasaSunnahList.isEmpty) {
+      return Center(
+        child: Text(
+          'Tidak ada data puasa sunnah',
+          style: TextStyle(color: AppTheme.onSurfaceVariant),
+        ),
+      );
+    }
 
     return ListView.builder(
       padding: EdgeInsets.symmetric(
@@ -25,20 +55,33 @@ class SunnahTab extends StatelessWidget {
             ? 28.0
             : 24.0,
       ),
-      itemCount: puasaSunnah.length,
+      itemCount: puasaSunnahList.length,
       itemBuilder: (context, index) {
-        final puasa = puasaSunnah[index];
+        final puasa = puasaSunnahList[index];
         return _buildPuasaCard(puasa, isWajib: false);
       },
     );
   }
 
-  Widget _buildPuasaCard(Map<String, dynamic> puasa, {required bool isWajib}) {
+  Widget _buildPuasaCard(PuasaSunnah puasa, {required bool isWajib}) {
     return Builder(
       builder: (context) {
         final screenWidth = MediaQuery.of(context).size.width;
         final isTablet = screenWidth > 600;
         final isDesktop = screenWidth > 1024;
+
+        // Get color and icon from mapping
+        final color = colorMap[puasa.slug] ?? AppTheme.primaryBlue;
+        final icon = iconMap[puasa.slug] ?? Icons.favorite;
+
+        final puasaMap = {
+          'id': puasa.id,
+          'name': puasa.nama,
+          'description': puasa.deskripsi ?? 'Puasa sunnah',
+          'color': color,
+          'icon': icon,
+          'type': puasa.slug,
+        };
 
         return Container(
           margin: EdgeInsets.only(bottom: isTablet ? 18 : 16),
@@ -84,20 +127,14 @@ class SunnahTab extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            puasa['color'].withValues(alpha: 0.15),
-                            puasa['color'].withValues(alpha: 0.1),
+                            color.withValues(alpha: 0.15),
+                            color.withValues(alpha: 0.1),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(isTablet ? 16 : 14),
-                        border: Border.all(
-                          color: puasa['color'].withValues(alpha: 0.2),
-                        ),
+                        border: Border.all(color: color.withValues(alpha: 0.2)),
                       ),
-                      child: Icon(
-                        puasa['icon'],
-                        color: puasa['color'],
-                        size: isTablet ? 26 : 24,
-                      ),
+                      child: Icon(icon, color: color, size: isTablet ? 26 : 24),
                     ),
                     SizedBox(width: isTablet ? 18 : 16),
                     Expanded(
@@ -108,7 +145,7 @@ class SunnahTab extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  puasa['name'],
+                                  puasa.nama,
                                   style: TextStyle(
                                     fontSize: isDesktop
                                         ? 18
@@ -170,7 +207,7 @@ class SunnahTab extends StatelessWidget {
                           ),
                           SizedBox(height: isTablet ? 6 : 4),
                           Text(
-                            puasa['description'],
+                            puasa.deskripsi ?? 'Puasa sunnah',
                             style: TextStyle(
                               fontSize: isTablet ? 15 : 14,
                               color: AppTheme.onSurfaceVariant,
@@ -182,30 +219,12 @@ class SunnahTab extends StatelessWidget {
                   ],
                 ),
                 SizedBox(height: isTablet ? 18 : 16),
-                Row(
-                  children: [
-                    _buildInfoChip(
-                      'Durasi',
-                      puasa['duration'],
-                      Icons.schedule,
-                      isTablet,
-                    ),
-                    SizedBox(width: isTablet ? 16 : 12),
-                    _buildInfoChip(
-                      'Periode',
-                      puasa['period'],
-                      Icons.event,
-                      isTablet,
-                    ),
-                  ],
-                ),
-                SizedBox(height: isTablet ? 18 : 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () => onPuasaTap(puasa),
+                    onPressed: () => onPuasaTap(puasaMap),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: puasa['color'],
+                      backgroundColor: color,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(isTablet ? 14 : 12),
@@ -230,63 +249,6 @@ class SunnahTab extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildInfoChip(
-    String label,
-    String value,
-    IconData icon,
-    bool isTablet,
-  ) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(isTablet ? 12 : 10),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primaryBlue.withValues(alpha: 0.05),
-              AppTheme.accentGreen.withValues(alpha: 0.03),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
-          border: Border.all(
-            color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: isTablet ? 18 : 16, color: AppTheme.primaryBlue),
-            SizedBox(width: isTablet ? 8 : 6),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: isTablet ? 11 : 10,
-                      color: AppTheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: isTablet ? 2 : 1),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: isTablet ? 13 : 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

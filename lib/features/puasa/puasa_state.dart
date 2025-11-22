@@ -1,4 +1,5 @@
-import 'package:test_flutter/data/models/progres_puasa/progres_puasa.dart';
+import 'package:test_flutter/features/puasa/models/progres_puasa.dart';
+import 'package:test_flutter/features/puasa/models/puasa.dart';
 
 enum PuasaStatus {
   initial,
@@ -12,18 +13,16 @@ enum PuasaStatus {
 
 class PuasaState {
   final PuasaStatus status;
-  // final ProgresPuasaWajibTahunIni? progresPuasaWajibTahunIni;
-  final List<RiwayatPuasaWajib>? riwayatPuasaWajib;
-  // final ProgresPuasaSunnahTahunIni? progresPuasaSunnahTahunIni;
-  final RiwayatPuasaSunnah? riwayatPuasaSunnah;
+  final List<PuasaSunnah>? puasaSunnahList;
+  final List<RiwayatProgresPuasaWajib>? riwayatPuasaWajib;
+  final List<RiwayatProgresPuasaSunnah>? riwayatPuasaSunnah;
   final String? message;
   final bool isOffline;
 
   PuasaState({
     required this.status,
-    // this.progresPuasaWajibTahunIni,
+    this.puasaSunnahList,
     this.riwayatPuasaWajib,
-    // this.progresPuasaSunnahTahunIni,
     this.riwayatPuasaSunnah,
     this.message,
     required this.isOffline,
@@ -32,10 +31,9 @@ class PuasaState {
   factory PuasaState.initial() {
     return PuasaState(
       status: PuasaStatus.initial,
-      // progresPuasaWajibTahunIni: null,
+      puasaSunnahList: [],
       riwayatPuasaWajib: [],
-      // progresPuasaSunnahTahunIni: null,
-      riwayatPuasaSunnah: null,
+      riwayatPuasaSunnah: [],
       message: null,
       isOffline: false,
     );
@@ -43,20 +41,16 @@ class PuasaState {
 
   PuasaState copyWith({
     PuasaStatus? status,
-    // // ProgresPuasaWajibTahunIni? progresPuasaWajibTahunIni,
-    List<RiwayatPuasaWajib>? riwayatPuasaWajib,
-    // // ProgresPuasaSunnahTahunIni? progresPuasaSunnahTahunIni,
-    RiwayatPuasaSunnah? riwayatPuasaSunnah,
+    List<RiwayatProgresPuasaWajib>? riwayatPuasaWajib,
+    List<RiwayatProgresPuasaSunnah>? riwayatPuasaSunnah,
     String? message,
     bool? isOffline,
+    List<PuasaSunnah>? puasaSunnahList,
   }) {
     return PuasaState(
       status: status ?? this.status,
-      // progresPuasaWajibTahunIni:
-      // // progresPuasaWajibTahunIni ?? this.progresPuasaWajibTahunIni,
+      puasaSunnahList: puasaSunnahList ?? this.puasaSunnahList,
       riwayatPuasaWajib: riwayatPuasaWajib ?? this.riwayatPuasaWajib,
-      // progresPuasaSunnahTahunIni:
-      // // progresPuasaSunnahTahunIni ?? this.progresPuasaSunnahTahunIni,
       riwayatPuasaSunnah: riwayatPuasaSunnah ?? this.riwayatPuasaSunnah,
       message: message ?? this.message,
       isOffline: isOffline ?? this.isOffline,

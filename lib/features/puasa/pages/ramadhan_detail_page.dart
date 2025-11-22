@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:test_flutter/app/theme.dart';
-import 'package:test_flutter/core/utils/connection/connection_provider.dart';
 import 'package:test_flutter/core/widgets/toast.dart';
-import 'package:test_flutter/data/models/progres_puasa/progres_puasa.dart';
+import 'package:test_flutter/features/puasa/models/progres_puasa.dart';
 import 'package:test_flutter/features/auth/auth_provider.dart';
 import 'package:test_flutter/features/puasa/puasa_provider.dart';
 import 'package:test_flutter/features/puasa/puasa_state.dart';
@@ -31,7 +30,7 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
   late TabController _tabController;
   late int _currentHijriYear;
   int _ramadhanDaysInSelectedYear = 30;
-  DateTime? _ramadhanStartDate;
+  late ProviderSubscription _authSub;
 
   final GlobalKey<RefreshIndicatorState> _refreshKeyCalendar =
       GlobalKey<RefreshIndicatorState>();
@@ -72,11 +71,44 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _initializeHijriYear();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupListeners();
+    });
+  }
+
+  void _setupListeners() {
+    // Setup manual listener for auth state
+    _authSub = ref.listenManual(authProvider, (previous, next) {
+      final route = ModalRoute.of(context);
+      final isCurrent = route != null && route.isCurrent;
+      if (!mounted || !isCurrent) return;
+
+      if (previous?['status'] != next['status']) {
+        if (next['status'] != AuthState.authenticated) {
+          showMessageToast(
+            context,
+            message: 'Sesi berakhir. Silakan login kembali.',
+            type: ToastType.warning,
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _authSub.close();
+    super.dispose();
   }
 
   Future<void> _onRefresh() async {
     try {
-      await ref.read(puasaProvider.notifier).fetchRiwayatPuasaWajib();
+      final tahunHijriah = _currentHijriYear.toString();
+      await ref
+          .read(puasaProvider.notifier)
+          .fetchRiwayatPuasaWajib(tahunHijriah: tahunHijriah);
     } catch (e) {
       if (mounted) {
         showMessageToast(
@@ -101,7 +133,7 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
       ..hMonth = 9
       ..hDay = 1;
 
-    _ramadhanStartDate = ramadhanHijri.hijriToGregorian(
+    ramadhanHijri.hijriToGregorian(
       ramadhanHijri.hYear,
       ramadhanHijri.hMonth,
       ramadhanHijri.hDay,
@@ -125,51 +157,62 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
     }
   }
 
-  // Get current year's data from riwayat
-  Map<String, dynamic>? _getCurrentYearData() {
-    final puasaState = ref.watch(puasaProvider);
-    final riwayat = puasaState.riwayatPuasaWajib;
+  Future<void> _changeHijriYear(int offset) async {
+    final newYear = _currentHijriYear + offset;
+    setState(() {
+      _currentHijriYear = newYear;
+    });
+    _calculateRamadhanDetails(newYear);
 
-    if (riwayat == null || riwayat.isEmpty) {
-      return null;
+    // Fetch data for new year
+    try {
+      final tahunHijriah = newYear.toString();
+      await ref
+          .read(puasaProvider.notifier)
+          .fetchRiwayatPuasaWajib(tahunHijriah: tahunHijriah);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching data for year $newYear: $e');
+      }
+    }
+  }
+
+  // Get current year's data from riwayat
+  List<RiwayatProgresPuasaWajib> _getCurrentYearData() {
+    final puasaState = ref.watch(puasaProvider);
+    final riwayat = puasaState.riwayatPuasaWajib ?? [];
+
+    if (riwayat.isEmpty) {
+      return [];
     }
 
-    // Find data for current hijri year
-    final currentYearData = riwayat.firstWhere(
-      (item) => item.tahun == _currentHijriYear,
-      orElse: () => RiwayatPuasaWajib(tahun: _currentHijriYear, data: []),
-    );
-
-    return {
-      'tahun': currentYearData.tahun,
-      'data': currentYearData.data,
-      'total': currentYearData.data.length,
-    };
+    // Filter data untuk tahun hijriah saat ini
+    return riwayat;
   }
 
   // Check if a specific day is completed
   bool _isDayCompleted(int day) {
     final currentYearData = _getCurrentYearData();
 
-    if (currentYearData == null) return false;
+    if (currentYearData.isEmpty) return false;
 
-    final dataList = currentYearData['data'] as List<dynamic>;
-
-    // Check if this day exists in the data
-    return dataList.any((item) => item.tanggalRamadhan == day);
+    // Check if this day's status is completed
+    return currentYearData.any(
+      (item) => item.tanggalRamadhan == day && item.status,
+    );
   }
 
   // Get ID of a specific completed day
   int? _getDayRecordId(int day) {
     final currentYearData = _getCurrentYearData();
 
-    if (currentYearData == null) return null;
-
-    final dataList = currentYearData['data'] as List<dynamic>;
+    if (currentYearData.isEmpty) return null;
 
     try {
-      final item = dataList.firstWhere((item) => item.tanggalRamadhan == day);
-      return item.id;
+      final item = currentYearData.firstWhere(
+        (item) => item.tanggalRamadhan == day && item.status,
+      );
+      return item.progres?.id;
     } catch (e) {
       return null;
     }
@@ -179,9 +222,9 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
   int _getCompletedDays() {
     final currentYearData = _getCurrentYearData();
 
-    if (currentYearData == null) return 0;
+    if (currentYearData.isEmpty) return 0;
 
-    return currentYearData['total'] as int;
+    return currentYearData.where((item) => item.status).length;
   }
 
   @override
@@ -189,25 +232,8 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     final isDesktop = screenWidth > 1024;
-    final connectionState = ref.watch(connectionProvider);
-    final isOffline = !connectionState.isOnline;
     final puasaState = ref.watch(puasaProvider);
     final completedDays = _getCompletedDays();
-
-    // Listen to connection state
-    ref.listen(connectionProvider, (prev, next) {
-      final wasOffline = prev?.isOnline == false;
-      final nowOnline = next.isOnline == true;
-
-      if (wasOffline && nowOnline && mounted) {
-        showMessageToast(
-          context,
-          message:
-              'Koneksi kembali online. Tarik kalender ke bawah untuk memuat ulang.',
-          type: ToastType.info,
-        );
-      }
-    });
 
     // Show loading while fetching data
     if (puasaState.status == PuasaStatus.loading &&
@@ -248,50 +274,6 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
         ),
       );
     }
-
-    // Listen to auth state
-    ref.listen(authProvider, (previous, next) {
-      if (previous?['status'] != next['status']) {
-        if (next['status'] != AuthState.authenticated && mounted) {
-          showMessageToast(
-            context,
-            message: 'Sesi berakhir. Silakan login kembali.',
-            type: ToastType.warning,
-          );
-        }
-      }
-    });
-
-    // Listen to puasa state
-    ref.listen(puasaProvider, (previous, next) {
-      // Handle success state
-      if (next.status == PuasaStatus.success &&
-          previous?.status == PuasaStatus.loading) {
-        if (mounted && next.message != null) {
-          showMessageToast(
-            context,
-            message: next.message!,
-            type: ToastType.success,
-          );
-        }
-      }
-
-      // Handle loaded data
-      if (next.status == PuasaStatus.loaded) {}
-
-      // Handle error state
-      if (next.status == PuasaStatus.error) {
-        if (previous?.status == PuasaStatus.loading &&
-            mounted &&
-            next.message != null) {
-          showMessageToast(
-            context,
-            message: next.message!,
-            type: ToastType.error,
-          );
-        }
-      }
-    });
 
     return Scaffold(
       body: Container(
@@ -376,38 +358,6 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
                           ],
                         ),
                       ),
-                      // Offline Badge
-                      if (isOffline)
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 12 : 10,
-                            vertical: isTablet ? 6 : 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.red.shade200),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.wifi_off_rounded,
-                                color: Colors.red.shade700,
-                                size: isTablet ? 16 : 14,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Offline',
-                                style: TextStyle(
-                                  color: Colors.red.shade700,
-                                  fontSize: isTablet ? 12 : 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -620,9 +570,12 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
       ),
       child: Column(
         children: [
-          // Calendar Header
+          // Calendar Header with Year Navigation
           Container(
-            padding: EdgeInsets.all(isTablet ? 14 : 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 12 : 8,
+              vertical: isTablet ? 16 : 12,
+            ),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -638,25 +591,56 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
               ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.mosque,
-                  color: AppTheme.primaryBlue,
-                  size: isTablet ? 20 : 18,
-                ),
-                SizedBox(width: isTablet ? 8 : 6),
-                Text(
-                  'Ramadhan $_currentHijriYear H ($_ramadhanDaysInSelectedYear hari)',
-                  style: TextStyle(
-                    fontSize: isDesktop
-                        ? 16
-                        : isTablet
-                        ? 15
-                        : 14,
-                    fontWeight: FontWeight.bold,
+                // Previous Year Button
+                IconButton(
+                  onPressed: () => _changeHijriYear(-1),
+                  icon: Icon(
+                    Icons.chevron_left_rounded,
                     color: AppTheme.primaryBlue,
+                    size: isTablet ? 28 : 24,
                   ),
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(minWidth: isTablet ? 48 : 40),
+                ),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Ramadhan',
+                        style: TextStyle(
+                          fontSize: isTablet ? 13 : 12,
+                          color: AppTheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: isTablet ? 4 : 2),
+                      Text(
+                        '$_currentHijriYear H ($_ramadhanDaysInSelectedYear hari)',
+                        style: TextStyle(
+                          fontSize: isDesktop
+                              ? 20
+                              : isTablet
+                              ? 18
+                              : 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Next Year Button
+                IconButton(
+                  onPressed: () => _changeHijriYear(1),
+                  icon: Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppTheme.primaryBlue,
+                    size: isTablet ? 28 : 24,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(minWidth: isTablet ? 48 : 40),
                 ),
               ],
             ),
@@ -707,18 +691,6 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
                         itemBuilder: (context, index) {
                           final day = index + 1;
                           final isCompleted = _isDayCompleted(day);
-                          final isToday = () {
-                            if (_ramadhanStartDate == null) return false;
-                            final today = DateTime.now();
-                            final ramadhanDayDate = DateTime(
-                              _ramadhanStartDate!.year,
-                              _ramadhanStartDate!.month,
-                              _ramadhanStartDate!.day + index,
-                            );
-                            return today.year == ramadhanDayDate.year &&
-                                today.month == ramadhanDayDate.month &&
-                                today.day == ramadhanDayDate.day;
-                          }();
 
                           return GestureDetector(
                             onTap: () => _showDayDetail(day, isCompleted),
@@ -748,21 +720,16 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
                                 borderRadius: BorderRadius.circular(
                                   isTablet ? 12 : 10,
                                 ),
-                                border: isToday
-                                    ? Border.all(
-                                        color: AppTheme.primaryBlue,
-                                        width: 2,
-                                      )
-                                    : Border.all(
-                                        color: isCompleted
-                                            ? AppTheme.accentGreen.withValues(
-                                                alpha: 0.3,
-                                              )
-                                            : AppTheme.primaryBlue.withValues(
-                                                alpha: 0.1,
-                                              ),
-                                        width: 1,
-                                      ),
+                                border: Border.all(
+                                  color: isCompleted
+                                      ? AppTheme.accentGreen.withValues(
+                                          alpha: 0.3,
+                                        )
+                                      : AppTheme.primaryBlue.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                  width: 1,
+                                ),
                                 boxShadow: isCompleted
                                     ? [
                                         BoxShadow(
@@ -782,13 +749,9 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
                                     day.toString(),
                                     style: TextStyle(
                                       fontSize: isTablet ? 16 : 14,
-                                      fontWeight: isToday
-                                          ? FontWeight.bold
-                                          : FontWeight.w600,
+                                      fontWeight: FontWeight.w600,
                                       color: isCompleted
                                           ? AppTheme.accentGreen
-                                          : isToday
-                                          ? AppTheme.primaryBlue
                                           : AppTheme.onSurface,
                                     ),
                                   ),
@@ -954,8 +917,6 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
     final isTablet = screenWidth > 600;
     final authState = ref.read(authProvider);
     final isAuthenticated = authState['status'] == AuthState.authenticated;
-    final connectionState = ref.read(connectionProvider);
-    final isOffline = !connectionState.isOnline;
 
     showModalBottomSheet(
       context: context,
@@ -1054,7 +1015,7 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: isOffline || !isAuthenticated
+                      onPressed: !isAuthenticated
                           ? null
                           : () {
                               Navigator.pop(context);
@@ -1062,13 +1023,6 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
                                 showMessageToast(
                                   context,
                                   message: 'Anda harus login terlebih dahulu',
-                                  type: ToastType.error,
-                                );
-                              } else if (isOffline) {
-                                showMessageToast(
-                                  context,
-                                  message:
-                                      'Tidak dapat menambah progress saat offline',
                                   type: ToastType.error,
                                 );
                               } else {
@@ -1134,7 +1088,7 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: isOffline || !isAuthenticated
+                      onPressed: !isAuthenticated
                           ? null
                           : () {
                               Navigator.pop(context);
@@ -1142,13 +1096,6 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
                                 showMessageToast(
                                   context,
                                   message: 'Anda harus login terlebih dahulu',
-                                  type: ToastType.error,
-                                );
-                              } else if (isOffline) {
-                                showMessageToast(
-                                  context,
-                                  message:
-                                      'Tidak dapat menghapus progress saat offline',
                                   type: ToastType.error,
                                 );
                               } else {
@@ -1218,7 +1165,6 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
 
   void _markRamadhanFasting(int day) async {
     final authState = ref.read(authProvider);
-    final connectionState = ref.read(connectionProvider);
 
     if (authState['status'] != AuthState.authenticated) {
       showMessageToast(
@@ -1229,20 +1175,14 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
       return;
     }
 
-    if (!connectionState.isOnline) {
-      showMessageToast(
-        context,
-        message: 'Tidak dapat menambah progress saat offline',
-        type: ToastType.error,
-      );
-      return;
-    }
-
     try {
       // Call the API to add progress
       await ref
           .read(puasaProvider.notifier)
-          .addProgresPuasaWajib(tanggalRamadhan: day.toString());
+          .addProgresPuasaWajib(
+            tanggalRamadhan: day.toString(),
+            tahunHijriah: _currentHijriYear.toString(),
+          );
     } catch (e, stackTrace) {
       if (kDebugMode) {
         print('Error marking Ramadhan fasting: $e');
@@ -1253,7 +1193,6 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
 
   void _deleteRamadhanFasting(int day) async {
     final authState = ref.read(authProvider);
-    final connectionState = ref.read(connectionProvider);
     final recordId = _getDayRecordId(day);
 
     if (recordId == null) {
@@ -1269,15 +1208,6 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
       showMessageToast(
         context,
         message: 'Anda harus login terlebih dahulu',
-        type: ToastType.error,
-      );
-      return;
-    }
-
-    if (!connectionState.isOnline) {
-      showMessageToast(
-        context,
-        message: 'Tidak dapat menghapus progress saat offline',
         type: ToastType.error,
       );
       return;
@@ -1325,7 +1255,10 @@ class _RamadhanDetailPageState extends ConsumerState<RamadhanDetailPage>
       // Call the API to delete progress
       await ref
           .read(puasaProvider.notifier)
-          .deleteProgresPuasaWajib(id: recordId.toString());
+          .deleteProgresPuasaWajib(
+            id: recordId.toString(),
+            tahunHijriah: _currentHijriYear.toString(),
+          );
     } catch (e, stackTrace) {
       if (kDebugMode) {
         print('Error deleting Ramadhan fasting: $e');

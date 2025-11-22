@@ -24,6 +24,11 @@ class _SunnahDetailPageState extends ConsumerState<SunnahDetailPage>
   late String _jenisPuasa;
   bool _isInitialized = false;
 
+  // Provider subscriptions
+  late ProviderSubscription _connectionSub;
+  late ProviderSubscription _authSub;
+  late ProviderSubscription _puasaSub;
+
   final GlobalKey<RefreshIndicatorState> _refreshKeyTracking =
       GlobalKey<RefreshIndicatorState>();
 
@@ -177,6 +182,60 @@ class _SunnahDetailPageState extends ConsumerState<SunnahDetailPage>
     // Fetch initial data
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchData();
+      _setupListeners();
+    });
+  }
+
+  void _setupListeners() {
+    // Listen to auth state
+    _authSub = ref.listenManual(authProvider, (previous, next) {
+      if (previous?['status'] != next['status']) {
+        if (next['status'] != AuthState.authenticated) {
+          final route = ModalRoute.of(context);
+          if (mounted && route != null && route.isCurrent) {
+            showMessageToast(
+              context,
+              message: 'Sesi berakhir. Silakan login kembali.',
+              type: ToastType.warning,
+            );
+          }
+        }
+      }
+    });
+
+    // Listen to puasa state
+    _puasaSub = ref.listenManual(puasaProvider, (previous, next) {
+      // Handle success state
+      if (next.status == PuasaStatus.success &&
+          previous?.status == PuasaStatus.loading) {
+        if (next.message != null) {
+          final route = ModalRoute.of(context);
+          if (mounted && route != null && route.isCurrent) {
+            showMessageToast(
+              context,
+              message: next.message!,
+              type: ToastType.success,
+            );
+          }
+        }
+      }
+
+      // Handle loaded data
+      if (next.status == PuasaStatus.loaded) {}
+
+      // Handle error state
+      if (next.status == PuasaStatus.error) {
+        if (previous?.status == PuasaStatus.loading && next.message != null) {
+          final route = ModalRoute.of(context);
+          if (mounted && route != null && route.isCurrent) {
+            showMessageToast(
+              context,
+              message: next.message!,
+              type: ToastType.error,
+            );
+          }
+        }
+      }
     });
   }
 
@@ -223,18 +282,22 @@ class _SunnahDetailPageState extends ConsumerState<SunnahDetailPage>
   @override
   void dispose() {
     _tabController.dispose();
+    _connectionSub.close();
+    _authSub.close();
+    _puasaSub.close();
     super.dispose();
   }
 
   int _getCompletedCount() {
     final puasaState = ref.watch(puasaProvider);
-    return puasaState.riwayatPuasaSunnah?.total ?? 0;
+    final riwayat = puasaState.riwayatPuasaSunnah ?? [];
+    return riwayat.length;
   }
 
   // Check if today already has fasting record
   bool _isTodayMarked() {
     final puasaState = ref.watch(puasaProvider);
-    final riwayat = puasaState.riwayatPuasaSunnah?.detail ?? [];
+    final riwayat = puasaState.riwayatPuasaSunnah ?? [];
 
     if (riwayat.isEmpty) return false;
 
@@ -242,14 +305,16 @@ class _SunnahDetailPageState extends ConsumerState<SunnahDetailPage>
     final todayDate = DateTime(today.year, today.month, today.day);
 
     for (var item in riwayat) {
-      final itemDate = DateTime(
-        item.createdAt!.year,
-        item.createdAt!.month,
-        item.createdAt!.day,
-      );
+      if (item.createdAt != null) {
+        final itemDate = DateTime(
+          item.createdAt!.year,
+          item.createdAt!.month,
+          item.createdAt!.day,
+        );
 
-      if (itemDate.isAtSameMomentAs(todayDate)) {
-        return true;
+        if (itemDate.isAtSameMomentAs(todayDate)) {
+          return true;
+        }
       }
     }
 
@@ -259,7 +324,7 @@ class _SunnahDetailPageState extends ConsumerState<SunnahDetailPage>
   // Get today's fasting record ID
   String? _getTodayRecordId() {
     final puasaState = ref.watch(puasaProvider);
-    final riwayat = puasaState.riwayatPuasaSunnah?.detail ?? [];
+    final riwayat = puasaState.riwayatPuasaSunnah ?? [];
 
     if (riwayat.isEmpty) return null;
 
@@ -267,14 +332,16 @@ class _SunnahDetailPageState extends ConsumerState<SunnahDetailPage>
     final todayDate = DateTime(today.year, today.month, today.day);
 
     for (var item in riwayat) {
-      final itemDate = DateTime(
-        item.createdAt!.year,
-        item.createdAt!.month,
-        item.createdAt!.day,
-      );
+      if (item.createdAt != null) {
+        final itemDate = DateTime(
+          item.createdAt!.year,
+          item.createdAt!.month,
+          item.createdAt!.day,
+        );
 
-      if (itemDate.isAtSameMomentAs(todayDate)) {
-        return item.id.toString();
+        if (itemDate.isAtSameMomentAs(todayDate)) {
+          return item.id.toString();
+        }
       }
     }
 
@@ -292,20 +359,6 @@ class _SunnahDetailPageState extends ConsumerState<SunnahDetailPage>
     final completedCount = _getCompletedCount();
 
     // Deep logging for debugging
-
-    // Listen to connection state
-    ref.listen(connectionProvider, (prev, next) {
-      final wasOffline = prev?.isOnline == false;
-      final nowOnline = next.isOnline == true;
-
-      if (wasOffline && nowOnline && mounted) {
-        showMessageToast(
-          context,
-          message: 'Koneksi kembali online. Tarik untuk memuat ulang.',
-          type: ToastType.info,
-        );
-      }
-    });
 
     // Show loading while fetching data
     if (!_isInitialized && puasaState.riwayatPuasaSunnah == null) {
@@ -345,50 +398,6 @@ class _SunnahDetailPageState extends ConsumerState<SunnahDetailPage>
         ),
       );
     }
-
-    // Listen to auth state
-    ref.listen(authProvider, (previous, next) {
-      if (previous?['status'] != next['status']) {
-        if (next['status'] != AuthState.authenticated && mounted) {
-          showMessageToast(
-            context,
-            message: 'Sesi berakhir. Silakan login kembali.',
-            type: ToastType.warning,
-          );
-        }
-      }
-    });
-
-    // Listen to puasa state
-    ref.listen(puasaProvider, (previous, next) {
-      // Handle success state
-      if (next.status == PuasaStatus.success &&
-          previous?.status == PuasaStatus.loading) {
-        if (mounted && next.message != null) {
-          showMessageToast(
-            context,
-            message: next.message!,
-            type: ToastType.success,
-          );
-        }
-      }
-
-      // Handle loaded data
-      if (next.status == PuasaStatus.loaded) {}
-
-      // Handle error state
-      if (next.status == PuasaStatus.error) {
-        if (previous?.status == PuasaStatus.loading &&
-            mounted &&
-            next.message != null) {
-          showMessageToast(
-            context,
-            message: next.message!,
-            type: ToastType.error,
-          );
-        }
-      }
-    });
 
     return Scaffold(
       body: Container(
@@ -662,7 +671,7 @@ class _SunnahDetailPageState extends ConsumerState<SunnahDetailPage>
     final isTodayMarked = _isTodayMarked();
     final isLoading = puasaState.status == PuasaStatus.loading;
 
-    final riwayat = puasaState.riwayatPuasaSunnah?.detail ?? [];
+    final riwayat = puasaState.riwayatPuasaSunnah ?? [];
 
     return Column(
       children: [
